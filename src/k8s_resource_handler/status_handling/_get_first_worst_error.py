@@ -20,12 +20,12 @@ def get_first_worst_error(errors: List[ErrorWithStatus]) -> ErrorWithStatus:
     cached_error = None
 
     for error in errors:
-        if error is None:
+        try:
+            if isinstance(error.status, BlockedStatus):
+                return error
+            elif isinstance(error.status, WaitingStatus):
+                cached_error = error
+        except AttributeError:
             continue
-
-        if isinstance(error.status, BlockedStatus):
-            return error
-        elif isinstance(error.status, WaitingStatus):
-            cached_error = error
 
     return cached_error
