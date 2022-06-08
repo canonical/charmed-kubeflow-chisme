@@ -7,9 +7,6 @@ from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Namespace
 
-# Imports a fixture
-from utilities import mocked_lightkube_client, mocked_lightkube_client_class  # noqa 401
-
 from k8s_resource_handler.lightkube.batch import apply_many, delete_many
 
 namespaced_resource = StatefulSet(

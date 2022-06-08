@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: template-0
+  labels:
+    run: my-nginx
+spec:
+  type: NodePort
+  ports:
+  - port: {{ port }}
+    targetPort: 80
+    protocol: TCP
+    name: http
+  - port: 443
+    protocol: TCP
+    name: https
+  selector:
+    run: {{ selector }}
