@@ -4,7 +4,7 @@
 from ops.model import BlockedStatus
 
 from ..types import CharmStatusType
-from . import ErrorWithStatus
+from ._with_status import ErrorWithStatus
 
 
 class ResourceNotFoundError(ErrorWithStatus):
