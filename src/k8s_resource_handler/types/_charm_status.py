@@ -1,3 +1,6 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 from typing import Type, Union
 
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
