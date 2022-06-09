@@ -1,3 +1,6 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import logging
 from pathlib import Path
 from typing import Callable, Iterable, Optional
@@ -14,7 +17,7 @@ from ._check_resources import check_resources
 
 
 class KubernetesResourceHandler:
-    """Defines an API for handling Kubernetes resources in charm code"""
+    """Defines an API for handling Kubernetes resources in charm code."""
 
     def __init__(
         self,
@@ -23,8 +26,7 @@ class KubernetesResourceHandler:
         field_manager: str,
         logger: Optional[logging.Logger] = None,
     ):
-        """
-        Returns a KubernetesResourceHandler instance
+        """Returns a KubernetesResourceHandler instance.
 
         Args:
             template_files_factory (Callable): A callable that accepts no arguments and returns an
@@ -49,20 +51,10 @@ class KubernetesResourceHandler:
 
         self._lightkube_client = None
 
-    def something(self, stuff):
-        """
-
-        Args:
-            stuff:
-
-        Returns:
-
-        """
-
     def compute_unit_status(
         self, resources: Optional[LightkubeResourcesList] = None
     ) -> CharmStatusType:
-        """Returns a suggested unit status given the state of the provided Kubernetes resources
+        """Returns a suggested unit status given the state of the provided Kubernetes resources.
 
         The returned status is computed by mapping the state of each resource to a suggested unit
         status and then returning the worst status observed.  The statuses roughly map according
@@ -88,7 +80,6 @@ class KubernetesResourceHandler:
                               `self.render_manifest`.
 
         Returns: A charm unit status (one of ActiveStatus, WaitingStatus, or BlockedStatus)
-
         """
         self.log.info("Computing a suggested unit status describing these Kubernetes resources")
 
@@ -117,11 +108,11 @@ class KubernetesResourceHandler:
         return status
 
     def reconcile(self, resources: Optional[LightkubeResourcesList] = None):
-        """To be implemented. This should be an application of resources that also handles deletion"""
+        """To be implemented. This will reconcile resources, including deleting them."""
         raise NotImplementedError()
 
     def render_manifests(self) -> LightkubeResourcesList:
-        """Renders this charm's manifests, returning them as a list of Lightkube Resources"""
+        """Renders this charm's manifests, returning them as a list of Lightkube Resources."""
         self.log.info("Rendering manifests")
         context = self._context_factory()
         template_files = self._template_files_factory()
@@ -137,7 +128,7 @@ class KubernetesResourceHandler:
         return codecs.load_all_yaml("\n---\n".join(manifest_parts))
 
     def apply(self, resources: Optional[LightkubeResourcesList] = None):
-        """Applies a list of Lightkube Kubernetes resources, adding or modifying these objects
+        """Applies a list of Lightkube Kubernetes resources, adding or modifying these objects.
 
         This can be invoked to create and/or update resources in the kubernetes cluster using
         Kubernetes server-side-apply.  This action will only add or modify existing objects,
@@ -177,12 +168,17 @@ class KubernetesResourceHandler:
 
     @property
     def lightkube_client(self) -> Client:
+        """Returns the Lightkube Client used by this instance.
+
+        If uninitiated, will create, cache, and return a Client
+        """
         if self._lightkube_client is None:
             self._lightkube_client = Client(field_manager=self._field_manager)
         return self._lightkube_client
 
     @lightkube_client.setter
     def lightkube_client(self, value: Client):
+        """Stores a new Lightkube Client for this instance, replacing any previous one."""
         if isinstance(value, Client):
             self._lightkube_client = value
         else:

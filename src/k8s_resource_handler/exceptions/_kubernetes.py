@@ -1,3 +1,6 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 from ops.model import BlockedStatus
 
 from ..types import CharmStatusType

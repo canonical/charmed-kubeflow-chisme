@@ -1,3 +1,6 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 from typing import List, Union
 
 import lightkube
@@ -12,7 +15,7 @@ from ._validate_statefulset import validate_statefulset
 def check_resources(
     client: lightkube.Client, expected_resources: List[Union[NamespacedResource, GlobalResource]]
 ) -> (bool, List[ErrorWithStatus]):
-    """Checks status of resources in cluster, returning True if all are considered ready
+    """Checks status of resources in cluster, returning True if all are considered ready.
 
     Note: This is a basic skeleton of a true check on the resources.  Currently it only checks
     that resources exist and that StatefulSets have their desired number of replicas ready.
@@ -30,7 +33,7 @@ def check_resources(
                 expected_resource.metadata.name,
                 namespace=expected_resource.metadata.namespace,
             )
-        except lightkube.core.exceptions.ApiError as e:
+        except lightkube.core.exceptions.ApiError:
             msg = f"Cannot find k8s object corresponding to '{expected_resource.metadata}'"
             errors[i] = ResourceNotFoundError(msg, BlockedStatus)
             continue

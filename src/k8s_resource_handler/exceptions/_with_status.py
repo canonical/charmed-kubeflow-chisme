@@ -1,11 +1,16 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 from ..types import CharmStatusType
 
 
-class ErrorWithStatus(Exception):
-    """Raised when an exception occurs and the raiser has an opinion on the resultant charm status"""
+class ErrorWithStatus(Exception):  # noqa: N818
+    """Base class of exceptions for when the raiser has an opinion on the resulting charm status.
 
-    # TODO: Should this status base class just accept an instanced Status rather than msg and status_type?
-    #       The msg+type feels like a chore for the user
+    Commonly used when the parent charm wants to catch any ErrorWithStatus Exceptions and set its
+    unit status accordingly
+    """
+
     def __init__(self, msg: str, status_type: CharmStatusType):
         super().__init__(str(msg))
         self.msg = str(msg)
@@ -13,4 +18,5 @@ class ErrorWithStatus(Exception):
 
     @property
     def status(self):
+        """Returns an instance of self.status_type, instantiated with this exception's message."""
         return self.status_type(self.msg)
