@@ -1,5 +1,6 @@
-from ops.model import WaitingStatus, BlockedStatus
 from typing import List
+
+from ops.model import BlockedStatus, WaitingStatus
 
 from ..exceptions import ErrorWithStatus
 

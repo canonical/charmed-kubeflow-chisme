@@ -1,17 +1,17 @@
 from typing import List, Union
 
 import lightkube
-from lightkube.core.resource import NamespacedResource, GlobalResource
+from lightkube.core.resource import GlobalResource, NamespacedResource
 from lightkube.resources.apps_v1 import StatefulSet
 from ops.model import BlockedStatus
 
+from ..exceptions import ErrorWithStatus, ReplicasNotReadyError, ResourceNotFoundError
 from ._validate_statefulset import validate_statefulset
-from ..exceptions import ResourceNotFoundError, ReplicasNotReadyError
-from ..exceptions import ErrorWithStatus
 
 
-def check_resources(client: lightkube.Client, expected_resources: List[Union[NamespacedResource, GlobalResource]]) -> \
-        (bool, List[ErrorWithStatus]):
+def check_resources(
+    client: lightkube.Client, expected_resources: List[Union[NamespacedResource, GlobalResource]]
+) -> (bool, List[ErrorWithStatus]):
     """Checks status of resources in cluster, returning True if all are considered ready
 
     Note: This is a basic skeleton of a true check on the resources.  Currently it only checks

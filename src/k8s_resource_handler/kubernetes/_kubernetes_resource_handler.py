@@ -1,22 +1,20 @@
 import logging
 from pathlib import Path
-from typing import Optional, Callable, Iterable
+from typing import Callable, Iterable, Optional
 
 from jinja2 import Template
+from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
-from lightkube import codecs, Client
 from ops.model import ActiveStatus, BlockedStatus
 
-from ._check_resources import check_resources
-from ..status_handling import get_first_worst_error
 from ..exceptions import ReconcileError
-from ..types import CharmStatusType
-from ..types import LightkubeResourcesList
+from ..status_handling import get_first_worst_error
+from ..types import CharmStatusType, LightkubeResourcesList
+from ._check_resources import check_resources
 
 
 class KubernetesResourceHandler:
-    """Defines an API for handling Kubernetes resources in charm code
-    """
+    """Defines an API for handling Kubernetes resources in charm code"""
 
     def __init__(
         self,
@@ -61,7 +59,9 @@ class KubernetesResourceHandler:
 
         """
 
-    def compute_unit_status(self, resources: Optional[LightkubeResourcesList] = None) -> CharmStatusType:
+    def compute_unit_status(
+        self, resources: Optional[LightkubeResourcesList] = None
+    ) -> CharmStatusType:
         """Returns a suggested unit status given the state of the provided Kubernetes resources
 
         The returned status is computed by mapping the state of each resource to a suggested unit
@@ -110,13 +110,14 @@ class KubernetesResourceHandler:
             # Return status based on the worst thing we encountered
             status = get_first_worst_error(errors).status
 
-        self.log.info("Returning status describing Kubernetes resources state (note: this status "
-                      f"is not applied - that is the responsibility of the charm): {status}")
+        self.log.info(
+            "Returning status describing Kubernetes resources state (note: this status "
+            f"is not applied - that is the responsibility of the charm): {status}"
+        )
         return status
 
     def reconcile(self, resources: Optional[LightkubeResourcesList] = None):
-        """To be implemented. This should be an application of resources that also handles deletion
-        """
+        """To be implemented. This should be an application of resources that also handles deletion"""
         raise NotImplementedError()
 
     def render_manifests(self) -> LightkubeResourcesList:
