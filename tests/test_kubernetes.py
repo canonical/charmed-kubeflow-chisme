@@ -1,16 +1,24 @@
+from collections import namedtuple
 from contextlib import nullcontext
 from unittest import mock
 
 import pytest
 
-from ops.model import BlockedStatus
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from lightkube.models.apps_v1 import StatefulSetSpec, StatefulSetStatus
 from lightkube.models.core_v1 import PodTemplateSpec
 from lightkube.models.meta_v1 import ObjectMeta, LabelSelector
 from lightkube.resources.apps_v1 import StatefulSet
+from lightkube.resources.core_v1 import Service
 
-from k8s_resource_handler.exceptions import ResourceNotFoundError, ReplicasNotReadyError
-from k8s_resource_handler.kubernetes import check_resources
+from k8s_resource_handler.exceptions import (
+    ResourceNotFoundError,
+    ReplicasNotReadyError,
+    ErrorWithStatus,
+)
+from k8s_resource_handler import kubernetes
+
+# from k8s_resource_handler.kubernetes import check_resources, KubernetesResourceHandler
 from k8s_resource_handler.kubernetes._check_resources import _get_resource_or_error
 from k8s_resource_handler.kubernetes import _check_resources
 from k8s_resource_handler.kubernetes._validate_statefulset import validate_statefulset
@@ -126,7 +134,7 @@ def test_check_resources(
     validate_statefulset_spy = mocker.spy(_check_resources, "validate_statefulset")
 
     # Execute the function under test
-    status, errors = check_resources(
+    status, errors = kubernetes.check_resources(
         client="fake client",
         resources=dummy_input_resources,
     )
@@ -141,3 +149,126 @@ def test_check_resources(
 
     # For every statefulset, assert that we reached validate_statefulset
     assert validate_statefulset_spy.call_count == n_statefulset
+
+
+@pytest.fixture()
+def mocked_lightkube_client_class(mocker):
+    """Prevents lightkube clients from being created, returning a mock instead"""
+    mocked_lightkube_client_class = mocker.patch("lightkube.Client")
+    mocked_lightkube_client_class.return_value = mock.MagicMock()
+    yield mocked_lightkube_client_class
+
+
+@pytest.fixture()
+def mocked_khr_check_resources(mocker):
+    """Mocks check_resources used by the KubernetesResourceHandler"""
+    mocked = mocker.patch(
+        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.check_resources"
+    )
+    mocked.return_value = (None, None)
+    yield mocked
+
+
+@pytest.mark.parametrize(
+    "resources,is_render_manifests_called",
+    (
+        (None, True),  # No resources provided, thus render_manifests is called once
+        (["a resource"], False),  # Resources provided, thus render_manifests is not called
+        ([], False),  # empty list is a valid input of resources, so render_manifest not called
+    ),
+)
+def test_KubernetesResourceHandler_compute_unit_status(
+    resources,
+    is_render_manifests_called,
+    mocked_lightkube_client_class,
+    mocked_khr_check_resources,
+):
+    """Tests whether KRH.compute_unit_status handles cases where no resources are passed"""
+    krh = kubernetes.KubernetesResourceHandler(
+        template_files_factory=lambda: "",
+        context_factory=lambda: {},
+        field_manager="field-manager",
+    )
+
+    mocked_render_manifests = mock.MagicMock()
+    krh.render_manifests = mocked_render_manifests
+
+    mocked_charm_status_given_resource_status = mock.MagicMock()
+    mocked_charm_status_given_resource_status.return_value = ActiveStatus()
+    krh._charm_status_given_resource_status = mocked_charm_status_given_resource_status
+
+    returned_status = krh.compute_unit_status(resources=resources)
+
+    # Confirm that we hit render_manifests the correct number of times
+    assert mocked_render_manifests.call_count == int(is_render_manifests_called)
+
+    # Confirm status returned from resource status parser is returned to original called
+    assert returned_status == mocked_charm_status_given_resource_status.return_value
+
+
+@pytest.mark.parametrize(
+    "resource_status,errors,expected_returned_status",
+    (
+        # If resource_status==True then we go to Active
+        (True, [], ActiveStatus()),
+        # If resource_status==True we ignore any errors passed and still set to Active
+        (True, [ErrorWithStatus("", BlockedStatus)], ActiveStatus()),
+        # Return the WaitingStatus observed in the error list, ignoring Nones
+        (False, [None, ErrorWithStatus("", WaitingStatus), None], WaitingStatus()),
+        # Return the BlockedStatus, preferring that over the WaitingStatus
+        (
+            False,
+            [ErrorWithStatus("", WaitingStatus), ErrorWithStatus("", BlockedStatus)],
+            BlockedStatus(),
+        ),
+    ),
+)
+def test_KubernetesResourceHandler_charm_status_given_resource_status(
+    resource_status, errors, expected_returned_status
+):
+    krh = kubernetes.KubernetesResourceHandler(
+        template_files_factory=lambda: "",
+        context_factory=lambda: {},
+        field_manager="field-manager",
+    )
+
+    returned_status = krh._charm_status_given_resource_status(
+        resource_status=resource_status, errors=errors
+    )
+
+    assert returned_status == expected_returned_status
+
+
+def test_KubernetesResourceHandler_render_manifests():
+    template_files_factory = mock.MagicMock()
+    template_files_factory.return_value = ["./data/template_yaml_0.j2", "./data/template_yaml_1.j2"]
+
+    context = {
+        'port': 8080,
+        'selector': "my-nginx",
+    }
+
+    def _context_factory():
+        return context
+
+    krh = kubernetes.KubernetesResourceHandler(
+        template_files_factory=template_files_factory,
+        context_factory=_context_factory,
+        field_manager="field-manager",
+    )
+
+    resource_manifest = krh.render_manifests()
+
+    for i, r in enumerate(resource_manifest):
+        assert isinstance(r, Service)
+        assert r.metadata.name == f"template-{i}"
+        assert r.spec.ports[0].port == context["port"]
+        assert r.spec.selector['run'] == context["selector"]
+
+
+def test_KubernetesResourceHandler_apply():
+    raise NotImplementedError()
+
+
+def test_KubernetesResourceHandler_lightkube_client_property():
+    raise NotImplementedError()

@@ -3,17 +3,18 @@
 
 import logging
 from pathlib import Path
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, List
 
 from jinja2 import Template
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
 from ops.model import ActiveStatus, BlockedStatus
 
-from ..exceptions import ReconcileError
+from ..exceptions import ReconcileError, ErrorWithStatus
 from ..status_handling import get_first_worst_error
 from ..types import CharmStatusType, LightkubeResourcesList
 from ._check_resources import check_resources
+from ..types._charm_status import AnyCharmStatus
 
 
 class KubernetesResourceHandler:
@@ -86,26 +87,15 @@ class KubernetesResourceHandler:
         if resources is None:
             resources = self.render_manifests()
 
-        charm_ok, errors = check_resources(self.lightkube_client, resources)
-        if charm_ok:
-            status = ActiveStatus()
-        else:
-            # Hit one or more errors with resources.  Return status for worst and log all
-            self.log.info("One or more resources is not ready:")
+        resources_ok, errors = check_resources(self.lightkube_client, resources)
 
-            # Log all errors, ignoring None's
-            errors = [error for error in errors if error is not None]
-            for i, error in enumerate(errors):
-                self.log.info(f"Resource issue {i+1}/{len(errors)}: {error.msg}")
-
-            # Return status based on the worst thing we encountered
-            status = get_first_worst_error(errors).status
+        suggested_unit_status = self._charm_status_given_resource_status(resources_ok, errors)
 
         self.log.info(
             "Returning status describing Kubernetes resources state (note: this status "
-            f"is not applied - that is the responsibility of the charm): {status}"
+            f"is not applied - that is the responsibility of the charm): {suggested_unit_status}"
         )
-        return status
+        return suggested_unit_status
 
     def reconcile(self, resources: Optional[LightkubeResourcesList] = None):
         """To be implemented. This will reconcile resources, including deleting them."""
@@ -183,3 +173,21 @@ class KubernetesResourceHandler:
             self._lightkube_client = value
         else:
             raise ValueError("lightkube_client must be a lightkube.Client")
+
+    def _charm_status_given_resource_status(
+        self, resource_status: bool, errors: List[ErrorWithStatus]
+    ) -> AnyCharmStatus:
+        """Inspects resource status and errors, returning a suggested charm unit status"""
+        if resource_status:
+            return ActiveStatus()
+        else:
+            # Hit one or more errors with resources.  Return status for worst and log all
+            self.log.info("One or more resources is not ready:")
+
+            # Log all errors, ignoring None's
+            errors = [error for error in errors if error is not None]
+            for i, error in enumerate(errors):
+                self.log.info(f"Resource issue {i+1}/{len(errors)}: {error.msg}")
+
+        # Return status based on the worst thing we encountered
+        return get_first_worst_error(errors).status

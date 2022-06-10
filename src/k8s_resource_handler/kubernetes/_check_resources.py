@@ -18,6 +18,9 @@ def check_resources(
 ) -> (bool, List[ErrorWithStatus]):
     """Checks status of resources in cluster, returning True if all are considered ready.
 
+    Also returns a list of any Exceptions encountered due to failed resource checks.  If
+    len(resources)==0, this returns a status of True.
+
     Note: This is a basic skeleton of a true check on the resources.  Currently it only checks
     that resources exist and that StatefulSets have their desired number of replicas ready.
 
