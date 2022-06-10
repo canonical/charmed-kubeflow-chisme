@@ -13,12 +13,11 @@ def validate_statefulset(resource: StatefulSet) -> (bool, Optional[ErrorWithStat
     ready_replicas = resource.status.readyReplicas
     replicas_expected = resource.spec.replicas
     if ready_replicas == replicas_expected:
-        return True, None
+        return True
     else:
         error_message = (
             f"StatefulSet {resource.metadata.name} in namespace "
             f"{resource.metadata.namespace} has {ready_replicas} readyReplicas, "
             f"expected {replicas_expected}"
         )
-        error = ReplicasNotReadyError(error_message, WaitingStatus)
-        return False, error
+        raise ReplicasNotReadyError(error_message, WaitingStatus)
