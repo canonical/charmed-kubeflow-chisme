@@ -16,6 +16,10 @@ class ErrorWithStatus(Exception):  # noqa: N818
         self.msg = str(msg)
         self.status_type = status_type
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.msg == other.msg and self.status == other.status
+
     @property
     def status(self):
         """Returns an instance of self.status_type, instantiated with this exception's message."""
