@@ -51,16 +51,6 @@ class KubernetesResourceHandler:
 
         self._lightkube_client = None
 
-    def something(self, stuff):
-        """
-
-        Args:
-            stuff:
-
-        Returns:
-
-        """
-
     def compute_unit_status(self, resources: Optional[LightkubeResourcesList] = None) -> CharmStatusType:
         """Returns a suggested unit status given the state of the provided Kubernetes resources
 
