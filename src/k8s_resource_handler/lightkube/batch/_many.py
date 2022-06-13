@@ -75,4 +75,4 @@ def delete_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceTyp
         else:
             raise TypeError("delete_many only supports objects of types NamespacedResource or GlobalResource")
 
-        client.delete(obj, name=obj.metadata.name, namespace=namespace)
+        client.delete(obj=obj, name=obj.metadata.name, namespace=namespace)

@@ -8,34 +8,36 @@ from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Namespace
 import pytest
 
-from k8s_resource_handler.lightkube.batch import apply_many
+from k8s_resource_handler.lightkube.batch import apply_many, delete_many
 from utilities import mocked_lightkube_client_class, mocked_lightkube_client  # Imports a fixture # noqa 401
 
 
 namespaced_resource = StatefulSet(
-    metadata=ObjectMeta(name="has-replicas", namespace="namespace"),
+    metadata=ObjectMeta(name="sample-statefulset", namespace="namespace"),
 )
 
 global_resource = Namespace(
-    metadata=ObjectMeta(name="has-replicas", namespace="namespace"),
+    metadata=ObjectMeta(name="sample-namespace", namespace="namespace"),
 )
+
 
 @pytest.mark.parametrize(
     "objects,expected_namespaces,context_raised",
     (
-        ([namespaced_resource, global_resource], ["namespace", None], nullcontext()),
-        (["something else"], None, pytest.raises(TypeError)),
+            ([namespaced_resource, global_resource], ["namespace", None], nullcontext()),
+            (["something else"], None, pytest.raises(TypeError)),
     )
 )
 def test_apply_many(objects, expected_namespaces, context_raised, mocker, mocked_lightkube_client):
-
+    # Replace sort_objects with something that returns the objects passed, for testing
     mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
-    # Mocked sort_objects just passes the objects back to the called for testing
-    mocked_sort_objects.side_effect = lambda x: x
+    mocked_sort_objects.side_effect = lambda objs: objs
 
+    # Other inputs passed to client.apply
     field_manager = "fm"
     force = True
 
+    # Execute the test
     with context_raised as error_info:
         returned = apply_many(
             client=mocked_lightkube_client,
@@ -44,19 +46,62 @@ def test_apply_many(objects, expected_namespaces, context_raised, mocker, mocked
             force=force,
         )
 
-        # asser on mocked_lightkube_client.apply
+        # We should always call sort_objects, regardless of outcome
         mocked_sort_objects.assert_called_once()
 
+        # Test differently depending on whether we raise an error
         if error_info is not None:
-            # Error raised - this will be handled by the "with context_raised"
+            # Error raised - this will be handled by the "with context_raised" as all that happens
+            # here is we raise an exception
             pass
         else:
             # No error raised, so inspect the operation and output
+            assert len(returned) == len(objects)
+
+            # Assert we called apply with the expected inputs
             calls = [None] * len(objects)
             for i, (obj, namespace) in enumerate(zip(objects, expected_namespaces)):
                 calls[i] = mock.call(
                     obj=obj, namespace=namespace, field_manager=field_manager, force=force
                 )
-
             mocked_lightkube_client.apply.assert_has_calls(calls)
-            assert len(returned) == len(objects)
+
+
+@pytest.mark.parametrize(
+    "objects,expected_names,expected_namespaces,context_raised",
+    (
+            ([namespaced_resource, global_resource], ["sample-statefulset", "sample-namespace"], ["namespace", None], nullcontext()),
+            (["something else"], None, None, pytest.raises(TypeError)),
+    )
+)
+def test_delete_many(objects, expected_names, expected_namespaces, context_raised, mocker, mocked_lightkube_client):
+    # Replace sort_objects with something that returns the objects passed, for testing
+    mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
+    mocked_sort_objects.side_effect = lambda objs, reverse: objs
+
+    # Execute the test
+    with context_raised as error_info:
+        returned = delete_many(
+            client=mocked_lightkube_client,
+            objs=objects,
+        )
+
+        # We should always call sort_objects, regardless of outcome
+        mocked_sort_objects.assert_called_once()
+
+        # Test differently depending on whether we raise an error
+        if error_info is not None:
+            # Error raised - this will be handled by the "with context_raised" as all that happens
+            # here is we raise an exception
+            pass
+        else:
+            # No error raised, so inspect the operation and output
+            assert returned is None
+
+            # Assert we called apply with the expected inputs
+            calls = [None] * len(objects)
+            for i, (obj, name, namespace) in enumerate(zip(objects, expected_names, expected_namespaces)):
+                calls[i] = mock.call(
+                    obj=obj, name=name, namespace=namespace
+                )
+            mocked_lightkube_client.delete.assert_has_calls(calls)
