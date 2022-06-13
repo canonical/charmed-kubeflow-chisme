@@ -1,13 +1,17 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-
 # NOTE: These are temporary helpers.  They should be removed when
 # [this pr](https://github.com/gtsystem/lightkube/pull/33/files) is merged into lightkube
 # (and the min lightkube version of this package should be bumped accordingly)
 
+from collections import defaultdict
+from typing import List
 
-def sort_objects(objs: List[r.Resource], by: str="kind", reverse=False) -> List[r.Resource]:
+from lightkube.core import resource
+
+
+def _sort_objects(objs: List[resource.Resource], by: str = "kind", reverse: bool = False) -> List[resource.Resource]:
     """Sorts a list of resource objects by a sorting schema, returning a new list
     **parameters**
     * **objs** - list of resource objects to be sorted
@@ -42,7 +46,7 @@ APPLY_ORDER["ClusterRoleBinding"] = 44
 # apply_order[anything_else] = unknown_item_sort_value
 
 
-def _kind_rank_function(obj: List[r.Resource]) -> int:
+def _kind_rank_function(obj: List[resource.Resource]) -> int:
     """
     Returns an integer rank based on an objects .kind
     Ranking is set to order kinds by:
