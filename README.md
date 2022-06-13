@@ -1,2 +1,1 @@
-# k8s-resource-handler-interface
-Kubernetes Resource Handler Interface for Charms
+A collection of helpers produced by the Charmed Kubeflow team
