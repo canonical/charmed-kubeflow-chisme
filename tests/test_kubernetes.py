@@ -15,10 +15,10 @@ from k8s_resource_handler.exceptions import (
     ResourceNotFoundError,
     ReplicasNotReadyError,
     ErrorWithStatus,
+    ReconcileError,
 )
 from k8s_resource_handler import kubernetes
 
-# from k8s_resource_handler.kubernetes import check_resources, KubernetesResourceHandler
 from k8s_resource_handler.kubernetes._check_resources import _get_resource_or_error
 from k8s_resource_handler.kubernetes import _check_resources
 from k8s_resource_handler.kubernetes._validate_statefulset import validate_statefulset
@@ -177,7 +177,7 @@ def mocked_khr_check_resources(mocker):
         ([], False),  # empty list is a valid input of resources, so render_manifest not called
     ),
 )
-def test_KubernetesResourceHandler_compute_unit_status(
+def test_KubernetesResourceHandler_compute_unit_status_inferred_resources(
     resources,
     is_render_manifests_called,
     mocked_lightkube_client_class,
@@ -268,6 +268,56 @@ def test_KubernetesResourceHandler_render_manifests():
 
 def test_KubernetesResourceHandler_apply():
     raise NotImplementedError()
+
+
+@pytest.mark.parametrize(
+    "resources,is_render_manifests_called",
+    (
+            (None, True),  # No resources provided, thus render_manifests is called once
+            (["a resource"], False),  # Resources provided, thus render_manifests is not called
+    ),
+)
+def test_KubernetesResourceHandler_apply(
+        resources, is_render_manifests_called, mocker,
+):
+    krh = kubernetes.KubernetesResourceHandler(
+        template_files_factory=lambda: "",
+        context_factory=lambda: {},
+        field_manager="field-manager",
+    )
+
+    mocked_render_manifests = mock.MagicMock()
+    krh.render_manifests = mocked_render_manifests
+
+    mocked_apply_many = mocker.patch("k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many")
+
+    krh.apply(resources)
+
+    assert mocked_render_manifests.call_count == int(is_render_manifests_called)
+    mocked_apply_many.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "error_raised_by_apply_many,overall_context_raised",
+    (
+        (None, nullcontext()),
+        (FakeApiError(400), pytest.raises(FakeApiError)),
+        (FakeApiError(403), pytest.raises(ReconcileError)),
+    ),
+)
+def test_KubernetesResourceHandler_apply_on_errors(
+        error_raised_by_apply_many, overall_context_raised, mocker
+):
+    krh = kubernetes.KubernetesResourceHandler(
+        template_files_factory=lambda: "",
+        context_factory=lambda: {},
+        field_manager="field-manager",
+    )
+
+    mocked_apply_many = mocker.patch("k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many")
+    mocked_apply_many.side_effect = error_raised_by_apply_many
+    with overall_context_raised:
+        krh.apply()
 
 
 def test_KubernetesResourceHandler_lightkube_client_property():
