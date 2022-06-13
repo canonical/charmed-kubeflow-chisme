@@ -7,7 +7,7 @@ import lightkube
 from lightkube.core import resource
 from lightkube.core.resource import NamespacedResource, GlobalResource
 
-from ._sort_objects import _sort_objects
+from ._sort_objects import _sort_objects as sort_objects
 
 
 GlobalResourceTypeVar = TypeVar('GlobalResource', bound=resource.GlobalResource)
@@ -40,7 +40,7 @@ def apply_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceType
         force: *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
                fields owned by other people.
     """
-    objs = _sort_objects(objs)
+    objs = sort_objects(objs)
     returns = [None] * len(objs)
 
     for i, obj in enumerate(objs):
@@ -50,7 +50,7 @@ def apply_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceType
             namespace = None
         else:
             raise TypeError("apply_many only supports objects of types NamespacedResource or GlobalResource")
-        returns[i] = client.apply(obj, namespace=namespace, field_manager=field_manager, force=force)
+        returns[i] = client.apply(obj=obj, namespace=namespace, field_manager=field_manager, force=force)
     return returns
 
 
@@ -65,7 +65,7 @@ def delete_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceTyp
         objs:  iterable of objects to delete. This need to be instances of a resource kind and have
                resource.metadata.namespaced defined if they are namespaced resources
     """
-    objs = _sort_objects(objs, reverse=True)
+    objs = sort_objects(objs, reverse=True)
 
     for i, obj in enumerate(objs):
         if isinstance(obj, NamespacedResource):

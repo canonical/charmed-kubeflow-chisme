@@ -1,4 +1,6 @@
-from collections import namedtuple
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 from contextlib import nullcontext
 from unittest import mock
 
@@ -23,6 +25,7 @@ from k8s_resource_handler.kubernetes._check_resources import _get_resource_or_er
 from k8s_resource_handler.kubernetes import _check_resources
 from k8s_resource_handler.kubernetes._validate_statefulset import validate_statefulset
 from k8s_resource_handler.lightkube.mocking import FakeApiError
+from utilities import mocked_lightkube_client_class  # Imports a fixture # noqa 401
 
 
 statefulset_with_replicas = StatefulSet(
@@ -149,14 +152,6 @@ def test_check_resources(
 
     # For every statefulset, assert that we reached validate_statefulset
     assert validate_statefulset_spy.call_count == n_statefulset
-
-
-@pytest.fixture()
-def mocked_lightkube_client_class(mocker):
-    """Prevents lightkube clients from being created, returning a mock instead"""
-    mocked_lightkube_client_class = mocker.patch("lightkube.Client")
-    mocked_lightkube_client_class.return_value = mock.MagicMock()
-    yield mocked_lightkube_client_class
 
 
 @pytest.fixture()
