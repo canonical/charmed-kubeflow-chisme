@@ -318,7 +318,3 @@ def test_KubernetesResourceHandler_apply_on_errors(
     mocked_apply_many.side_effect = error_raised_by_apply_many
     with overall_context_raised:
         krh.apply()
-
-
-def test_KubernetesResourceHandler_lightkube_client_property():
-    raise NotImplementedError()
