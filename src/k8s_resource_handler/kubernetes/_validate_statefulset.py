@@ -5,7 +5,7 @@ from typing import Optional
 from lightkube.resources.apps_v1 import StatefulSet
 from ops.model import WaitingStatus
 
-from ..exceptions import ReplicasNotReadyError, ErrorWithStatus
+from ..exceptions import ErrorWithStatus, ReplicasNotReadyError
 
 
 def validate_statefulset(resource: StatefulSet) -> (bool, Optional[ErrorWithStatus]):

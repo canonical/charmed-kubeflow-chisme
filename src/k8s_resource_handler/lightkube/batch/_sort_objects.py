@@ -11,8 +11,11 @@ from typing import List
 from lightkube.core import resource
 
 
-def _sort_objects(objs: List[resource.Resource], by: str = "kind", reverse: bool = False) -> List[resource.Resource]:
-    """Sorts a list of resource objects by a sorting schema, returning a new list
+def _sort_objects(
+    objs: List[resource.Resource], by: str = "kind", reverse: bool = False
+) -> List[resource.Resource]:
+    """Sorts a list of resource objects by a sorting schema, returning a new list.
+
     **parameters**
     * **objs** - list of resource objects to be sorted
     * **by** - *(optional)* sorting schema. Possible values:
@@ -47,8 +50,8 @@ APPLY_ORDER["ClusterRoleBinding"] = 44
 
 
 def _kind_rank_function(obj: List[resource.Resource]) -> int:
-    """
-    Returns an integer rank based on an objects .kind
+    """Returns an integer rank based on an objects .kind.
+
     Ranking is set to order kinds by:
     * CRDs
     * Namespaces

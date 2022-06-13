@@ -3,19 +3,19 @@
 
 import logging
 from pathlib import Path
-from typing import Callable, Iterable, Optional, List
+from typing import Callable, Iterable, List, Optional
 
 from jinja2 import Template
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
 from ops.model import ActiveStatus, BlockedStatus
 
-from ..exceptions import ReconcileError, ErrorWithStatus
+from ..exceptions import ErrorWithStatus, ReconcileError
 from ..lightkube.batch import apply_many
 from ..status_handling import get_first_worst_error
 from ..types import CharmStatusType, LightkubeResourcesList
-from ._check_resources import check_resources
 from ..types._charm_status import AnyCharmStatus
+from ._check_resources import check_resources
 
 
 class KubernetesResourceHandler:
@@ -33,10 +33,10 @@ class KubernetesResourceHandler:
         Args:
             template_files_factory (Callable): A callable that accepts no arguments and returns an
                                                iterable of template files to render
-            context_factory: A callable that requires no arguments returns a dict of context for
-                             rendering the templates
-            field_manager: The name of the field manager to use when using server-side-apply in
-                           kubernetes.  A good option for this is to use the application name
+            context_factory (Callable): A callable that requires no arguments returns a dict of
+                             context for rendering the templates
+            field_manager (str): The name of the field manager to use when using server-side-apply
+                           in kubernetes.  A good option for this is to use the application name
                            (eg: `self.model.app.name`).
             logger (logging.Logger): (Optional) A logger to use for logging (so that log messages
                                      emitted here will appear under the caller's log namespace).
@@ -176,7 +176,7 @@ class KubernetesResourceHandler:
     def _charm_status_given_resource_status(
         self, resource_status: bool, errors: List[ErrorWithStatus]
     ) -> AnyCharmStatus:
-        """Inspects resource status and errors, returning a suggested charm unit status"""
+        """Inspects resource status and errors, returning a suggested charm unit status."""
         if resource_status:
             return ActiveStatus()
         else:

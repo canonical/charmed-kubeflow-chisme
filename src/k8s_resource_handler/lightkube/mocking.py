@@ -1,3 +1,8 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+"""Tools for mocking with Lightkube."""
+
 from lightkube.core.exceptions import ApiError
 
 

@@ -1,23 +1,26 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from typing import Union, Iterable, TypeVar
+from typing import Iterable, TypeVar, Union
 
 import lightkube
 from lightkube.core import resource
-from lightkube.core.resource import NamespacedResource, GlobalResource
+from lightkube.core.resource import GlobalResource, NamespacedResource
 
 from ._sort_objects import _sort_objects as sort_objects
 
+GlobalResourceTypeVar = TypeVar("GlobalResource", bound=resource.GlobalResource)
+GlobalSubResourceTypeVar = TypeVar("GlobalSubResource", bound=resource.GlobalSubResource)
+NamespacedResourceTypeVar = TypeVar("NamespacedSubResource", bound=resource.NamespacedResource)
 
-GlobalResourceTypeVar = TypeVar('GlobalResource', bound=resource.GlobalResource)
-GlobalSubResourceTypeVar = TypeVar('GlobalSubResource', bound=resource.GlobalSubResource)
-NamespacedResourceTypeVar = TypeVar('NamespacedSubResource', bound=resource.NamespacedResource)
 
-
-def apply_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]],
-               field_manager: str = None, force: bool = False) -> Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]]:
-    """Create or configure an iterable of objects using client.apply()
+def apply_many(
+    client: lightkube.Client,
+    objs: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]],
+    field_manager: str = None,
+    force: bool = False,
+) -> Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]]:
+    """Create or configure an iterable of objects using client.apply().
 
     To avoid referencing objects before they are created, resources are sorted and applied in the
     following order:
@@ -32,13 +35,12 @@ def apply_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceType
     Sorting is performed using Lightkube's `lightkube.codecs.sort_objects`
 
     Args:
-
         client: Lightkube client to use for applying resources
         objs:  iterable of objects to create. This need to be instances of a resource kind and have
                resource.metadata.namespaced defined if they are namespaced resources
         field_manager: Name associated with the actor or entity that is making these changes.
-        force: *(optional)* Force is going to "force" Apply requests. It means user will re-acquire conflicting
-               fields owned by other people.
+        force: *(optional)* Force is going to "force" Apply requests. It means user will
+               re-acquire conflicting fields owned by other people.
     """
     objs = sort_objects(objs)
     returns = [None] * len(objs)
@@ -49,16 +51,23 @@ def apply_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceType
         elif isinstance(obj, GlobalResource):
             namespace = None
         else:
-            raise TypeError("apply_many only supports objects of types NamespacedResource or GlobalResource")
-        returns[i] = client.apply(obj=obj, namespace=namespace, field_manager=field_manager, force=force)
+            raise TypeError(
+                "apply_many only supports objects of types NamespacedResource or GlobalResource"
+            )
+        returns[i] = client.apply(
+            obj=obj, namespace=namespace, field_manager=field_manager, force=force
+        )
     return returns
 
 
-def delete_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]]) -> None:
-    """Delete an iterable of objects using client.delete()
+def delete_many(
+    client: lightkube.Client,
+    objs: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]],
+) -> None:
+    """Delete an iterable of objects using client.delete().
 
-    To avoid deleting objects that are being used by others in the list (eg: deleting a CRD before deleting the CRs),
-    resources are deleted in the reverse order as defined in apply_many
+    To avoid deleting objects that are being used by others in the list (eg: deleting a CRD before
+    deleting the CRs), resources are deleted in the reverse order as defined in apply_many
 
     Args:
         client: Lightkube Client to use for deletions
@@ -73,6 +82,8 @@ def delete_many(client: lightkube.Client, objs: Iterable[Union[GlobalResourceTyp
         elif isinstance(obj, GlobalResource):
             namespace = None
         else:
-            raise TypeError("delete_many only supports objects of types NamespacedResource or GlobalResource")
+            raise TypeError(
+                "delete_many only supports objects of types NamespacedResource or GlobalResource"
+            )
 
         client.delete(obj=obj, name=obj.metadata.name, namespace=namespace)

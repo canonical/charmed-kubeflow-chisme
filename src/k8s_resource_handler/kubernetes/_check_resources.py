@@ -4,13 +4,12 @@
 from typing import List
 
 import lightkube
-from lightkube.core.resource import GlobalResource
 from lightkube.resources.apps_v1 import StatefulSet
 from ops.model import BlockedStatus
 
 from ..exceptions import ErrorWithStatus, ReplicasNotReadyError, ResourceNotFoundError
+from ..types import LightkubeResourcesList, LightkubeResourceType
 from ._validate_statefulset import validate_statefulset
-from ..types import LightkubeResourceType, LightkubeResourcesList
 
 
 def check_resources(
@@ -46,8 +45,10 @@ def check_resources(
     return not any(errors), errors
 
 
-def _get_resource_or_error(client: lightkube.Client, resource: LightkubeResourceType) -> LightkubeResourceType:
-    """Returns a Resource from a Client, raising a ResourceNotFoundError if not found"""
+def _get_resource_or_error(
+    client: lightkube.Client, resource: LightkubeResourceType
+) -> LightkubeResourceType:
+    """Returns a Resource from a Client, raising a ResourceNotFoundError if not found."""
     try:
         return client.get(
             type(resource),

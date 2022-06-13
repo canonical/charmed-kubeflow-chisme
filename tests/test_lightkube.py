@@ -3,14 +3,15 @@
 from contextlib import nullcontext
 from unittest import mock
 
+import pytest
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Namespace
-import pytest
+
+# Imports a fixture
+from utilities import mocked_lightkube_client, mocked_lightkube_client_class  # noqa 401
 
 from k8s_resource_handler.lightkube.batch import apply_many, delete_many
-from utilities import mocked_lightkube_client_class, mocked_lightkube_client  # Imports a fixture # noqa 401
-
 
 namespaced_resource = StatefulSet(
     metadata=ObjectMeta(name="sample-statefulset", namespace="namespace"),
@@ -24,11 +25,13 @@ global_resource = Namespace(
 @pytest.mark.parametrize(
     "objects,expected_namespaces,context_raised",
     (
-            ([namespaced_resource, global_resource], ["namespace", None], nullcontext()),
-            (["something else"], None, pytest.raises(TypeError)),
-    )
+        ([namespaced_resource, global_resource], ["namespace", None], nullcontext()),
+        (["something else"], None, pytest.raises(TypeError)),
+    ),
 )
-def test_apply_many(objects, expected_namespaces, context_raised, mocker, mocked_lightkube_client):
+def test_apply_many(
+    objects, expected_namespaces, context_raised, mocker, mocked_lightkube_client  # noqa F811
+):  # noqa F811
     # Replace sort_objects with something that returns the objects passed, for testing
     mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
     mocked_sort_objects.side_effect = lambda objs: objs
@@ -70,11 +73,23 @@ def test_apply_many(objects, expected_namespaces, context_raised, mocker, mocked
 @pytest.mark.parametrize(
     "objects,expected_names,expected_namespaces,context_raised",
     (
-            ([namespaced_resource, global_resource], ["sample-statefulset", "sample-namespace"], ["namespace", None], nullcontext()),
-            (["something else"], None, None, pytest.raises(TypeError)),
-    )
+        (
+            [namespaced_resource, global_resource],
+            ["sample-statefulset", "sample-namespace"],
+            ["namespace", None],
+            nullcontext(),
+        ),
+        (["something else"], None, None, pytest.raises(TypeError)),
+    ),
 )
-def test_delete_many(objects, expected_names, expected_namespaces, context_raised, mocker, mocked_lightkube_client):
+def test_delete_many(
+    objects,
+    expected_names,
+    expected_namespaces,
+    context_raised,
+    mocker,
+    mocked_lightkube_client,  # noqa F811
+):
     # Replace sort_objects with something that returns the objects passed, for testing
     mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
     mocked_sort_objects.side_effect = lambda objs, reverse: objs
@@ -100,8 +115,8 @@ def test_delete_many(objects, expected_names, expected_namespaces, context_raise
 
             # Assert we called apply with the expected inputs
             calls = [None] * len(objects)
-            for i, (obj, name, namespace) in enumerate(zip(objects, expected_names, expected_namespaces)):
-                calls[i] = mock.call(
-                    obj=obj, name=name, namespace=namespace
-                )
+            for i, (obj, name, namespace) in enumerate(
+                zip(objects, expected_names, expected_namespaces)
+            ):
+                calls[i] = mock.call(obj=obj, name=name, namespace=namespace)
             mocked_lightkube_client.delete.assert_has_calls(calls)

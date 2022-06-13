@@ -2,31 +2,31 @@
 # See LICENSE file for licensing details.
 
 from contextlib import nullcontext
+from pathlib import Path
 from unittest import mock
 
 import pytest
-
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from lightkube.models.apps_v1 import StatefulSetSpec, StatefulSetStatus
 from lightkube.models.core_v1 import PodTemplateSpec
-from lightkube.models.meta_v1 import ObjectMeta, LabelSelector
+from lightkube.models.meta_v1 import LabelSelector, ObjectMeta
 from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Service
-
-from k8s_resource_handler.exceptions import (
-    ResourceNotFoundError,
-    ReplicasNotReadyError,
-    ErrorWithStatus,
-    ReconcileError,
-)
-from k8s_resource_handler import kubernetes
-
-from k8s_resource_handler.kubernetes._check_resources import _get_resource_or_error
-from k8s_resource_handler.kubernetes import _check_resources
-from k8s_resource_handler.kubernetes._validate_statefulset import validate_statefulset
-from k8s_resource_handler.lightkube.mocking import FakeApiError
+from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from utilities import mocked_lightkube_client_class  # Imports a fixture # noqa 401
 
+from k8s_resource_handler import kubernetes
+from k8s_resource_handler.exceptions import (
+    ErrorWithStatus,
+    ReconcileError,
+    ReplicasNotReadyError,
+    ResourceNotFoundError,
+)
+from k8s_resource_handler.kubernetes import _check_resources
+from k8s_resource_handler.kubernetes._check_resources import _get_resource_or_error
+from k8s_resource_handler.kubernetes._validate_statefulset import validate_statefulset
+from k8s_resource_handler.lightkube.mocking import FakeApiError
+
+data_dir = Path(__file__).parent.joinpath("data")
 
 statefulset_with_replicas = StatefulSet(
     metadata=ObjectMeta(name="has-replicas", namespace="namespace"),
@@ -72,7 +72,7 @@ statefulset_dummy = StatefulSet(
     ),
 )
 def test__get_resource_or_error(resource, client_get_side_effect, expected_return, context_raised):
-    """Tests _get_resource_or_error
+    """Tests _get_resource_or_error.
 
     Args:
         resource: a lightkube resource object defining what we're asking for from the client
@@ -83,7 +83,6 @@ def test__get_resource_or_error(resource, client_get_side_effect, expected_retur
         context_raised: The context the function raises (if there is an exception), or
                         nullcontext()
     """
-
     client = mock.MagicMock()
     client.get.side_effect = client_get_side_effect
 
@@ -156,7 +155,7 @@ def test_check_resources(
 
 @pytest.fixture()
 def mocked_khr_check_resources(mocker):
-    """Mocks check_resources used by the KubernetesResourceHandler"""
+    """Mocks check_resources used by the KubernetesResourceHandler."""
     mocked = mocker.patch(
         "k8s_resource_handler.kubernetes._kubernetes_resource_handler.check_resources"
     )
@@ -172,13 +171,13 @@ def mocked_khr_check_resources(mocker):
         ([], False),  # empty list is a valid input of resources, so render_manifest not called
     ),
 )
-def test_KubernetesResourceHandler_compute_unit_status_inferred_resources(
+def test_KubernetesResourceHandler_compute_unit_status_inferred_resources(  # noqa N802
     resources,
     is_render_manifests_called,
-    mocked_lightkube_client_class,
+    mocked_lightkube_client_class,  # noqa F811
     mocked_khr_check_resources,
 ):
-    """Tests whether KRH.compute_unit_status handles cases where no resources are passed"""
+    """Tests whether KRH.compute_unit_status handles cases where no resources are passed."""
     krh = kubernetes.KubernetesResourceHandler(
         template_files_factory=lambda: "",
         context_factory=lambda: {},
@@ -218,7 +217,7 @@ def test_KubernetesResourceHandler_compute_unit_status_inferred_resources(
         ),
     ),
 )
-def test_KubernetesResourceHandler_charm_status_given_resource_status(
+def test_KubernetesResourceHandler_charm_status_given_resource_status(  # noqa N802
     resource_status, errors, expected_returned_status
 ):
     krh = kubernetes.KubernetesResourceHandler(
@@ -234,13 +233,16 @@ def test_KubernetesResourceHandler_charm_status_given_resource_status(
     assert returned_status == expected_returned_status
 
 
-def test_KubernetesResourceHandler_render_manifests():
+def test_KubernetesResourceHandler_render_manifests():  # noqa N802
     template_files_factory = mock.MagicMock()
-    template_files_factory.return_value = ["./data/template_yaml_0.j2", "./data/template_yaml_1.j2"]
+    template_files_factory.return_value = [
+        data_dir / "template_yaml_0.j2",
+        data_dir / "template_yaml_1.j2",
+    ]
 
     context = {
-        'port': 8080,
-        'selector': "my-nginx",
+        "port": 8080,
+        "selector": "my-nginx",
     }
 
     def _context_factory():
@@ -258,22 +260,24 @@ def test_KubernetesResourceHandler_render_manifests():
         assert isinstance(r, Service)
         assert r.metadata.name == f"template-{i}"
         assert r.spec.ports[0].port == context["port"]
-        assert r.spec.selector['run'] == context["selector"]
+        assert r.spec.selector["run"] == context["selector"]
 
 
-def test_KubernetesResourceHandler_apply():
+def test_KubernetesResourceHandler_apply():  # noqa N802
     raise NotImplementedError()
 
 
 @pytest.mark.parametrize(
     "resources,is_render_manifests_called",
     (
-            (None, True),  # No resources provided, thus render_manifests is called once
-            (["a resource"], False),  # Resources provided, thus render_manifests is not called
+        (None, True),  # No resources provided, thus render_manifests is called once
+        (["a resource"], False),  # Resources provided, thus render_manifests is not called
     ),
 )
-def test_KubernetesResourceHandler_apply(
-        resources, is_render_manifests_called, mocker,
+def test_KubernetesResourceHandler_apply(  # noqa N802
+    resources,
+    is_render_manifests_called,
+    mocker,
 ):
     krh = kubernetes.KubernetesResourceHandler(
         template_files_factory=lambda: "",
@@ -284,7 +288,9 @@ def test_KubernetesResourceHandler_apply(
     mocked_render_manifests = mock.MagicMock()
     krh.render_manifests = mocked_render_manifests
 
-    mocked_apply_many = mocker.patch("k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many")
+    mocked_apply_many = mocker.patch(
+        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many"
+    )
 
     krh.apply(resources)
 
@@ -300,8 +306,8 @@ def test_KubernetesResourceHandler_apply(
         (FakeApiError(403), pytest.raises(ReconcileError)),
     ),
 )
-def test_KubernetesResourceHandler_apply_on_errors(
-        error_raised_by_apply_many, overall_context_raised, mocker
+def test_KubernetesResourceHandler_apply_on_errors(  # noqa N802
+    error_raised_by_apply_many, overall_context_raised, mocker
 ):
     krh = kubernetes.KubernetesResourceHandler(
         template_files_factory=lambda: "",
@@ -309,7 +315,9 @@ def test_KubernetesResourceHandler_apply_on_errors(
         field_manager="field-manager",
     )
 
-    mocked_apply_many = mocker.patch("k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many")
+    mocked_apply_many = mocker.patch(
+        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many"
+    )
     mocked_apply_many.side_effect = error_raised_by_apply_many
     with overall_context_raised:
         krh.apply()
