@@ -1,19 +1,23 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+from typing import Optional
+
 from lightkube.resources.apps_v1 import StatefulSet
 from ops.model import WaitingStatus
 
-from ..exceptions import ReplicasNotReadyError
+from ..exceptions import ErrorWithStatus, ReplicasNotReadyError
 
 
-def validate_statefulset(resource: StatefulSet) -> bool:
-    """Returns True if the StatefulSet is ready, else raises an Exception"""
-    readyReplicas = resource.status.ready_replicas
+def validate_statefulset(resource: StatefulSet) -> (bool, Optional[ErrorWithStatus]):
+    """Returns True if the StatefulSet is ready, else raises an Exception."""
+    ready_replicas = resource.status.readyReplicas
     replicas_expected = resource.spec.replicas
-    if readyReplicas != replicas_expected:
+    if ready_replicas == replicas_expected:
+        return True
+    else:
         error_message = (
             f"StatefulSet {resource.metadata.name} in namespace "
-            f"{resource.metadata.namespace} has {readyReplicas} readyReplicas, "
+            f"{resource.metadata.namespace} has {ready_replicas} readyReplicas, "
             f"expected {replicas_expected}"
         )
         raise ReplicasNotReadyError(error_message, WaitingStatus)
-
-    return True

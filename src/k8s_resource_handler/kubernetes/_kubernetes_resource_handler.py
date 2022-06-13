@@ -1,22 +1,25 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import logging
 from pathlib import Path
-from typing import Optional, Callable, Iterable
+from typing import Callable, Iterable, List, Optional
 
 from jinja2 import Template
+from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
-from lightkube import codecs, Client
 from ops.model import ActiveStatus, BlockedStatus
 
-from ._check_resources import check_resources
+from ..exceptions import ErrorWithStatus, ReconcileError
+from ..lightkube.batch import apply_many
 from ..status_handling import get_first_worst_error
-from ..exceptions import ReconcileError
-from ..types import CharmStatusType
-from ..types import LightkubeResourcesList
+from ..types import CharmStatusType, LightkubeResourcesList
+from ..types._charm_status import AnyCharmStatus
+from ._check_resources import check_resources
 
 
 class KubernetesResourceHandler:
-    """Defines an API for handling Kubernetes resources in charm code
-    """
+    """Defines an API for handling Kubernetes resources in charm code."""
 
     def __init__(
         self,
@@ -25,16 +28,15 @@ class KubernetesResourceHandler:
         field_manager: str,
         logger: Optional[logging.Logger] = None,
     ):
-        """
-        Returns a KubernetesResourceHandler instance
+        """Returns a KubernetesResourceHandler instance.
 
         Args:
             template_files_factory (Callable): A callable that accepts no arguments and returns an
                                                iterable of template files to render
-            context_factory: A callable that requires no arguments returns a dict of context for
-                             rendering the templates
-            field_manager: The name of the field manager to use when using server-side-apply in
-                           kubernetes.  A good option for this is to use the application name
+            context_factory (Callable): A callable that requires no arguments returns a dict of
+                             context for rendering the templates
+            field_manager (str): The name of the field manager to use when using server-side-apply
+                           in kubernetes.  A good option for this is to use the application name
                            (eg: `self.model.app.name`).
             logger (logging.Logger): (Optional) A logger to use for logging (so that log messages
                                      emitted here will appear under the caller's log namespace).
@@ -51,8 +53,10 @@ class KubernetesResourceHandler:
 
         self._lightkube_client = None
 
-    def compute_unit_status(self, resources: Optional[LightkubeResourcesList] = None) -> CharmStatusType:
-        """Returns a suggested unit status given the state of the provided Kubernetes resources
+    def compute_unit_status(
+        self, resources: Optional[LightkubeResourcesList] = None
+    ) -> CharmStatusType:
+        """Returns a suggested unit status given the state of the provided Kubernetes resources.
 
         The returned status is computed by mapping the state of each resource to a suggested unit
         status and then returning the worst status observed.  The statuses roughly map according
@@ -78,39 +82,28 @@ class KubernetesResourceHandler:
                               `self.render_manifest`.
 
         Returns: A charm unit status (one of ActiveStatus, WaitingStatus, or BlockedStatus)
-
         """
         self.log.info("Computing a suggested unit status describing these Kubernetes resources")
 
         if resources is None:
             resources = self.render_manifests()
 
-        charm_ok, errors = check_resources(self.lightkube_client, resources)
-        if charm_ok:
-            status = ActiveStatus()
-        else:
-            # Hit one or more errors with resources.  Return status for worst and log all
-            self.log.info("One or more resources is not ready:")
+        resources_ok, errors = check_resources(self.lightkube_client, resources)
 
-            # Log all errors, ignoring None's
-            errors = [error for error in errors if error is not None]
-            for i, error in enumerate(errors):
-                self.log.info(f"Resource issue {i+1}/{len(errors)}: {error.msg}")
+        suggested_unit_status = self._charm_status_given_resource_status(resources_ok, errors)
 
-            # Return status based on the worst thing we encountered
-            status = get_first_worst_error(errors).status
-
-        self.log.info("Returning status describing Kubernetes resources state (note: this status "
-                      f"is not applied - that is the responsibility of the charm): {status}")
-        return status
+        self.log.info(
+            "Returning status describing Kubernetes resources state (note: this status "
+            f"is not applied - that is the responsibility of the charm): {suggested_unit_status}"
+        )
+        return suggested_unit_status
 
     def reconcile(self, resources: Optional[LightkubeResourcesList] = None):
-        """To be implemented. This should be an application of resources that also handles deletion
-        """
+        """To be implemented. This will reconcile resources, including deleting them."""
         raise NotImplementedError()
 
     def render_manifests(self) -> LightkubeResourcesList:
-        """Renders this charm's manifests, returning them as a list of Lightkube Resources"""
+        """Renders this charm's manifests, returning them as a list of Lightkube Resources."""
         self.log.info("Rendering manifests")
         context = self._context_factory()
         template_files = self._template_files_factory()
@@ -126,7 +119,7 @@ class KubernetesResourceHandler:
         return codecs.load_all_yaml("\n---\n".join(manifest_parts))
 
     def apply(self, resources: Optional[LightkubeResourcesList] = None):
-        """Applies a list of Lightkube Kubernetes resources, adding or modifying these objects
+        """Applies a list of Lightkube Kubernetes resources, adding or modifying these objects.
 
         This can be invoked to create and/or update resources in the kubernetes cluster using
         Kubernetes server-side-apply.  This action will only add or modify existing objects,
@@ -144,9 +137,7 @@ class KubernetesResourceHandler:
         self.log.debug(f"Applying {len(resources)} resources")
 
         try:
-            # TODO: This feature is not generally available in lightkube yet.  Should we make a
-            #  helper here until it is?
-            self.lightkube_client.apply_many(resources)
+            apply_many(self.lightkube_client, resources, field_manager=self._field_manager)
         except ApiError as e:
             # Handle forbidden error as this likely means we do not have --trust
             if e.status.code == 403:
@@ -166,13 +157,36 @@ class KubernetesResourceHandler:
 
     @property
     def lightkube_client(self) -> Client:
+        """Returns the Lightkube Client used by this instance.
+
+        If uninitiated, will create, cache, and return a Client
+        """
         if self._lightkube_client is None:
             self._lightkube_client = Client(field_manager=self._field_manager)
         return self._lightkube_client
 
     @lightkube_client.setter
     def lightkube_client(self, value: Client):
+        """Stores a new Lightkube Client for this instance, replacing any previous one."""
         if isinstance(value, Client):
             self._lightkube_client = value
         else:
             raise ValueError("lightkube_client must be a lightkube.Client")
+
+    def _charm_status_given_resource_status(
+        self, resource_status: bool, errors: List[ErrorWithStatus]
+    ) -> AnyCharmStatus:
+        """Inspects resource status and errors, returning a suggested charm unit status."""
+        if resource_status:
+            return ActiveStatus()
+        else:
+            # Hit one or more errors with resources.  Return status for worst and log all
+            self.log.info("One or more resources is not ready:")
+
+            # Log all errors, ignoring None's
+            errors = [error for error in errors if error is not None]
+            for i, error in enumerate(errors):
+                self.log.info(f"Resource issue {i+1}/{len(errors)}: {error.msg}")
+
+        # Return status based on the worst thing we encountered
+        return get_first_worst_error(errors).status
