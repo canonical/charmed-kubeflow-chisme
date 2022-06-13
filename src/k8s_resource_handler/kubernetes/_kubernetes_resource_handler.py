@@ -11,6 +11,7 @@ from lightkube.core.exceptions import ApiError
 from ops.model import ActiveStatus, BlockedStatus
 
 from ..exceptions import ReconcileError, ErrorWithStatus
+from ..lightkube.batch import apply_many
 from ..status_handling import get_first_worst_error
 from ..types import CharmStatusType, LightkubeResourcesList
 from ._check_resources import check_resources
@@ -136,9 +137,7 @@ class KubernetesResourceHandler:
         self.log.debug(f"Applying {len(resources)} resources")
 
         try:
-            # TODO: This feature is not generally available in lightkube yet.  Should we make a
-            #  helper here until it is?
-            self.lightkube_client.apply_many(resources)
+            apply_many(self.lightkube_client, resources, field_manager=self._field_manager)
         except ApiError as e:
             # Handle forbidden error as this likely means we do not have --trust
             if e.status.code == 403:
