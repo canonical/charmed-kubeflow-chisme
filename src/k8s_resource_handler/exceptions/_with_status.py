@@ -8,7 +8,7 @@ class ErrorWithStatus(Exception):  # noqa: N818
     """Base class of exceptions for when the raiser has an opinion on the resulting charm status.
 
     Commonly used when the parent charm wants to catch any ErrorWithStatus Exceptions and set its
-    unit status accordingly
+    unit status accordingly.
     """
 
     def __init__(self, msg: str, status_type: CharmStatusType):

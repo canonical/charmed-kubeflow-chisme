@@ -15,16 +15,20 @@ from ._validate_statefulset import validate_statefulset
 def check_resources(
     client: lightkube.Client, expected_resources: List[Union[NamespacedResource, GlobalResource]]
 ) -> (bool, List[ErrorWithStatus]):
-    """Checks status of resources in cluster, returning True if all are considered ready.
+    """Checks status of a list of resources.
 
-    Also returns a list of any Exceptions encountered due to failed resource checks.  If
-    len(resources)==0, this returns a status of True.
+    Checks each resource in expected_resources to confirm it is in a "ready" state.  The definition
+    of "ready" depends on the resource:
+    * For all resources: checks whether the resource exists
+    * For StatefulSets: checks whether the number of desired replicas equals their ready replicas
+    For each resource that is not "ready", an ErrorWithStatus is returned that contains more
+    details.
 
-    Note: This is a basic skeleton of a true check on the resources.  Currently it only checks
-    that resources exist and that StatefulSets have their desired number of replicas ready.
+    TODO: This is a skeleton of a true check on resources, applying only basic checks.  This could
+          be extended to do more detailed checks on other resource types.
 
     Returns: Tuple of:
-        Status (bool)
+        Status (bool): True if all resources are ready, else False
         List of Exceptions encountered during failed checks, with each entry
         indexed the same as the corresponding expected_resource (list[str])
     """
