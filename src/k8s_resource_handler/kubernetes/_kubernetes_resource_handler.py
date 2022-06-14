@@ -170,7 +170,7 @@ class KubernetesResourceHandler:
     def lightkube_client(self) -> Client:
         """Returns the Lightkube Client used by this instance.
 
-        If uninitiated, will create, cache, and return a Client
+        If uninitiated, will create, cache, and return a Client.
         """
         if self._lightkube_client is None:
             self._lightkube_client = Client(field_manager=self._field_manager)
