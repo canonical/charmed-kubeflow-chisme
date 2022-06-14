@@ -1,19 +1,19 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from typing import List, Union
+from typing import List
 
 import lightkube
-from lightkube.core.resource import GlobalResource, NamespacedResource
 from lightkube.resources.apps_v1 import StatefulSet
 from ops.model import BlockedStatus
 
 from ..exceptions import ErrorWithStatus, ReplicasNotReadyError, ResourceNotFoundError
+from ..types import LightkubeResourcesList, LightkubeResourceType
 from ._validate_statefulset import validate_statefulset
 
 
 def check_resources(
-    client: lightkube.Client, expected_resources: List[Union[NamespacedResource, GlobalResource]]
+    client: lightkube.Client, resources: LightkubeResourcesList
 ) -> (bool, List[ErrorWithStatus]):
     """Checks status of a list of resources.
 
@@ -32,17 +32,12 @@ def check_resources(
         List of Exceptions encountered during failed checks, with each entry
         indexed the same as the corresponding expected_resource (list[str])
     """
-    errors: list = [None] * len(expected_resources)
-    for i, expected_resource in enumerate(expected_resources):
+    errors: list = [None] * len(resources)
+    for i, expected_resource in enumerate(resources):
         try:
-            found_resource = client.get(
-                type(expected_resource),
-                expected_resource.metadata.name,
-                namespace=expected_resource.metadata.namespace,
-            )
-        except lightkube.core.exceptions.ApiError:
-            msg = f"Cannot find k8s object corresponding to '{expected_resource.metadata}'"
-            errors[i] = ResourceNotFoundError(msg, BlockedStatus)
+            found_resource = _get_resource_or_error(client, expected_resource)
+        except ResourceNotFoundError as e:
+            errors[i] = e
             continue
 
         if isinstance(found_resource, StatefulSet):
@@ -52,3 +47,18 @@ def check_resources(
                 errors[i] = e
 
     return not any(errors), errors
+
+
+def _get_resource_or_error(
+    client: lightkube.Client, resource: LightkubeResourceType
+) -> LightkubeResourceType:
+    """Returns a Resource from a Client, raising a ResourceNotFoundError if not found."""
+    try:
+        return client.get(
+            type(resource),
+            resource.metadata.name,
+            namespace=resource.metadata.namespace,
+        )
+    except lightkube.core.exceptions.ApiError:
+        msg = f"Cannot find k8s object corresponding to '{resource.metadata}'"
+        raise ResourceNotFoundError(msg, BlockedStatus)
