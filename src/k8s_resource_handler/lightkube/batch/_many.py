@@ -7,6 +7,7 @@ import lightkube
 from lightkube.core import resource
 from lightkube.core.resource import GlobalResource, NamespacedResource
 
+# Replace with lightkube.sort_objects once gtsystem/lightkube#33 is merged
 from ._sort_objects import _sort_objects as sort_objects
 
 GlobalResourceTypeVar = TypeVar("GlobalResource", bound=resource.GlobalResource)
@@ -20,7 +21,7 @@ def apply_many(
     field_manager: str = None,
     force: bool = False,
 ) -> Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]]:
-    """Create or configure an iterable of objects using client.apply().
+    """Create or configure an iterable of Lightkube objects using client.apply().
 
     To avoid referencing objects before they are created, resources are sorted and applied in the
     following order:
@@ -45,7 +46,7 @@ def apply_many(
     objs = sort_objects(objs)
     returns = [None] * len(objs)
 
-    for i, obj in enumerate(objs):
+    for obj in enumerate(objs):
         if isinstance(obj, NamespacedResource):
             namespace = obj.metadata.namespace
         elif isinstance(obj, GlobalResource):
@@ -76,7 +77,7 @@ def delete_many(
     """
     objs = sort_objects(objs, reverse=True)
 
-    for i, obj in enumerate(objs):
+    for obj in enumerate(objs):
         if isinstance(obj, NamespacedResource):
             namespace = obj.metadata.namespace
         elif isinstance(obj, GlobalResource):
