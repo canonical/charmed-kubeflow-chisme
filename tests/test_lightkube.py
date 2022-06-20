@@ -1,6 +1,5 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-from contextlib import nullcontext
 from unittest import mock
 
 import pytest
@@ -24,12 +23,10 @@ global_resource = Namespace(
 
 @pytest.mark.parametrize(
     "objects,expected_namespaces",
-    (
-            ([namespaced_resource, global_resource], ["namespace", None]),
-    ),
+    (([namespaced_resource, global_resource], ["namespace", None]),),
 )
 def test_apply_many(
-        objects, expected_namespaces, mocker, mocked_lightkube_client  # noqa F811
+    objects, expected_namespaces, mocker, mocked_lightkube_client  # noqa F811
 ):  # noqa F811
     # Replace sort_objects with something that returns the objects passed, for testing
     mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
@@ -65,12 +62,12 @@ def test_apply_many(
 @pytest.mark.parametrize(
     "objects,context_raised",
     (
-            (["something else"], pytest.raises(TypeError)),  # An iterable of bad objects
-            (1, pytest.raises(TypeError)),  # Something that is not iterable
+        (["something else"], pytest.raises(TypeError)),  # An iterable of bad objects
+        (1, pytest.raises(TypeError)),  # Something that is not iterable
     ),
 )
 def test_apply_many_error(
-        objects, context_raised, mocker, mocked_lightkube_client  # noqa F811
+    objects, context_raised, mocker, mocked_lightkube_client  # noqa F811
 ):  # noqa F811
     # Replace sort_objects with something that returns the objects passed, for testing
     mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
@@ -96,19 +93,19 @@ def test_apply_many_error(
 @pytest.mark.parametrize(
     "objects,expected_names,expected_namespaces",
     (
-            (
-                    [namespaced_resource, global_resource],
-                    ["sample-statefulset", "sample-namespace"],
-                    ["namespace", None],
-            ),
+        (
+            [namespaced_resource, global_resource],
+            ["sample-statefulset", "sample-namespace"],
+            ["namespace", None],
+        ),
     ),
 )
 def test_delete_many(
-        objects,
-        expected_names,
-        expected_namespaces,
-        mocker,
-        mocked_lightkube_client,  # noqa F811
+    objects,
+    expected_names,
+    expected_namespaces,
+    mocker,
+    mocked_lightkube_client,  # noqa F811
 ):
     # Replace sort_objects with something that returns the objects passed, for testing
     mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
@@ -128,9 +125,7 @@ def test_delete_many(
 
     # Assert we called apply with the expected inputs
     calls = [None] * len(objects)
-    for i, (obj, name, namespace) in enumerate(
-            zip(objects, expected_names, expected_namespaces)
-    ):
+    for i, (obj, name, namespace) in enumerate(zip(objects, expected_names, expected_namespaces)):
         calls[i] = mock.call(obj=obj, name=name, namespace=namespace)
     mocked_lightkube_client.delete.assert_has_calls(calls)
 
@@ -138,15 +133,15 @@ def test_delete_many(
 @pytest.mark.parametrize(
     "objects,context_raised",
     (
-            (["something else"], pytest.raises(TypeError)),  # An iterable of bad objects
-            ([1], pytest.raises(TypeError)),  # Something that is not iterable
+        (["something else"], pytest.raises(TypeError)),  # An iterable of bad objects
+        ([1], pytest.raises(TypeError)),  # Something that is not iterable
     ),
 )
 def test_delete_many_error(
-        objects,
-        context_raised,
-        mocker,
-        mocked_lightkube_client,  # noqa F811
+    objects,
+    context_raised,
+    mocker,
+    mocked_lightkube_client,  # noqa F811
 ):
     # Replace sort_objects with something that returns the objects passed, for testing
     mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
