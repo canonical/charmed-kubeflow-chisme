@@ -46,7 +46,6 @@ APPLY_ORDER["Role"] = 41
 APPLY_ORDER["ClusterRole"] = 42
 APPLY_ORDER["RoleBinding"] = 43
 APPLY_ORDER["ClusterRoleBinding"] = 44
-# apply_order[anything_else] = unknown_item_sort_value
 
 
 def _kind_rank_function(obj: List[resource.Resource]) -> int:

@@ -42,6 +42,11 @@ def apply_many(
         field_manager: Name associated with the actor or entity that is making these changes.
         force: *(optional)* Force is going to "force" Apply requests. It means user will
                re-acquire conflicting fields owned by other people.
+
+    Returns:
+        A list of Resource objects returned from client.apply().  This list is returned in the
+        order the resources were actually applied, not the order in which they're passed as inputs
+        in `objs`.
     """
     objs = sort_objects(objs)
     returns = [None] * len(objs)
