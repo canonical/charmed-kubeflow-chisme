@@ -51,14 +51,15 @@ def apply_many(
     objs = sort_objects(objs)
     returns = [None] * len(objs)
 
-    for obj in enumerate(objs):
+    for i, obj in enumerate(objs):
         if isinstance(obj, NamespacedResource):
             namespace = obj.metadata.namespace
         elif isinstance(obj, GlobalResource):
             namespace = None
         else:
             raise TypeError(
-                "apply_many only supports objects of types NamespacedResource or GlobalResource"
+                f"apply_many only supports objects of types NamespacedResource or GlobalResource,"
+                f" got {type(obj)}"
             )
         returns[i] = client.apply(
             obj=obj, namespace=namespace, field_manager=field_manager, force=force
@@ -82,14 +83,15 @@ def delete_many(
     """
     objs = sort_objects(objs, reverse=True)
 
-    for obj in enumerate(objs):
+    for obj in objs:
         if isinstance(obj, NamespacedResource):
             namespace = obj.metadata.namespace
         elif isinstance(obj, GlobalResource):
             namespace = None
         else:
             raise TypeError(
-                "delete_many only supports objects of types NamespacedResource or GlobalResource"
+                "delete_many only supports objects of types NamespacedResource or GlobalResource,"
+                f" got {type(obj)}"
             )
 
         client.delete(obj=obj, name=obj.metadata.name, namespace=namespace)
