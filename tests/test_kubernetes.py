@@ -16,7 +16,7 @@ from utilities import mocked_lightkube_client_class  # Imports a fixture # noqa 
 from k8s_resource_handler import kubernetes
 from k8s_resource_handler.exceptions import ReplicasNotReadyError, ResourceNotFoundError
 from k8s_resource_handler.kubernetes import _check_resources
-from k8s_resource_handler.kubernetes._check_resources import _get_resource_or_error
+from k8s_resource_handler.kubernetes._check_resources import _get_resource
 from k8s_resource_handler.kubernetes._validate_statefulset import validate_statefulset
 from k8s_resource_handler.lightkube.mocking import FakeApiError
 
@@ -65,15 +65,15 @@ statefulset_dummy = StatefulSet(
         (statefulset_dummy, FakeApiError(403), None, pytest.raises(ResourceNotFoundError)),
     ),
 )
-def test__get_resource_or_error(resource, client_get_side_effect, expected_return, context_raised):
-    """Tests _get_resource_or_error.
+def test__get_resource(resource, client_get_side_effect, expected_return, context_raised):
+    """Tests _get_resource.
 
     Args:
         resource: a lightkube resource object defining what we're asking for from the client
         client_get_side_effect: the side effect of the mocked client.get() used here.  Should be
                                 either an exception or a single element iterable of the found
                                 resource
-        expected_return: The expected return from _get_resource_or_error, if it succeeds
+        expected_return: The expected return from _get_resource, if it succeeds
         context_raised: The context the function raises (if there is an exception), or
                         nullcontext()
     """
@@ -81,7 +81,7 @@ def test__get_resource_or_error(resource, client_get_side_effect, expected_retur
     client.get.side_effect = client_get_side_effect
 
     with context_raised:
-        resource_returned = _get_resource_or_error(client, resource)
+        resource_returned = _get_resource(client, resource)
         assert resource_returned == expected_return
 
 
@@ -121,12 +121,12 @@ def test_check_resources(
     # match the returns we simulate for get_resource_or_error)
     dummy_input_resources = [None] * len(get_resource_or_error_side_effect)
 
-    # Mock away _get_resource_or_error and spy on validate_statefulset
+    # Mock away _get_resource and spy on validate_statefulset
     # (spy still works like the original, but lets us do things like assert times called)
-    mocked_get_resource_or_error = mocker.patch(
-        "k8s_resource_handler.kubernetes._check_resources._get_resource_or_error"
+    mocked_get_resource = mocker.patch(
+        "k8s_resource_handler.kubernetes._check_resources._get_resource"
     )
-    mocked_get_resource_or_error.side_effect = get_resource_or_error_side_effect
+    mocked_get_resource.side_effect = get_resource_or_error_side_effect
     validate_statefulset_spy = mocker.spy(_check_resources, "validate_statefulset")
 
     # Execute the function under test

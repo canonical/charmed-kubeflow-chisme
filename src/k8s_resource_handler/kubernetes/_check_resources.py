@@ -35,7 +35,7 @@ def check_resources(
     errors: list = [None] * len(resources)
     for i, expected_resource in enumerate(resources):
         try:
-            found_resource = _get_resource_or_error(client, expected_resource)
+            found_resource = _get_resource(client, expected_resource)
         except ResourceNotFoundError as e:
             errors[i] = e
             continue
@@ -49,7 +49,7 @@ def check_resources(
     return not any(errors), errors
 
 
-def _get_resource_or_error(
+def _get_resource(
     client: lightkube.Client, resource: LightkubeResourceType
 ) -> LightkubeResourceType:
     """Returns a Resource from a Client, raising a ResourceNotFoundError if not found."""
