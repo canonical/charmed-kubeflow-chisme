@@ -1,6 +1,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+import copy
+import logging
 from contextlib import nullcontext
 from pathlib import Path
 from unittest import mock
@@ -21,6 +22,7 @@ from k8s_resource_handler.exceptions import (
 )
 from k8s_resource_handler.kubernetes import _check_resources
 from k8s_resource_handler.kubernetes._check_resources import _get_resource
+from k8s_resource_handler.kubernetes._kubernetes_resource_handler import codecs
 from k8s_resource_handler.kubernetes._validate_statefulset import validate_statefulset
 from k8s_resource_handler.lightkube.mocking import FakeApiError
 
@@ -161,8 +163,71 @@ def test_check_resources(
     assert validate_statefulset_spy.call_count == n_statefulset
 
 
+@pytest.mark.parametrize(
+    "field_manager,template_files,context,logger,exception_context_raised",
+    (
+        # With context and template_files defined
+        ("fm", ["some-file", "some-other-file"], {"some": "context"}, None, nullcontext()),
+        # With context and template_files omitted
+        ("fm", None, None, None, nullcontext()),
+    ),
+)
+def test_KubernetesResourceHandler_init(  # noqa: N802
+    field_manager, template_files, context, logger, exception_context_raised
+):
+    with exception_context_raised:
+        krh = kubernetes.KubernetesResourceHandler(
+            field_manager,
+            template_files=template_files,
+            context=context,
+            logger=logger,
+        )
+
+        assert krh.template_files == template_files
+        assert krh.context == context
+        assert isinstance(krh.log, logging.Logger)
+        # If we have one, assert we use the default logger
+        if logger is not None:
+            assert krh.log is logger
+
+
 @pytest.fixture()
-def mocked_khr_check_resources(mocker):
+def simple_krh_instance():
+    krh = kubernetes.KubernetesResourceHandler(
+        field_manager="field-manager",
+        template_files=["some-file"],
+        context={"some": "context"},
+    )
+    yield krh
+
+
+@pytest.mark.parametrize(
+    "property_name,property_value",
+    (
+        ("context", None),
+        ("context", {"new": "context"}),
+        ("template_files", None),
+        ("template_files", ["new-file"]),
+    ),
+)
+def test_KubernetesResourceHandler_manifest_resetting_properties(  # noqa: N802
+    property_name, property_value, simple_krh_instance
+):
+    """Tests that setting KRH properties correctly deletes any cached manifests."""
+    krh = simple_krh_instance
+
+    dummy_manifests = ["some-manifests"]
+    krh._manifests = dummy_manifests
+    assert krh._manifests == dummy_manifests
+
+    # Changing input param should clear cached _manifests
+    setattr(krh, property_name, property_value)
+    assert getattr(krh, property_name) == property_value
+    assert krh._manifests is None
+
+
+@pytest.fixture()
+def mocked_krh_check_resources(mocker):
     """Mocks check_resources used by the KubernetesResourceHandler."""
     mocked = mocker.patch(
         "k8s_resource_handler.kubernetes._kubernetes_resource_handler.check_resources"
@@ -171,41 +236,27 @@ def mocked_khr_check_resources(mocker):
     yield mocked
 
 
-@pytest.mark.parametrize(
-    "resources,is_render_manifests_called",
-    (
-        (None, True),  # No resources provided, thus render_manifests is called once
-        (["a resource"], False),  # Resources provided, thus render_manifests is not called
-        ([], False),  # empty list is a valid input of resources, so render_manifest not called
-    ),
-)
-def test_KubernetesResourceHandler_compute_unit_status_inferred_resources(  # noqa N802
-    resources,
-    is_render_manifests_called,
+def test_KubernetesResourceHandler_compute_unit_status(  # noqa N802
     mocked_khr_lightkube_client_class,  # noqa F811
-    mocked_khr_check_resources,
+    mocked_krh_check_resources,
+    simple_krh_instance,
 ):
-    """Tests whether KRH.compute_unit_status handles cases where no resources are passed."""
-    krh = kubernetes.KubernetesResourceHandler(
-        template_files_factory=lambda: "",
-        context_factory=lambda: {},
-        field_manager="field-manager",
-    )
+    krh = simple_krh_instance
 
-    mocked_render_manifests = mock.MagicMock()
-    krh.render_manifests = mocked_render_manifests
+    # Dummy that will be returned from render_manifests.  Content doesn't matter because we also
+    # mock away check_resources, which will consume this.
+    resources = ["dummy resource"]
+    krh.render_manifests = mock.MagicMock(return_value=resources)
 
-    mocked_charm_status_given_resource_status = mock.MagicMock()
-    mocked_charm_status_given_resource_status.return_value = ActiveStatus()
-    krh._charm_status_given_resource_status = mocked_charm_status_given_resource_status
+    expected_status = BlockedStatus("a very unique status")
+    krh._charm_status_given_resource_status = mock.MagicMock(return_value=expected_status)
 
-    returned_status = krh.compute_unit_status(resources=resources)
+    returned_status = krh.compute_unit_status()
 
-    # Confirm that we hit render_manifests the correct number of times
-    assert mocked_render_manifests.call_count == int(is_render_manifests_called)
-
-    # Confirm status returned from resource status parser is returned to original called
-    assert returned_status == mocked_charm_status_given_resource_status.return_value
+    # Assert that we hit all expected helpers, and returned the expected status
+    krh.render_manifests.assert_called_once()
+    mocked_krh_check_resources.assert_called_once()
+    assert returned_status == expected_status
 
 
 @pytest.mark.parametrize(
@@ -226,13 +277,9 @@ def test_KubernetesResourceHandler_compute_unit_status_inferred_resources(  # no
     ),
 )
 def test_KubernetesResourceHandler_charm_status_given_resource_status(  # noqa N802
-    resource_status, errors, expected_returned_status
+    resource_status, errors, expected_returned_status, simple_krh_instance
 ):
-    krh = kubernetes.KubernetesResourceHandler(
-        template_files_factory=lambda: "",
-        context_factory=lambda: {},
-        field_manager="field-manager",
-    )
+    krh = simple_krh_instance
 
     returned_status = krh._charm_status_given_resource_status(
         resource_status=resource_status, errors=errors
@@ -241,9 +288,13 @@ def test_KubernetesResourceHandler_charm_status_given_resource_status(  # noqa N
     assert returned_status == expected_returned_status
 
 
-def test_KubernetesResourceHandler_render_manifests():  # noqa N802
-    template_files_factory = mock.MagicMock()
-    template_files_factory.return_value = [
+def test_KubernetesResourceHandler_render_manifests(mocker):  # noqa N802
+    load_all_yaml_spy = mocker.spy(
+        codecs,
+        "load_all_yaml",
+    )
+
+    template_files = [
         data_dir / "template_yaml_0.j2",
         data_dir / "template_yaml_1.j2",
     ]
@@ -253,16 +304,15 @@ def test_KubernetesResourceHandler_render_manifests():  # noqa N802
         "selector": "my-nginx",
     }
 
-    def _context_factory():
-        return context
-
     krh = kubernetes.KubernetesResourceHandler(
-        template_files_factory=template_files_factory,
-        context_factory=_context_factory,
         field_manager="field-manager",
+        template_files=template_files,
+        context=context,
     )
 
     resource_manifest = krh.render_manifests()
+
+    load_all_yaml_spy.assert_called_once()
 
     for i, r in enumerate(resource_manifest):
         assert isinstance(r, Service)
@@ -270,36 +320,99 @@ def test_KubernetesResourceHandler_render_manifests():  # noqa N802
         assert r.spec.ports[0].port == context["port"]
         assert r.spec.selector["run"] == context["selector"]
 
+    # Demonstrate that the _manifests cache works
+    resource_manifest_2 = krh.render_manifests(force_recompute=False)
+    # manifests returned are the same
+    assert resource_manifest == resource_manifest_2
+    # load_all_yaml does not get hit a second time
+    load_all_yaml_spy.assert_called_once()
+
+    # And if we provide new template_files or context, we get new manifests
+    # because new inputs should clear the cache
+    context_new = copy.deepcopy(context)
+    context_new["port"] = 8081
+    template_files_new = reversed(template_files)
+
+    load_all_yaml_call_count = load_all_yaml_spy.call_count
+    _ = krh.render_manifests(context=context_new)
+    assert load_all_yaml_spy.call_count == load_all_yaml_call_count + 1
+
+    # Reverse the yaml files to provoke a trivial
+    load_all_yaml_call_count = load_all_yaml_spy.call_count
+    _ = krh.render_manifests(template_files=template_files_new)
+    assert load_all_yaml_spy.call_count == load_all_yaml_call_count + 1
+
+    # setting force_recompute == True will cause us to ignore an existing cached manifest
+    load_all_yaml_call_count = load_all_yaml_spy.call_count
+    krh._manifests = ["some cached manifests"]
+    _ = krh.render_manifests(force_recompute=True)
+    assert load_all_yaml_spy.call_count == load_all_yaml_call_count + 1
+
 
 @pytest.mark.parametrize(
-    "resources,is_render_manifests_called",
+    "context,template_files,expected_raised_context",
     (
-        (None, True),  # No resources provided, thus render_manifests is called once
-        (["a resource"], False),  # Resources provided, thus render_manifests is not called
+        (None, None, pytest.raises(ValueError)),  # Missing all inputs
+        (None, ["template-file"], pytest.raises(ValueError)),  # Missing context
+        ({"some": "context"}, None, pytest.raises(ValueError)),  # Missing template_files
+        ({"some": "context"}, ["template-file"], nullcontext()),  # All inputs available
     ),
+)
+def test_KubernetesResourceHandler_render_manifests_missing_inputs(  # noqa: N802
+    context, template_files, expected_raised_context, mocker
+):  # noqa N802
+    krh = kubernetes.KubernetesResourceHandler(
+        field_manager="field-manager",
+        template_files=template_files,
+        context=context,
+    )
+
+    # Mock away interactions with other functions
+    krh._render_manifest_parts = mock.MagicMock(return_value=[])
+
+    expected_manifests = "some manifests"
+    mocked_codecs = mocker.patch(
+        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.codecs"
+    )
+    mocked_codecs.load_all_yaml.return_value = expected_manifests
+
+    with expected_raised_context:
+        manifests = krh.render_manifests()
+
+        krh._render_manifest_parts.assert_called_once()
+        mocked_codecs.load_all_yaml.assert_called_once()
+        assert manifests == expected_manifests
+
+
+@pytest.mark.parametrize(
+    "resources",
+    ((["a resource"]),),
 )
 def test_KubernetesResourceHandler_apply(  # noqa N802
     resources,
-    is_render_manifests_called,
     mocker,
+    simple_krh_instance,
     mocked_khr_lightkube_client_class,  # noqa F811
 ):
-    krh = kubernetes.KubernetesResourceHandler(
-        template_files_factory=lambda: "",
-        context_factory=lambda: {},
-        field_manager="field-manager",
-    )
+    # Dummy that will be returned from render_manifests.  Content doesn't matter because we also
+    # mock away apply_many, which will consume this.
+    resources = ["dummy resource"]
+
+    krh = simple_krh_instance
 
     mocked_render_manifests = mock.MagicMock()
+    mocked_render_manifests.return_value = resources
     krh.render_manifests = mocked_render_manifests
 
     mocked_apply_many = mocker.patch(
         "k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many"
     )
 
-    krh.apply(resources)
+    # Act
+    krh.apply()
 
-    assert mocked_render_manifests.call_count == int(is_render_manifests_called)
+    # Assert the expected state
+    mocked_render_manifests.assert_called_once()
     mocked_apply_many.assert_called_once()
 
 
@@ -315,13 +428,14 @@ def test_KubernetesResourceHandler_apply_on_errors(  # noqa N802
     error_raised_by_apply_many,
     overall_context_raised,
     mocker,
+    simple_krh_instance,
     mocked_khr_lightkube_client_class,  # noqa F811
 ):
-    krh = kubernetes.KubernetesResourceHandler(
-        template_files_factory=lambda: "",
-        context_factory=lambda: {},
-        field_manager="field-manager",
-    )
+    krh = simple_krh_instance
+
+    # Dummy that will be returned from render_manifests.  Content doesn't matter because we also
+    # mock away apply_many, which will consume this.
+    krh.render_manifests = mock.MagicMock(return_value=[])
 
     mocked_apply_many = mocker.patch(
         "k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many"
