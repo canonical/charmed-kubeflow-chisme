@@ -1,9 +1,9 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+import functools
 import logging
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 from jinja2 import Template
 from lightkube import Client, codecs
@@ -18,33 +18,55 @@ from ..types._charm_status import AnyCharmStatus
 from ._check_resources import check_resources
 
 
+def auto_clear_manifests_cache(func):
+    """Decorates a class's method to delete any cached self._manifest after invocation.
+
+    Useful for decorating properties which, when set, invalidate the existing cached manifest.
+    """
+
+    @functools.wraps(func)
+    def decorated_f(self, *args, **kwargs):
+        func(self, *args, **kwargs)
+
+        # If we successfully get here, clear out existing cached manifests
+        self._manifests = None
+
+    return decorated_f
+
+
 class KubernetesResourceHandler:
     """Defines an API for handling Kubernetes resources in charm code."""
 
     def __init__(
         self,
-        template_files_factory: Callable[[], Iterable[str]],
-        context_factory: Callable[[], dict],
         field_manager: str,
+        template_files: Optional[Iterable[str]] = None,
+        context: Optional[dict] = None,
         logger: Optional[logging.Logger] = None,
     ):
         """Returns a KubernetesResourceHandler instance.
 
         Args:
-            template_files_factory (Callable): A callable that accepts no arguments and returns an
-                                               iterable of template files to render
-            context_factory (Callable): A callable that requires no arguments returns a dict of
-                             context for rendering the templates
             field_manager (str): The name of the field manager to use when using server-side-apply
                            in kubernetes.  A good option for this is to use the application name
                            (eg: `self.model.app.name`).
+            template_files (iterable): (Optional) An iterable of template file paths to
+                                               render.  This is required to `render_manifests`, but
+                                               can be left unset at instantiation and defined later
+            context (dict): (Optional) A dict of context used to render the manifests.
+                                               This is required to `render_manifests`, but can be
+                                               left unset at instantiation and defined later.
             logger (logging.Logger): (Optional) A logger to use for logging (so that log messages
                                      emitted here will appear under the caller's log namespace).
                                      If not provided, a default logger will be created.
         """
-        self._template_files_factory = template_files_factory
-        self._context_factory = context_factory
+        self._template_files = None
+        self.template_files = template_files
+        self._context = None
+        self.context = context
         self._field_manager = field_manager
+
+        self._manifests = None
 
         if logger is None:
             self.log = logging.getLogger(__name__)  # TODO: Give default logger a better name
@@ -53,10 +75,8 @@ class KubernetesResourceHandler:
 
         self._lightkube_client = None
 
-    def compute_unit_status(
-        self, resources: Optional[LightkubeResourcesList] = None
-    ) -> CharmStatusType:
-        """Returns a suggested unit status given the state of the provided Kubernetes resources.
+    def compute_unit_status(self) -> CharmStatusType:
+        """Returns a suggested unit status given the state of the managed Kubernetes resources.
 
         The returned status is computed by mapping the state of each resource to a suggested unit
         status and then returning the worst status observed.  The statuses roughly map according
@@ -70,70 +90,116 @@ class KubernetesResourceHandler:
                            without intervention.  For example, a deployment should exist but does
                            not.
 
+        The desired state used to make the assertions above is computed by using
+        self.render_manifests(), and thus reflects the current template_files and context.
+
         TODO: This method will not notice that we have an extra resource (eg: if our
               render_manifests() previously output some Resource123, but now render_manifests()
               does not output that resource.
         TODO: This method directly logs errors to .log.  Is that a problem?  Maybe we should just
               return those errors?  Or could have a separate function that does that.
 
-        Args:
-            resources (list): (Optional) List of lightkube Resource objects defining kubernetes
-                              resources.  If omitted, a list will be generated by calling
-                              `self.render_manifest`.
-
         Returns: A charm unit status (one of ActiveStatus, WaitingStatus, or BlockedStatus)
         """
         self.log.info("Computing a suggested unit status describing these Kubernetes resources")
 
-        if resources is None:
-            resources = self.render_manifests()
-
+        resources = self.render_manifests()
         resources_ok, errors = check_resources(self.lightkube_client, resources)
-
         suggested_unit_status = self._charm_status_given_resource_status(resources_ok, errors)
 
-        self.log.info(
+        self.log.debug(
             "Returning status describing Kubernetes resources state (note: this status "
             f"is not applied - that is the responsibility of the charm): {suggested_unit_status}"
         )
         return suggested_unit_status
 
-    def reconcile(self, resources: Optional[LightkubeResourcesList] = None):
+    def reconcile(self):
         """To be implemented. This will reconcile resources, including deleting them."""
         raise NotImplementedError()
 
-    def render_manifests(self) -> LightkubeResourcesList:
-        """Renders this charm's manifests, returning them as a list of Lightkube Resources."""
-        self.log.info("Rendering manifests")
-        context = self._context_factory()
-        template_files = self._template_files_factory()
+    def render_manifests(
+        self,
+        template_files: Optional[Iterable[str]] = None,
+        context: Optional[dict] = None,
+        force_recompute: bool = False,
+    ) -> LightkubeResourcesList:
+        """Renders this charm's manifests, returning them as a list of Lightkube Resources.
 
-        self.log.debug(f"Rendering with context: {context}")
+        This method requires that template_files and context both either passed as
+        arguments or set in the KubernetesResourceHandler prior to calling.
+
+        Args:
+            template_files (iterable): (Optional) If provided, will replace existing value stored
+                                       in self.template_files.
+                                       This is a convenience provided to make the commonly used
+                                       `self.context = context; self.render_manifests()` more
+                                        convenient.
+            context (dict): (Optional) If provided, will replace existing value stored in
+                            self.context.  This is a convenience provided to make the commonly
+                            used `self.context = context; self.render_manifests()` more convenient.
+            force_recompute (bool): If true, will always recompute manifests even if cached
+                                    manifests are available
+        """
+        self.log.info("Rendering manifests")
+
+        # Update inputs
+        if template_files is not None:
+            self.template_files = template_files
+        if context is not None:
+            self.context = context
+
+        # Return from cache if available
+        if self._manifests is not None and force_recompute is False:
+            return self._manifests
+
+        # Assert that required inputs exist
+        for attr in ["context", "template_files"]:
+            attr_value = getattr(self, attr)
+            if attr_value is None:
+                raise ValueError(
+                    f"render_manifests requires {attr} be defined" f" (got {attr}={attr_value})"
+                )
+
+        manifest_parts = self._render_manifest_parts()
+
+        # Cache for later use
+        self._manifests = codecs.load_all_yaml("\n---\n".join(manifest_parts))
+        return self._manifests
+
+    def _render_manifest_parts(self):
+        """Private helper for rendering templates into manifests.
+
+        Do not use directly - this does not validate inputs or cache results.
+
+        Returns:
+            A list of yaml strings of rendered templates
+        """
+        self.log.debug(f"Rendering with context: {self.context}")
         manifest_parts = []
-        for template_file in template_files:
+        for template_file in self.template_files:
             self.log.debug(f"Rendering manifest for {template_file}")
             template = Template(Path(template_file).read_text())
-            rendered_template = template.render(**context)
+            rendered_template = template.render(**self.context)
             manifest_parts.append(rendered_template)
             self.log.debug(f"Rendered manifest:\n{manifest_parts[-1]}")
-        return codecs.load_all_yaml("\n---\n".join(manifest_parts))
+        return manifest_parts
 
-    def apply(self, resources: Optional[LightkubeResourcesList] = None):
-        """Applies a list of Lightkube Kubernetes resources, adding or modifying these objects.
+    def apply(self):
+        """Applies the managed Kubernetes resources, adding or modifying these objects.
 
         This can be invoked to create and/or update resources in the kubernetes cluster using
-        Kubernetes server-side-apply.  This action will only add or modify existing objects,
-        it will not delete any resources, including in cases where the manifests have changed over
-        time.  For example:
+        Kubernetes server-side-apply.  The resources acted upon will be those returned by
+        self.render_manifest().
+
+        This function will only add or modify existing objects, it will not delete any resources.
+        This includes cases where the manifests have changed over time.  For example:
             * If `render_manifests()` yields the list of resources [PodA], calling `.apply()`
               results in PodA being created
             * If later the charm state has changed and `render_manifests()` yields [PodB], calling
              `.apply()` results in PodB created and PodA being left unchanged (essentially
              orphaned)
         """
-        self.log.info("Applying")
-        if resources is None:
-            resources = self.render_manifests()
+        resources = self.render_manifests(force_recompute=False)
         self.log.debug(f"Applying {len(resources)} resources")
 
         try:
@@ -156,6 +222,16 @@ class KubernetesResourceHandler:
         self.log.info("Reconcile completed successfully")
 
     @property
+    def context(self):
+        """Returns the dict context used for rendering manifests."""
+        return self._context
+
+    @context.setter
+    @auto_clear_manifests_cache
+    def context(self, value: dict):
+        self._context = value
+
+    @property
     def lightkube_client(self) -> Client:
         """Returns the Lightkube Client used by this instance.
 
@@ -172,6 +248,16 @@ class KubernetesResourceHandler:
             self._lightkube_client = value
         else:
             raise ValueError("lightkube_client must be a lightkube.Client")
+
+    @property
+    def template_files(self):
+        """Returns the list of template files used for rendering manifests."""
+        return self._template_files
+
+    @template_files.setter
+    @auto_clear_manifests_cache
+    def template_files(self, value: Iterable[str]):
+        self._template_files = value
 
     def _charm_status_given_resource_status(
         self, resource_status: bool, errors: List[ErrorWithStatus]
