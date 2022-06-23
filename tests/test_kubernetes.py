@@ -23,7 +23,9 @@ from charmed_kubeflow_chisme.exceptions import (
 from charmed_kubeflow_chisme.kubernetes import _check_resources
 from charmed_kubeflow_chisme.kubernetes._check_resources import _get_resource
 from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import codecs
-from charmed_kubeflow_chisme.kubernetes._validate_statefulset import validate_statefulset
+from charmed_kubeflow_chisme.kubernetes._validate_statefulset import (
+    validate_statefulset,
+)
 from charmed_kubeflow_chisme.lightkube.mocking import FakeApiError
 
 data_dir = Path(__file__).parent.joinpath("data")
