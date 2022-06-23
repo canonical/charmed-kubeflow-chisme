@@ -6,8 +6,8 @@ from contextlib import nullcontext
 import pytest
 from ops.model import BlockedStatus, WaitingStatus
 
-from k8s_resource_handler.exceptions import ErrorWithStatus
-from k8s_resource_handler.status_handling import get_first_worst_error
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
+from charmed_kubeflow_chisme.status_handling import get_first_worst_error
 
 BlockedError1 = ErrorWithStatus("Blocked1", BlockedStatus)
 BlockedError2 = ErrorWithStatus("Blocked2", BlockedStatus)
