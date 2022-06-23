@@ -7,11 +7,11 @@ both the Charmed Operators maintained by the [Charmed Kubeflow](ckf) team as wel
 
 # Contents
 
-* [Exceptions](./src/k8s_resource_handler/exceptions/README.md): A collection of standard Exceptions for use when writing charms.
-* [Kubernetes](./src/k8s_resource_handler/kubernetes/README.md): Helpers for interacting with Kubernetes
-* [Lightkube](./src/k8s_resource_handler/lightkube/README.md-dir): Helpers specific to using or extending [Lightkube](lightkube-rtd)
-* [Status Handling](./src/k8s_resource_handler/status_handling/README.md): Helpers for working with Charm Status objects
-* [Types](./src/k8s_resource_handler/types/README.md): Reusable typing definitions, useful for adding type hints
+* [Exceptions](./src/charmed_kubeflow_chisme/exceptions/README.md): A collection of standard Exceptions for use when writing charms.
+* [Kubernetes](./src/charmed_kubeflow_chisme/kubernetes/README.md): Helpers for interacting with Kubernetes
+* [Lightkube](./src/charmed_kubeflow_chisme/lightkube/README.md): Helpers specific to using or extending [Lightkube](lightkube-rtd)
+* [Status Handling](./src/charmed_kubeflow_chisme/status_handling/README.md): Helpers for working with Charm Status objects
+* [Types](./src/charmed_kubeflow_chisme/types/README.md): Reusable typing definitions, useful for adding type hints
 
 [ckf]: https://charmed-kubeflow.io/
 [lightkube-rtd]: https://lightkube.readthedocs.io/en/latest/

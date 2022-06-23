@@ -14,17 +14,19 @@ from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Service
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 
-from k8s_resource_handler import kubernetes
-from k8s_resource_handler.exceptions import (
+from charmed_kubeflow_chisme import kubernetes
+from charmed_kubeflow_chisme.exceptions import (
     ErrorWithStatus,
     ReplicasNotReadyError,
     ResourceNotFoundError,
 )
-from k8s_resource_handler.kubernetes import _check_resources
-from k8s_resource_handler.kubernetes._check_resources import _get_resource
-from k8s_resource_handler.kubernetes._kubernetes_resource_handler import codecs
-from k8s_resource_handler.kubernetes._validate_statefulset import validate_statefulset
-from k8s_resource_handler.lightkube.mocking import FakeApiError
+from charmed_kubeflow_chisme.kubernetes import _check_resources
+from charmed_kubeflow_chisme.kubernetes._check_resources import _get_resource
+from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import codecs
+from charmed_kubeflow_chisme.kubernetes._validate_statefulset import (
+    validate_statefulset,
+)
+from charmed_kubeflow_chisme.lightkube.mocking import FakeApiError
 
 data_dir = Path(__file__).parent.joinpath("data")
 
@@ -49,7 +51,7 @@ statefulset_missing_replicas = StatefulSet(
 def mocked_khr_lightkube_client_class(mocker):
     """Prevents lightkube clients from being created, returning a mock instead."""
     mocked_khr_lightkube_client_class = mocker.patch(
-        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.Client"
+        "charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler.Client"
     )
     mocked_khr_lightkube_client_class.return_value = mock.MagicMock()
     yield mocked_khr_lightkube_client_class
@@ -140,7 +142,7 @@ def test_check_resources(
     # Mock away _get_resource and spy on validate_statefulset
     # (spy still works like the original, but lets us do things like assert times called)
     mocked_get_resource = mocker.patch(
-        "k8s_resource_handler.kubernetes._check_resources._get_resource"
+        "charmed_kubeflow_chisme.kubernetes._check_resources._get_resource"
     )
     mocked_get_resource.side_effect = get_resource_or_error_side_effect
     validate_statefulset_spy = mocker.spy(_check_resources, "validate_statefulset")
@@ -230,7 +232,7 @@ def test_KubernetesResourceHandler_manifest_resetting_properties(  # noqa: N802
 def mocked_krh_check_resources(mocker):
     """Mocks check_resources used by the KubernetesResourceHandler."""
     mocked = mocker.patch(
-        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.check_resources"
+        "charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler.check_resources"
     )
     mocked.return_value = (None, None)
     yield mocked
@@ -372,7 +374,7 @@ def test_KubernetesResourceHandler_render_manifests_missing_inputs(  # noqa: N80
 
     expected_manifests = "some manifests"
     mocked_codecs = mocker.patch(
-        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.codecs"
+        "charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler.codecs"
     )
     mocked_codecs.load_all_yaml.return_value = expected_manifests
 
@@ -405,7 +407,7 @@ def test_KubernetesResourceHandler_apply(  # noqa N802
     krh.render_manifests = mocked_render_manifests
 
     mocked_apply_many = mocker.patch(
-        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many"
+        "charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler.apply_many"
     )
 
     # Act
@@ -438,7 +440,7 @@ def test_KubernetesResourceHandler_apply_on_errors(  # noqa N802
     krh.render_manifests = mock.MagicMock(return_value=[])
 
     mocked_apply_many = mocker.patch(
-        "k8s_resource_handler.kubernetes._kubernetes_resource_handler.apply_many"
+        "charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler.apply_many"
     )
     mocked_apply_many.side_effect = error_raised_by_apply_many
     with overall_context_raised:
