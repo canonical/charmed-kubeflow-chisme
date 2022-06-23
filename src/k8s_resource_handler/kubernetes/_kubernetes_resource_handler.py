@@ -125,7 +125,8 @@ class KubernetesResourceHandler:
     ) -> LightkubeResourcesList:
         """Renders this charm's manifests, returning them as a list of Lightkube Resources.
 
-        This method requires that template_files and context are both set.
+        This method requires that template_files and context both either passed as
+        arguments or set in the KubernetesResourceHandler prior to calling.
 
         Args:
             template_files (iterable): (Optional) If provided, will replace existing value stored
