@@ -7,7 +7,7 @@ from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Namespace
 
-from k8s_resource_handler.lightkube.batch import apply_many, delete_many
+from charmed_kubeflow_chisme.lightkube.batch import apply_many, delete_many
 
 namespaced_resource = StatefulSet(
     metadata=ObjectMeta(name="sample-statefulset", namespace="namespace"),
@@ -26,7 +26,9 @@ def test_apply_many(
     objects, expected_namespaces, mocker, mocked_lightkube_client  # noqa F811
 ):  # noqa F811
     # Replace sort_objects with something that returns the objects passed, for testing
-    mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
+    mocked_sort_objects = mocker.patch(
+        "charmed_kubeflow_chisme.lightkube.batch._many.sort_objects"
+    )
     mocked_sort_objects.side_effect = lambda objs: objs
 
     # Other inputs passed to client.apply
@@ -67,7 +69,9 @@ def test_apply_many_error(
     objects, context_raised, mocker, mocked_lightkube_client  # noqa F811
 ):  # noqa F811
     # Replace sort_objects with something that returns the objects passed, for testing
-    mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
+    mocked_sort_objects = mocker.patch(
+        "charmed_kubeflow_chisme.lightkube.batch._many.sort_objects"
+    )
     mocked_sort_objects.side_effect = lambda objs: objs
 
     # Other inputs passed to client.apply
@@ -105,7 +109,9 @@ def test_delete_many(
     mocked_lightkube_client,  # noqa F811
 ):
     # Replace sort_objects with something that returns the objects passed, for testing
-    mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
+    mocked_sort_objects = mocker.patch(
+        "charmed_kubeflow_chisme.lightkube.batch._many.sort_objects"
+    )
     mocked_sort_objects.side_effect = lambda objs, reverse: objs
 
     # Execute the test
@@ -141,7 +147,9 @@ def test_delete_many_error(
     mocked_lightkube_client,  # noqa F811
 ):
     # Replace sort_objects with something that returns the objects passed, for testing
-    mocked_sort_objects = mocker.patch("k8s_resource_handler.lightkube.batch._many.sort_objects")
+    mocked_sort_objects = mocker.patch(
+        "charmed_kubeflow_chisme.lightkube.batch._many.sort_objects"
+    )
     mocked_sort_objects.side_effect = lambda objs, reverse: objs
 
     # Execute the test
