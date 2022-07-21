@@ -69,7 +69,7 @@ def apply_many(
 
 def delete_many(
     client: lightkube.Client,
-    objs: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]],
+    resources: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]],
 ) -> None:
     """Delete an iterable of objects using client.delete().
 
@@ -81,17 +81,17 @@ def delete_many(
         objs:  iterable of objects to delete. This need to be instances of a resource kind and have
                resource.metadata.namespaced defined if they are namespaced resources
     """
-    objs = sort_objects(objs, reverse=True)
+    resources = sort_objects(resources, reverse=True)
 
-    for obj in objs:
-        if isinstance(obj, NamespacedResource):
-            namespace = obj.metadata.namespace
-        elif isinstance(obj, GlobalResource):
+    for res in resources:
+        if isinstance(res, NamespacedResource):
+            namespace = res.metadata.namespace
+        elif isinstance(res, GlobalResource):
             namespace = None
         else:
             raise TypeError(
                 "delete_many only supports objects of types NamespacedResource or GlobalResource,"
-                f" got {type(obj)}"
+                f" got {type(res)}"
             )
 
-        client.delete(obj=obj, name=obj.metadata.name, namespace=namespace)
+        client.delete(res=res, name=res.metadata.name, namespace=namespace)
