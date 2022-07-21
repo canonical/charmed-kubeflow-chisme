@@ -117,7 +117,7 @@ def test_delete_many(
     # Execute the test
     returned = delete_many(
         client=mocked_lightkube_client,
-        objs=objects,
+        resources=objects,
     )
 
     # We should always call sort_objects, regardless of outcome

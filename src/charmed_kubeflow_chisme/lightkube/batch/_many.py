@@ -78,8 +78,8 @@ def delete_many(
 
     Args:
         client: Lightkube Client to use for deletions
-        objs:  iterable of objects to delete. This need to be instances of a resource kind and have
-               resource.metadata.namespaced defined if they are namespaced resources
+        resources:  iterable of objects to delete. This need to be instances of a resource kind and
+                    have resource.metadata.namespaced defined if they are namespaced resources
     """
     resources = sort_objects(resources, reverse=True)
 
