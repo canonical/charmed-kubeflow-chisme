@@ -1,3 +1,6 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import logging
 import json
 import requests
@@ -46,7 +49,8 @@ async def prometheus_grafana_integration_test(application_name: str, ops_test):
     log.info(f"Prometheus available at http://{prometheus_unit_ip}:9090")
 
     r = requests.get(
-        f'http://{prometheus_unit_ip}:9090/api/v1/query?query=up{{juju_application="{application_name}"}}'
+        f'http://{prometheus_unit_ip}:9090/api/v1/query?query='
+        f'up{{juju_application="{application_name}"}}'
     )
     response = json.loads(r.content.decode("utf-8"))
     response_status = response["status"]
