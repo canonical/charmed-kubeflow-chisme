@@ -117,7 +117,7 @@ def test_delete_many(
     # Execute the test
     returned = delete_many(
         client=mocked_lightkube_client,
-        resources=objects,
+        objs=objects,
     )
 
     # We should always call sort_objects, regardless of outcome
@@ -130,7 +130,6 @@ def test_delete_many(
     calls = [None] * len(objects)
     for i, (obj, name, namespace) in enumerate(zip(objects, expected_names, expected_namespaces)):
         calls[i] = mock.call(res=obj, name=name, namespace=namespace)
-    print(f"CALLS: {calls}")
     mocked_lightkube_client.delete.assert_has_calls(calls)
 
 
@@ -157,7 +156,7 @@ def test_delete_many_error(
     with context_raised:
         delete_many(
             client=mocked_lightkube_client,
-            resources=objects,
+            objs=objects,
         )
 
         # We should always call sort_objects, regardless of outcome
