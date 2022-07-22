@@ -1,10 +1,10 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import logging
 import json
-import requests
+import logging
 
+import requests
 
 log = logging.getLogger(__name__)
 
@@ -24,10 +24,7 @@ async def prometheus_grafana_integration_test(application_name: str, ops_test):
     # Deploy and relate prometheus
     await ops_test.model.deploy(prometheus, channel="latest/edge", trust=True)
     await ops_test.model.deploy(grafana, channel="latest/edge", trust=True)
-    await ops_test.model.deploy(
-        prometheus_scrape,
-        channel="latest/beta",
-        config=scrape_config)
+    await ops_test.model.deploy(prometheus_scrape, channel="latest/beta", config=scrape_config)
 
     await ops_test.model.add_relation(application_name, prometheus_scrape)
     await ops_test.model.add_relation(
@@ -43,13 +40,11 @@ async def prometheus_grafana_integration_test(application_name: str, ops_test):
     await ops_test.model.wait_for_idle(status="active", timeout=60 * 10)
 
     status = await ops_test.model.get_status()
-    prometheus_unit_ip = status["applications"][prometheus]["units"][f"{prometheus}/0"][
-        "address"
-    ]
+    prometheus_unit_ip = status["applications"][prometheus]["units"][f"{prometheus}/0"]["address"]
     log.info(f"Prometheus available at http://{prometheus_unit_ip}:9090")
 
     r = requests.get(
-        f'http://{prometheus_unit_ip}:9090/api/v1/query?query='
+        f"http://{prometheus_unit_ip}:9090/api/v1/query?query="
         f'up{{juju_application="{application_name}"}}'
     )
     response = json.loads(r.content.decode("utf-8"))
