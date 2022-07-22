@@ -3,8 +3,8 @@
 
 """Tools for unit or integration testing, such as importable and resusable tests."""
 
-from ._observability import test_prometheus_grafana_integration
+from ._observability import prometheus_grafana_integration_test
 
 __all__ = [
-    test_prometheus_grafana_integration,
+    prometheus_grafana_integration_test,
 ]

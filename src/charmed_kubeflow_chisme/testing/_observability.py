@@ -6,7 +6,7 @@ import requests
 log = logging.getLogger(__name__)
 
 
-async def test_prometheus_grafana_integration(application_name: str, ops_test):
+async def prometheus_grafana_integration_test(application_name: str, ops_test):
     """Deploy prometheus, grafana and required relations, then test the metrics.
 
     TODO: Should grafana and prometheus be fixtures here, so they don't stay around?  Or should
