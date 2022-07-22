@@ -94,4 +94,4 @@ def delete_many(
                 f" got {type(obj)}"
             )
 
-        client.delete(obj=obj, name=obj.metadata.name, namespace=namespace)
+        client.delete(res=obj, name=obj.metadata.name, namespace=namespace)

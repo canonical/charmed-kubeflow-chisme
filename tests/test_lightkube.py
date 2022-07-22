@@ -129,7 +129,7 @@ def test_delete_many(
     # Assert we called apply with the expected inputs
     calls = [None] * len(objects)
     for i, (obj, name, namespace) in enumerate(zip(objects, expected_names, expected_namespaces)):
-        calls[i] = mock.call(obj=obj, name=name, namespace=namespace)
+        calls[i] = mock.call(res=obj, name=name, namespace=namespace)
     mocked_lightkube_client.delete.assert_has_calls(calls)
 
 
