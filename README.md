@@ -11,6 +11,7 @@ both the Charmed Operators maintained by the [Charmed Kubeflow](ckf) team as wel
 * [Kubernetes](./src/charmed_kubeflow_chisme/kubernetes/README.md): Helpers for interacting with Kubernetes
 * [Lightkube](./src/charmed_kubeflow_chisme/lightkube/README.md): Helpers specific to using or extending [Lightkube](lightkube-rtd)
 * [Status Handling](./src/charmed_kubeflow_chisme/status_handling/README.md): Helpers for working with Charm Status objects
+* [Testing](./src/charmed_kubeflow_chisme/testing/README.md): Tools for unit or integration testing, such as importable and resusable tests.
 * [Types](./src/charmed_kubeflow_chisme/types/README.md): Reusable typing definitions, useful for adding type hints
 
 [ckf]: https://charmed-kubeflow.io/
