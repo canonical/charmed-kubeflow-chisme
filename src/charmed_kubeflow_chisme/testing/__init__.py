@@ -3,9 +3,9 @@
 
 """Tools for unit or integration testing, such as importable and reusable tests."""
 
-from ._unit_tests import test_start_without_leadership, test_start_with_leadership
+from ._unit_tests import test_image_fetch, test_leadership_events
 
 __all__ = [
-    test_start_without_leadership,
-    test_start_with_leadership,
+    test_leadership_events,
+    test_image_fetch,
 ]
