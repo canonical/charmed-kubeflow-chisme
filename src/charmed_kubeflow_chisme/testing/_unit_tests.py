@@ -5,7 +5,7 @@ from contextlib import nullcontext as does_not_raise
 
 import pytest
 from oci_image import MissingResourceError
-from ops.model import WaitingStatus
+from ops.model import BlockedStatus, WaitingStatus
 
 
 def test_leadership_events(harness):
@@ -21,6 +21,28 @@ def test_leadership_events(harness):
     assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
 
+def test_missing_relation(harness):
+    """Test if status is blocked when relation is missing."""
+    harness.set_leader(True)
+    harness.add_oci_resource(
+        "oci-image",
+        {
+            "registrypath": "image",
+            "username": "",
+            "password": "",
+        },
+    )
+    harness.begin_with_initial_hooks()
+    assert isinstance(harness.charm.model.unit.status, WaitingStatus)
+
+
+def test_missing_image(harness):
+    """Test if status is blocked when image is missing."""
+    harness.set_leader(True)
+    harness.begin_with_initial_hooks()
+    assert isinstance(harness.charm.model.unit.status, BlockedStatus)
+
+
 def test_image_fetch(harness, oci_resource_data):
     """Test image fetching.
 
@@ -33,3 +55,14 @@ def test_image_fetch(harness, oci_resource_data):
     harness.add_oci_resource(**oci_resource_data)
     with does_not_raise():
         harness.charm.image.fetch()
+
+
+def test_not_kubeflow_model(harness):
+    """Test if unit gets blocked if deployed outside a model named kubeflow.
+
+    Remove when this bug is resolved: https://github.com/kubeflow/kubeflow/issues/6136
+    """
+    harness.begin_with_initial_hooks()
+    assert harness.charm.model.unit.status == BlockedStatus(
+        "kubeflow-dashboard must be deployed to model named `kubeflow`:" " https://git.io/J6d35"
+    )
