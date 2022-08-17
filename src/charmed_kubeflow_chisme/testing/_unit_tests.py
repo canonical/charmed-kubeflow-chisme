@@ -21,8 +21,15 @@ def test_leadership_events(harness):
     assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
 
-def test_missing_relation(harness):
-    """Test if status is blocked when relation is missing."""
+def test_missing_image(harness, expected_status):
+    """Test if status is blocked when image is missing."""
+    harness.set_leader(True)
+    harness.begin_with_initial_hooks()
+    assert isinstance(harness.charm.model.unit.status, expected_status)
+
+
+def test_missing_relation(harness, expected_status):
+    """Test if a unit gets into expected state when relation is missing."""
     harness.set_leader(True)
     harness.add_oci_resource(
         "oci-image",
@@ -33,14 +40,7 @@ def test_missing_relation(harness):
         },
     )
     harness.begin_with_initial_hooks()
-    assert isinstance(harness.charm.model.unit.status, WaitingStatus)
-
-
-def test_missing_image(harness):
-    """Test if status is blocked when image is missing."""
-    harness.set_leader(True)
-    harness.begin_with_initial_hooks()
-    assert isinstance(harness.charm.model.unit.status, BlockedStatus)
+    assert isinstance(harness.charm.model.unit.status, expected_status)
 
 
 def test_image_fetch(harness, oci_resource_data):

@@ -13,8 +13,8 @@ from ._unit_tests import (
 
 __all__ = [
     test_leadership_events,
-    test_missing_relation,
     test_missing_image,
+    test_missing_relation,
     test_image_fetch,
     test_not_kubeflow_model,
 ]
