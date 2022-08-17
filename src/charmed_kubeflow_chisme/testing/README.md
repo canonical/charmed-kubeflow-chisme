@@ -16,6 +16,8 @@ Tests if the unit raises an expected status when a required oci image is missing
 The `expected_status` parameter should be one of:
 * `WaitingStatus`
 * `BlockedStatus`
+* `MaintenanceStatus`
+* `ActiveStatus`
 
 ## `test_missing_relation`
 Checks if the unit raises an expected status when a required oci image was added, but a required relation is missing.
@@ -23,6 +25,8 @@ Checks if the unit raises an expected status when a required oci image was added
 The `expected_status` parameter should be one of:
 * `WaitingStatus`
 * `BlockedStatus`
+* `MaintenanceStatus`
+* `ActiveStatus`
 
 ## `test_image_fetch`
 A parametrized image fetching test:
