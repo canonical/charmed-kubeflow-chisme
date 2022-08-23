@@ -1,6 +1,36 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+"""
+# Testing
+
+Tools for unit or integration testing, such as importable and reusable tests.
+
+## Usage example
+
+```python
+import pytest
+from charm import Operator
+from charmed_kubeflow_chisme.testing import test_leadership_events as leadership_events
+from charmed_kubeflow_chisme.testing import test_missing_image as missing_image
+from ops.model import WaitingStatus
+from ops.testing import Harness
+
+
+@pytest.fixture
+def harness():
+    return Harness(Operator)
+
+
+def test_leadership_events(harness):
+    leadership_events(harness)
+
+
+def test_missing_image(harness):
+    missing_image(harness, WaitingStatus)
+```
+"""
+
 from contextlib import nullcontext as does_not_raise
 
 import pytest
@@ -9,7 +39,19 @@ from ops.model import BlockedStatus, WaitingStatus
 
 
 def test_leadership_events(harness):
-    """Test leader-elected event handling."""
+    """Test leader-elected event handling.
+
+    Tests if the unit raises correct status:
+
+    * `WaitingStatus` when it's not a leader
+
+    * when elected as the leader, it should leave `WaitingStatus`
+
+    * `WaitingStatus` when another unit is elected as the leader.
+
+    Args:
+        harness: instantiated Charmed Operator Framework test harness
+    """
     harness.set_leader(False)
     harness.begin_with_initial_hooks()
     assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
@@ -22,14 +64,38 @@ def test_leadership_events(harness):
 
 
 def test_missing_image(harness, expected_status):
-    """Test if status is blocked when image is missing."""
+    """Tests if the unit raises an expected status when a required oci image is missing
+    in a charm with the following checks order:
+
+    1) check for leadership
+
+    2) check oci image
+
+    Args:
+        harness: instantiated Charmed Operator Framework test harness
+        expected_status: should be one of
+        `WaitingStatus`, `BlockedStatus`, `MaintenanceStatus`, `ActiveStatus`
+    """
     harness.set_leader(True)
     harness.begin_with_initial_hooks()
     assert isinstance(harness.charm.model.unit.status, expected_status)
 
 
 def test_missing_relation(harness, expected_status):
-    """Test if a unit gets into expected state when relation is missing."""
+    """Checks if the unit raises an expected status when a required oci image was added,
+    but a required relation is missing in a charm with the following checks order:
+
+    1) check for leadership
+
+    2) check oci image
+
+    3) check relation
+
+    Args:
+        harness: instantiated Charmed Operator Framework test harness
+        expected_status: should be one of
+        `WaitingStatus`, `BlockedStatus`, `MaintenanceStatus`, `ActiveStatus`
+    """
     harness.set_leader(True)
     harness.add_oci_resource(
         "oci-image",
@@ -44,9 +110,15 @@ def test_missing_relation(harness, expected_status):
 
 
 def test_image_fetch(harness, oci_resource_data):
-    """Test image fetching.
+    """A parametrized image fetching test:
 
-    The unit should raise MissingResourceError if no image was added.
+    * the unit should raise MissingResourceError if the oci image is missing
+
+    * no error should be raised if the oci image is in place.
+
+    Args:
+        harness: instantiated Charmed Operator Framework test harness
+        oci_resource_data: OCI image details
     """
     harness.begin()
     with pytest.raises(MissingResourceError):
@@ -58,9 +130,13 @@ def test_image_fetch(harness, oci_resource_data):
 
 
 def test_not_kubeflow_model(harness):
-    """Test if unit gets blocked if deployed outside a model named kubeflow.
+    """Tests if the unit gets blocked if deployed outside a model named `kubeflow`.
 
-    Remove when this bug is resolved: https://github.com/kubeflow/kubeflow/issues/6136
+    This test is useful for kubeflow-dashboard-operator and related charms,
+    such as kubeflow-profiles-operator.
+
+    Args:
+        harness: instantiated Charmed Operator Framework test harness
     """
     harness.begin_with_initial_hooks()
     assert harness.charm.model.unit.status == BlockedStatus(
