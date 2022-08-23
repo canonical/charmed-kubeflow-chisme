@@ -140,5 +140,5 @@ def test_not_kubeflow_model(harness):
     """
     harness.begin_with_initial_hooks()
     assert harness.charm.model.unit.status == BlockedStatus(
-        "kubeflow-dashboard must be deployed to model named `kubeflow`:" " https://git.io/J6d35"
+        "kubeflow-dashboard must be deployed to model named `kubeflow`: https://git.io/J6d35"
     )
