@@ -4,7 +4,7 @@
 import traceback
 from logging import Logger
 
-from ops.model import BlockedStatus, MaintenanceStatus, Container
+from ops.model import BlockedStatus, Container, MaintenanceStatus
 from ops.pebble import ChangeError, Layer
 
 from ..exceptions import ErrorWithStatus
