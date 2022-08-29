@@ -12,6 +12,7 @@ Example usage:
 ```python
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
 from charmed_kubeflow_chisme.pebble import update_layer
+from ops.model import BlockedStatus
 
 class Operator(CharmBase):
     def __init__(self, *args):
@@ -38,6 +39,8 @@ class Operator(CharmBase):
             update_layer(self._container_name, self.container, self._pebble_layer, self.log)
         except ErrorWithStatus as e:
             self.model.unit.status = e.status
-            self.log.error(str(e.msg))
-
+            if isinstance(e.status, BlockedStatus):
+                self.logger.error(str(e.msg))
+            else:
+                self.logger.info(str(e.msg))
 ```
