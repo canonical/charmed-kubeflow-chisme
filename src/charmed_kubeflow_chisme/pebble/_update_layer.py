@@ -4,14 +4,24 @@
 import traceback
 from logging import Logger
 
-from ops.model import BlockedStatus, Container
+from ops.model import BlockedStatus, MaintenanceStatus, Container
 from ops.pebble import ChangeError, Layer
 
 from ..exceptions import ErrorWithStatus
 
 
 def update_layer(container_name: str, container: Container, new_layer: Layer, logger: Logger):
-    """Updates the Pebble configuration layer if changed."""
+    """Updates the Pebble configuration layer if changed.
+
+    Args:
+        container_name (str): The name of the container to update layer.
+        container (ops.model.Container): The container object to update layer.
+        new_layer (ops.pebble.Layer): The layer object to be updated to the container.
+        logger (logging.Logger): A logger to use for logging.
+    """
+    if not container.can_connect():
+        raise ErrorWithStatus("Waiting for pod startup to complete", MaintenanceStatus)
+
     current_layer = container.get_plan()
 
     if current_layer.services != new_layer.services:

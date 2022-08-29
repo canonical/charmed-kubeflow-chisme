@@ -10,6 +10,9 @@ Compare current layer with new layer and only update when changed.
 
 Example usage:
 ```python
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
+from charmed_kubeflow_chisme.pebble import update_layer
+
 class Operator(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
