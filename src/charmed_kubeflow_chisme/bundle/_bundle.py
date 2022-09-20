@@ -1,8 +1,9 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-"""Helper to work with Juju bundles, preserving comments in the YAML"""
+"""Helper to work with Juju bundles, preserving comments in the YAML."""
 
 from __future__ import annotations
+
 import copy
 from pathlib import Path
 from typing import Optional
@@ -28,22 +29,22 @@ class Bundle:
             self.load_bundle()
 
     def deepcopy(self) -> Bundle:
-        """Returns a new deep copy of this Bundle"""
+        """Returns a new deep copy of this Bundle."""
         newbundle = copy.deepcopy(self)
         return newbundle
 
     def diff(self, other: Bundle) -> DeepDiff:
-        """Returns a diff between this and another object, in DeepDiff format"""
+        """Returns a diff between this and another object, in DeepDiff format."""
         return DeepDiff(self._data, other._data, ignore_order=True)
 
     def dump(self, filename: str):
-        """Dumps as yaml to a file"""
+        """Dumps as yaml to a file."""
         with open(filename, "w") as fout:
             yaml = YAML(typ="rt")
             yaml.dump(self.to_dict(), fout)
 
     def get_latest_revisions(self) -> Bundle:
-        """Return a new Bundle that has the latest revisions of all charms in this bundle"""
+        """Return a new Bundle that has the latest revisions of all charms in this bundle."""
         newbundle = self.deepcopy()
 
         applications = newbundle.applications
@@ -66,23 +67,26 @@ class Bundle:
         return newbundle
 
     def load_bundle(self):
-        """Loads a YAML file as a bundle"""
+        """Loads a YAML file as a bundle."""
         yaml = YAML(typ="rt")
         self._data = yaml.load(Path(self._filename).read_text())
 
     def to_dict(self) -> dict:
+        """Returns this bundle as a dict."""
         return self._data
 
     def __eq__(self, other) -> bool:
+        """Returns True if this bundle is equal to another bundle."""
         return self._filename == other._filename and self.diff(other) == {}
 
     @property
     def applications(self) -> dict:
+        """Returns the bundle's applications dict."""
         return self._data["applications"]
 
 
 def get_newest_charm_revision(charm: str, channel: str) -> str:
-    """Returns the newest revision of a charm in a channel"""
+    """Returns the newest revision of a charm in a channel."""
     charm_info = Juju.info(charm)
     channel_map = charm_info["channel-map"]
     try:
