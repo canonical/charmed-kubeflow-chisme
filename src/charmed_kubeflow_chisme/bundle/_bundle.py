@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 """Helper to work with Juju bundles, preserving comments in the YAML"""
 
+from __future__ import annotations
 import copy
 from pathlib import Path
 from typing import Optional
@@ -26,12 +27,12 @@ class Bundle:
         if self._filename:
             self.load_bundle()
 
-    def deepcopy(self):
+    def deepcopy(self) -> Bundle:
         """Returns a new deep copy of this Bundle"""
         newbundle = copy.deepcopy(self)
         return newbundle
 
-    def diff(self, other):
+    def diff(self, other: Bundle) -> DeepDiff:
         """Returns a diff between this and another object, in DeepDiff format"""
         return DeepDiff(self._data, other._data, ignore_order=True)
 
@@ -41,7 +42,7 @@ class Bundle:
             yaml = YAML(typ="rt")
             yaml.dump(self.to_dict(), fout)
 
-    def get_latest_revisions(self):
+    def get_latest_revisions(self) -> Bundle:
         """Return a new Bundle that has the latest revisions of all charms in this bundle"""
         newbundle = self.deepcopy()
 
@@ -69,18 +70,18 @@ class Bundle:
         yaml = YAML(typ="rt")
         self._data = yaml.load(Path(self._filename).read_text())
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return self._data
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return self._filename == other._filename and self.diff(other) == {}
 
     @property
-    def applications(self):
+    def applications(self) -> dict:
         return self._data["applications"]
 
 
-def get_newest_charm_revision(charm: str, channel: str):
+def get_newest_charm_revision(charm: str, channel: str) -> str:
     """Returns the newest revision of a charm in a channel"""
     charm_info = Juju.info(charm)
     channel_map = charm_info["channel-map"]

@@ -8,7 +8,8 @@ from ruamel.yaml import YAML
 
 class Juju:
     @staticmethod
-    def juju(*args, raise_on_stderr: bool=False):
+    def juju(*args, raise_on_stderr: bool = False) -> tuple[str, str]:
+        """Run a Juju CLI command and return the output, optionally raising on error"""
         cmd = ["juju"] + list(args)
         proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
         stdout = proc.stdout.read().decode('utf-8')
@@ -18,7 +19,8 @@ class Juju:
         return stdout, stderr
 
     @classmethod
-    def info(cls, charm_name: str):
+    def info(cls, charm_name: str) -> dict:
+        """Convenience method to call `juju info` and return the parsed output"""
         stdout, stderr = cls.juju("info", charm_name, "--format", "yaml", raise_on_stderr=False)
         failure_message = f"Failed to load valid yaml from `juju info`"
         try:
