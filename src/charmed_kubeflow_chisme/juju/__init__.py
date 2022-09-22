@@ -3,6 +3,6 @@
 
 """Helpers for interacting with Charm Bundles."""
 
-from ._juju import juju, info, JujuFailedError
+from ._juju import JujuFailedError, info, juju
 
-__all__ = [juju, info, JujuFailedError]
+__all__ = [JujuFailedError, info, juju]
