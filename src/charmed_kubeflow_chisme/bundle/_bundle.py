@@ -25,8 +25,10 @@ class Bundle:
     def __init__(self, filename: Optional[str] = None):
         self._filename = filename
         self._data = None
+
+        # Auto-load the bundle if a filename is provided
         if self._filename:
-            self.load_bundle()
+            self._load_bundle()
 
     def deepcopy(self) -> Bundle:
         """Returns a new deep copy of this Bundle."""
@@ -67,7 +69,14 @@ class Bundle:
         return newbundle
 
     def load_bundle(self):
-        """Loads a YAML file as a bundle."""
+        """Loads a YAML file as a bundle.
+
+        This is triggered by default on __init__ if a filename is provided to the bundle, but can
+        be used by a user to re-load the bundle from disk or to load a bundle if filename was not
+        originally provided.
+
+        This method will raise errors from pathlib.Path if the file does not exist.
+        """
         yaml = YAML(typ="rt")
         self._data = yaml.load(Path(self._filename).read_text())
 
