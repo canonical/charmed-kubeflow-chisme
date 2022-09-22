@@ -7,37 +7,33 @@ from subprocess import PIPE, Popen
 from ruamel.yaml import YAML
 
 
-class Juju:
-    """Helper for shelling out to the Juju CLI."""
+def juju(*args, raise_on_stderr: bool = False) -> tuple[str, str]:
+    """Run a Juju CLI command and return the output, optionally raising on error."""
+    cmd = ["juju"] + list(args)
+    proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
+    stdout = proc.stdout.read().decode("utf-8")
+    stderr = proc.stderr.read().decode("utf-8")
+    if raise_on_stderr and stderr:
+        raise ValueError(
+            f"failed to run juju command successfully.  Got this from stderr: {stderr}"
+        )
+    return stdout, stderr
 
-    @staticmethod
-    def juju(*args, raise_on_stderr: bool = False) -> tuple[str, str]:
-        """Run a Juju CLI command and return the output, optionally raising on error."""
-        cmd = ["juju"] + list(args)
-        proc = Popen(cmd, stdout=PIPE, stderr=PIPE)
-        stdout = proc.stdout.read().decode("utf-8")
-        stderr = proc.stderr.read().decode("utf-8")
-        if raise_on_stderr and stderr:
-            raise ValueError(
-                f"failed to run juju command successfully.  Got this from stderr: {stderr}"
-            )
-        return stdout, stderr
 
-    @classmethod
-    def info(cls, charm_name: str) -> dict:
-        """Convenience method to call `juju info` and return the parsed output."""
-        stdout, stderr = cls.juju("info", charm_name, "--format", "yaml", raise_on_stderr=False)
-        failure_message = "Failed to load valid yaml from `juju info`"
-        try:
-            yaml = YAML(typ="rt")
-            data_dict = yaml.load(stdout)
-        except Exception:  # TODO: This should be more specific
-            raise JujuFailedError(failure_message, stderr=stderr, stdout=stdout)
+def info(charm_name: str) -> dict:
+    """Convenience method to call `juju info` and return the parsed output."""
+    stdout, stderr = juju("info", charm_name, "--format", "yaml", raise_on_stderr=False)
+    failure_message = "Failed to load valid yaml from `juju info`"
+    try:
+        yaml = YAML(typ="rt")
+        data_dict = yaml.load(stdout)
+    except Exception:  # TODO: This should be more specific
+        raise JujuFailedError(failure_message, stderr=stderr, stdout=stdout)
 
-        if not data_dict:
-            raise JujuFailedError(failure_message, stderr=stderr, stdout=stdout)
+    if not data_dict:
+        raise JujuFailedError(failure_message, stderr=stderr, stdout=stdout)
 
-        return data_dict
+    return data_dict
 
 
 class JujuFailedError(Exception):
