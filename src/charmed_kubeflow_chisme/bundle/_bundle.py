@@ -68,7 +68,7 @@ class Bundle:
 
         return newbundle
 
-    def load_bundle(self):
+    def _load_bundle(self):
         """Loads a YAML file as a bundle.
 
         This is triggered by default on __init__ if a filename is provided to the bundle, but can
