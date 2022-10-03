@@ -122,6 +122,7 @@ class KubernetesResourceHandler:
         template_files: Optional[Iterable[str]] = None,
         context: Optional[dict] = None,
         force_recompute: bool = False,
+        create_resources_for_crds: bool = True,
     ) -> LightkubeResourcesList:
         """Renders this charm's manifests, returning them as a list of Lightkube Resources.
 
@@ -139,6 +140,10 @@ class KubernetesResourceHandler:
                             used `self.context = context; self.render_manifests()` more convenient.
             force_recompute (bool): If true, will always recompute manifests even if cached
                                     manifests are available
+            create_resources_for_crds (bool): If True, a generic resource will be created for every version of every
+                                              CRD found that does not already have a generic resource.  There will be no
+                                              side effect for any CRD that already has a generic resource.  Else if
+                                              False, no generic resources.  Default is True
         """
         self.log.info("Rendering manifests")
 
@@ -163,7 +168,9 @@ class KubernetesResourceHandler:
         manifest_parts = self._render_manifest_parts()
 
         # Cache for later use
-        self._manifests = codecs.load_all_yaml("\n---\n".join(manifest_parts))
+        self._manifests = codecs.load_all_yaml(
+            "\n---\n".join(manifest_parts), create_resources_for_crds=create_resources_for_crds
+        )
         return self._manifests
 
     def _render_manifest_parts(self):
