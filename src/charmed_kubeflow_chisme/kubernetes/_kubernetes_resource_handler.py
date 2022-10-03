@@ -140,10 +140,12 @@ class KubernetesResourceHandler:
                             used `self.context = context; self.render_manifests()` more convenient.
             force_recompute (bool): If true, will always recompute manifests even if cached
                                     manifests are available
-            create_resources_for_crds (bool): If True, a generic resource will be created for every version of every
-                                              CRD found that does not already have a generic resource.  There will be no
-                                              side effect for any CRD that already has a generic resource.  Else if
-                                              False, no generic resources.  Default is True
+            create_resources_for_crds (bool): If True, a generic resource will be created for
+                                              every version of every CRD found that does not
+                                              already have a generic resource.  There will be no
+                                              side effect for any CRD that already has a generic
+                                              resource.  Else if False, no generic resources.
+                                              Default is True
         """
         self.log.info("Rendering manifests")
 
