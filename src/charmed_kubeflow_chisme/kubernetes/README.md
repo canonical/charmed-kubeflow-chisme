@@ -6,6 +6,8 @@ Helpers for interacting with Kubernetes, such as managing or inspecting Kubernet
 
 ## KubernetesResourceHandler
 
+### Summary
+
 A utility for managing Kubernetes resources that are defined by templated manifests.  For example, given the template `service.yaml.j2`:
 
 ```yaml
@@ -55,6 +57,12 @@ krh.compute_unit_status()
 ```
 
 These helpers encapsulate the logic around looping through each template, rendering them with the context to get `Lightkube.Resource` objects, `apply`ing them to the Kubernetes Cluster in a safe order, etc.  
+
+### Recommended usage patterns
+
+The `KubernetesResourceHandler` can be used to manage one or more YAML templates, but it does not need to be the single monolith that manages all kubernetes resources in a charm.  For example, if you have a `service.yaml.j2`, `deployment.yaml.j2`, and `rbac.yaml.j2` which define resources that are always rendered and deployed together, it likely makes sense to use a single `KubernetesResourceHandler` for all three for convenience.  However, if you commonly need to update the `deployment.yaml.j2` without modifying the others, it might make more sense instantiate separate `KubernetesResourceHandler` objects, for the different files or more fine-grained groups of files.  
+
+It is often convenient to define common `KubernetesResourceHandler` objects that are used by multiple hooks up front in a charm, but there is nothing wrong with instantiating smaller helper `KubernetesResourceHandler` objects when you need them too (for example, when a specific function wants to manipulate a small subset of yaml files).
 
 ## `check_resources`
 
