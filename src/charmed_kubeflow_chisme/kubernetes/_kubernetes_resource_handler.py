@@ -122,6 +122,7 @@ class KubernetesResourceHandler:
         template_files: Optional[Iterable[str]] = None,
         context: Optional[dict] = None,
         force_recompute: bool = False,
+        create_resources_for_crds: bool = True,
     ) -> LightkubeResourcesList:
         """Renders this charm's manifests, returning them as a list of Lightkube Resources.
 
@@ -139,6 +140,12 @@ class KubernetesResourceHandler:
                             used `self.context = context; self.render_manifests()` more convenient.
             force_recompute (bool): If true, will always recompute manifests even if cached
                                     manifests are available
+            create_resources_for_crds (bool): If True, a generic resource will be created for
+                                              every version of every CRD found that does not
+                                              already have a generic resource.  There will be no
+                                              side effect for any CRD that already has a generic
+                                              resource.  Else if False, no generic resources.
+                                              Default is True
         """
         self.log.info("Rendering manifests")
 
@@ -163,7 +170,9 @@ class KubernetesResourceHandler:
         manifest_parts = self._render_manifest_parts()
 
         # Cache for later use
-        self._manifests = codecs.load_all_yaml("\n---\n".join(manifest_parts))
+        self._manifests = codecs.load_all_yaml(
+            "\n---\n".join(manifest_parts), create_resources_for_crds=create_resources_for_crds
+        )
         return self._manifests
 
     def _render_manifest_parts(self):
@@ -184,7 +193,7 @@ class KubernetesResourceHandler:
             self.log.debug(f"Rendered manifest:\n{manifest_parts[-1]}")
         return manifest_parts
 
-    def apply(self):
+    def apply(self, force: bool = False):
         """Applies the managed Kubernetes resources, adding or modifying these objects.
 
         This can be invoked to create and/or update resources in the kubernetes cluster using
@@ -198,12 +207,16 @@ class KubernetesResourceHandler:
             * If later the charm state has changed and `render_manifests()` yields [PodB], calling
              `.apply()` results in PodB created and PodA being left unchanged (essentially
              orphaned)
+
+        Args:
+            force: *(optional)* Force is going to "force" Apply requests. It means user will
+                   re-acquire conflicting fields owned by other people.
         """
         resources = self.render_manifests(force_recompute=False)
         self.log.debug(f"Applying {len(resources)} resources")
 
         try:
-            apply_many(self.lightkube_client, resources)
+            apply_many(client=self.lightkube_client, objs=resources, force=force)
         except ApiError as e:
             # Handle forbidden error as this likely means we do not have --trust
             if e.status.code == 403:
