@@ -193,7 +193,7 @@ class KubernetesResourceHandler:
             self.log.debug(f"Rendered manifest:\n{manifest_parts[-1]}")
         return manifest_parts
 
-    def apply(self):
+    def apply(self, force: bool = False):
         """Applies the managed Kubernetes resources, adding or modifying these objects.
 
         This can be invoked to create and/or update resources in the kubernetes cluster using
@@ -207,12 +207,16 @@ class KubernetesResourceHandler:
             * If later the charm state has changed and `render_manifests()` yields [PodB], calling
              `.apply()` results in PodB created and PodA being left unchanged (essentially
              orphaned)
+
+        Args:
+            force: *(optional)* Force is going to "force" Apply requests. It means user will
+                   re-acquire conflicting fields owned by other people.
         """
         resources = self.render_manifests(force_recompute=False)
         self.log.debug(f"Applying {len(resources)} resources")
 
         try:
-            apply_many(self.lightkube_client, resources)
+            apply_many(client=self.lightkube_client, objs=resources, force=force)
         except ApiError as e:
             # Handle forbidden error as this likely means we do not have --trust
             if e.status.code == 403:
