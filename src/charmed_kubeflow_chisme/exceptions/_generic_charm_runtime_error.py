@@ -11,9 +11,7 @@ class GenericCharmRuntimeError(Exception):
     A typical usage might be:
 
     ```python
-    ...
     from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
-    ...
 
     try:
         some_function()

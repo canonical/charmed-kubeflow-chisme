@@ -3,7 +3,7 @@
 
 """A collection of standard Exceptions for use when writing charms."""
 
-from ._error_status_with_message import GenericCharmRuntimeError
+from ._generic_charm_runtime_error import GenericCharmRuntimeError
 from ._kubernetes import ReplicasNotReadyError, ResourceNotFoundError
 from ._with_status import ErrorWithStatus
 
