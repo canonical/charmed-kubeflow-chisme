@@ -5,5 +5,6 @@
 
 from ._kubernetes import ReplicasNotReadyError, ResourceNotFoundError
 from ._with_status import ErrorWithStatus
+from ._error_status_with_message import UnitErrorStatusWithMessage
 
 __all__ = [ReplicasNotReadyError, ResourceNotFoundError, ErrorWithStatus]
