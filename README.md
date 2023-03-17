@@ -20,5 +20,5 @@ both the Charmed Operators maintained by the [Charmed Kubeflow](ckf) team as wel
 # Publishing to PyPi
 
 To publish a new release to Pypi:
-1. Update [setup.cfg](https://github.com/canonical/charmed-kubeflow-chisme/blob/main/setup.cfg#L3) to the new version via a PR
+1. Update [setup.cfg](https://github.com/canonical/charmed-kubeflow-chisme/blob/main/setup.cfg#L3) to the new version and commit it to the repo via a completed PR
 2. Pull the repo and use `tox -e publish` to publish
