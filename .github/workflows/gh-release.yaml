@@ -23,7 +23,7 @@ jobs:
           pip install build
 
       - name: Build package
-          run: python -m build
+        run: python -m build
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
