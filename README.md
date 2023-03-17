@@ -16,3 +16,9 @@ both the Charmed Operators maintained by the [Charmed Kubeflow](ckf) team as wel
 
 [ckf]: https://charmed-kubeflow.io/
 [lightkube-rtd]: https://lightkube.readthedocs.io/en/latest/
+
+# Publishing to PyPi
+
+To publish a new release to Pypi:
+* [setup.cfg](https://github.com/canonical/charmed-kubeflow-chisme/blob/main/setup.cfg#L3) to the new version via a PR
+* once chisme's setup.cfg is the correct version, pull the repo and use `tox -e publish` to publish
