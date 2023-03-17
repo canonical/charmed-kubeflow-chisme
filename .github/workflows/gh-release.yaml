@@ -31,4 +31,4 @@ jobs:
           prerelease: false
           draft: true
           files: |
-            build/*
+            dist/*
