@@ -3,7 +3,7 @@ name: "tagged-release"
 on:
   push:
     tags:
-      - "v*"
+      - "*"
 
 jobs:
   tests:
@@ -16,7 +16,36 @@ jobs:
     needs: tests
 
     steps:
+      - name: Validate version in tag
+        # check that version matches Semantic Versioning
+        run: |
+          if ! [[ ${{ github.ref_name }} =~ ^[0-9]+\.[0-9]+\.[0-9]+$|^[0-9]+\.[0-9]+\.[0-9]+\.dev[0-9]+$ ]]
+          then
+            echo "Tag has incorrect format. Valid formats are X.X.X or X.X.X.devX where X is any digit"
+            exit 1
+          fi
+      - name: Check tag and PyPi version
+        # Compare version of the tag with the latest PyPi published version
+        run: |
+          python -m pip install --upgrade pip
+          packages=$(pip index versions charmed-kubeflow-chisme)
+          latest=$(echo $packages| grep -oP '(?<=\().+?(?=\))')
+          dpkg --compare-versions ${{ github.ref_name }} gt $latest
+          if [ $? -ne 0 ]; then
+              echo "Version in git tag must be greater than already published"
+              exit $?
+          fi
+
+      - name: Compare git tag and version in setup.cfg
+        run: |
+          versionInFile=$(grep "version" setup.cfg | cut -d "=" -f 2 | tr -d '[:space:]')
+          if [ $versionInFile -ne ${{ github.ref_name }} ]; then
+            echo "Version in file does not match version in git tag"
+              exit 1
+          fi
+
       - uses: actions/checkout@v3
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
