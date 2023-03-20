@@ -16,6 +16,7 @@ jobs:
     needs: tests
 
     steps:
+      - uses: actions/checkout@v3
       - name: Validate version in tag
         # check that version matches Semantic Versioning
         run: |
@@ -43,8 +44,6 @@ jobs:
             echo "Version in file does not match version in git tag"
             exit 1
           fi
-
-      - uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
