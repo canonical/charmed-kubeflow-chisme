@@ -22,8 +22,8 @@ both the Charmed Operators maintained by the [Charmed Kubeflow](ckf) team as wel
 To publish a new release to Pypi:
 1. Update [setup.cfg](https://github.com/canonical/charmed-kubeflow-chisme/blob/main/setup.cfg#L3) to the new version 
    and commit it to the repo via a completed PR
-2. Apply local git tag according to the format `vX.X.X` (semantic versioning) on the main branch
-3. Push tag to the repo. Example: `git push origin v0.0.8`
+2. Apply local git tag according to the format `X.X.X` (semantic versioning) on the main branch
+3. Push tag to the repo. Example: `git push origin 0.0.8`
 4. GitHub Action will create a new release on GitHub
 5. Edit release via GitHub UI and click publish
 6. GitHub Action will automatically publish the same commit to PyPi repository 
