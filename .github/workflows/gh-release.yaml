@@ -43,7 +43,7 @@ jobs:
       - name: Compare git tag and version in setup.cfg
         run: |
           versionInFile=$(grep "^version = " setup.cfg | cut -d "=" -f 2 | tr -d '[:space:]')
-          if [ $versionInFile -ne ${{ github.ref_name }} ]; then
+          if [ $versionInFile != ${{ github.ref_name }} ]; then
             echo "Version in file does not match version in git tag"
             exit 1
           fi
