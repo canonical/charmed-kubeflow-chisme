@@ -29,11 +29,9 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
-      - name: Setup operator environment
-        uses: charmed-kubernetes/actions-operator@1.1.0
-        with:
-          provider: microk8s
-          channel: 1.24/stable
-
+      - name: Setup Microk8s
+        run: |
+          sudo snap install microk8s --classic --channel=1.24/stable
+          sudo usermod -a -G microk8s $USER
       - name: Run integration tests
         run: sg microk8s -c "tox -vve integration"
