@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    name: value
+    name2: value2
+  name: myPod
+  namespace: mynamespace
+spec:
+  containers:
+  - image: myimage:latest
+    name: mycontainer
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    name: value
+    name2: value2
+  name: myPod2
+  namespace: mynamespace
+spec:
+  containers:
+  - image: myimage:latest
+    name: mycontainer
