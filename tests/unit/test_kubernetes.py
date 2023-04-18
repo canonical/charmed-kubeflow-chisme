@@ -616,10 +616,14 @@ def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
     """Tests that KRH.get_deployed_resources returns as expected."""
     # Arrange
     labels = {"some": "labels"}
-    child_resource_types = ["some", "resources"]
+    child_resource_types = [Pod, Service]
 
-    resource_suffix = "_instance"
-    expected_resources = [r + resource_suffix for r in child_resource_types]
+    expected_resources = [
+        Pod(metadata=ObjectMeta(name="pod1", namespace="namespace1")),
+        Service(metadata=ObjectMeta(name="service1", namespace="namespace2")),
+    ]
+    # Pack these into a nested list so we can emit them from the client.list.side_effect
+    expected_resource_side_effect = [[resource] for resource in expected_resources]
 
     krh = kubernetes.KubernetesResourceHandler(
         field_manager="field-manager",
@@ -629,12 +633,8 @@ def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
         child_resource_types=child_resource_types,
     )
 
-    def return_resource_type(resource_type, **kwargs):
-        """Passes the resource_type through as a pretend result."""
-        return [resource_type + resource_suffix]
-
     krh._lightkube_client = mock.MagicMock()
-    krh._lightkube_client.list.side_effect = return_resource_type
+    krh._lightkube_client.list.side_effect = expected_resource_side_effect
 
     # Act
     resources = krh.get_deployed_resources()
