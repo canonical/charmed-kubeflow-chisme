@@ -1,17 +1,17 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-from pathlib import Path
 import random
 import string
+import time
+from pathlib import Path
 
+import pytest
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Namespace, Pod, Service
-import pytest
 
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
-
 
 # Note: all tests require a Kubernetes cluster to run against.
 
@@ -42,7 +42,7 @@ def namespace():
         raise err
 
 
-def test_KubernetesResourceHandler_apply(namespace):
+def test_KubernetesResourceHandler_apply(namespace):  # noqa: N802
     lightkube_client = Client()
     template_files = [data_dir / "pods1.j2", data_dir / "services1.j2", data_dir / "namespace1.j2"]
     context = {"namespace": namespace}
@@ -50,7 +50,7 @@ def test_KubernetesResourceHandler_apply(namespace):
         "test-krh-apply",
         template_files=template_files,
         context=context,
-        labels={'uniquelabel1': 'uniquevalue1'},
+        labels={"uniquelabel1": "uniquevalue1"},
         child_resource_types=[Pod, Service, Namespace],
     )
 
@@ -64,54 +64,40 @@ def test_KubernetesResourceHandler_apply(namespace):
     lightkube_client.get(Pod, "mypod2", namespace=namespace)
     lightkube_client.get(Service, "myservice", namespace=namespace)
     lightkube_client.get(Service, "myservice2", namespace=namespace)
-    lightkube_client.get(Namespace, namespace)
-
+    lightkube_client.get(Namespace, additional_namespace_name)
 
     # Reconcile away the Services by updating the template files to remove the services and
     # namespace
     krh.template_files = [data_dir / "pods1.j2"]
     krh.reconcile()
 
+    # Give a few seconds for everything to be deleted
+    time.sleep(10)
+
     # Assert the Pods exist but the Services do not
     lightkube_client.get(Pod, "mypod", namespace=namespace)
     lightkube_client.get(Pod, "mypod2", namespace=namespace)
-    try:
+    with pytest.raises(ApiError) as err:
         lightkube_client.get(Service, "myservice", namespace=namespace)
-    except ApiError as err:
-        if err.status.code == 404:
-            pass
-        else:
-            raise err
-    try:
+    assert err.value.status.code == 404
+
+    with pytest.raises(ApiError) as err:
         lightkube_client.get(Service, "myservice2", namespace=namespace)
-    except ApiError as err:
-        if err.status.code == 404:
-            pass
-        else:
-            raise err
-    try:
-        lightkube_client.get(Namespace, namespace)
-    except ApiError as err:
-        if err.status.code == 404:
-            pass
-        else:
-            raise err
+    assert err.value.status.code == 404
+    with pytest.raises(ApiError) as err:
+        lightkube_client.get(Namespace, additional_namespace_name)
+    assert err.value.status.code == 404
 
     # Delete everything we created
     krh.delete()
 
+    # Give a few seconds for everything to be deleted
+    time.sleep(10)
+
     # Assert deleted
-    try:
+    with pytest.raises(ApiError) as err:
         lightkube_client.get(Pod, "mypod", namespace=namespace)
-    except ApiError as err:
-        if err.status.code == 404:
-            pass
-        else:
-            raise err
-    try:
+    assert err.value.status.code == 404
+    with pytest.raises(ApiError) as err:
         lightkube_client.get(Pod, "mypod2", namespace=namespace)
-    except ApiError as err:
-        if err.status.code == 404:
-            pass
-        else:
-            raise err
+    assert err.value.status.code == 404

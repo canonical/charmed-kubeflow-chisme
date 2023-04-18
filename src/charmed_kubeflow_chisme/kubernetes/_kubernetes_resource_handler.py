@@ -8,7 +8,7 @@ from typing import Callable, Iterable, List, Optional, Tuple
 from jinja2 import Template
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
-from lightkube.core.resource import Resource, api_info, NamespacedResource, GlobalResource
+from lightkube.core.resource import NamespacedResource, Resource, api_info
 from ops.model import ActiveStatus, BlockedStatus
 
 from ..exceptions import ErrorWithStatus
