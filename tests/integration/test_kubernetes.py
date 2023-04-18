@@ -53,7 +53,9 @@ def test_KubernetesResourceHandler_apply(namespace):  # noqa: N802
         "test-krh-apply",
         template_files=template_files,
         context=context,
-        labels=create_charm_default_labels(application_name='my-application', model_name='my-model', scope='my-scope'),
+        labels=create_charm_default_labels(
+            application_name="my-application", model_name="my-model", scope="my-scope"
+        ),
         child_resource_types=[Pod, Service, Namespace],
     )
 
