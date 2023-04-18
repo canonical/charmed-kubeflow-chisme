@@ -32,10 +32,8 @@ jobs:
       - name: Install dependencies
         run: python -m pip install tox
       - name: Setup Microk8s
-        run: |
-          sudo snap install microk8s --classic --channel=1.24/stable
-          sudo usermod -a -G microk8s $USER
-          mkdir -p ~/.kube
-          sg microk8s -c "microk8s config > ~/.kube/config"
+        uses: balchua/microk8s-actions@v0.3.2
+        with:
+          channel: 1.24/stable
       - name: Run integration tests
-        run: sg microk8s -c "tox -vve integration"
+        run: tox -vve integration
