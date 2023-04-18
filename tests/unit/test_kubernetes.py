@@ -8,13 +8,16 @@ from typing import NamedTuple
 from unittest import mock
 
 import pytest
-from lightkube.generic_resource import create_namespaced_resource, create_global_resource
+from lightkube.generic_resource import (
+    create_global_resource,
+    create_namespaced_resource,
+)
 from lightkube.models.apps_v1 import StatefulSetSpec, StatefulSetStatus
 from lightkube.models.core_v1 import PodTemplateSpec
 from lightkube.models.meta_v1 import LabelSelector, ObjectMeta
+from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
 from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Pod, Service
-from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 
 from charmed_kubeflow_chisme import kubernetes
@@ -26,12 +29,12 @@ from charmed_kubeflow_chisme.exceptions import (
 from charmed_kubeflow_chisme.kubernetes import _check_resources
 from charmed_kubeflow_chisme.kubernetes._check_resources import _get_resource
 from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import (
-    codecs,
     _add_labels_to_resources,
     _get_resource_classes_in_manifests,
     _hash_lightkube_resource,
     _in_left_not_right,
     _validate_resources,
+    codecs,
 )
 from charmed_kubeflow_chisme.kubernetes._validate_statefulset import (
     validate_statefulset,
@@ -555,7 +558,7 @@ def test_KubernetesResourceHandler_apply_on_errors(  # noqa N802
         krh.apply()
 
 
-def test_KubernetesResourceHandler_delete():
+def test_KubernetesResourceHandler_delete():  # noqa: N802
     """Tests that KRH.delete successfully deletes observed resources."""
     # Arrange
     krh = kubernetes.KubernetesResourceHandler(
@@ -589,7 +592,7 @@ def test_KubernetesResourceHandler_delete():
         ({"some": "labels"}, [], pytest.raises(ValueError)),
     ],
 )
-def test_KubernetesResourceHandler_delete_missing_required_arguments(
+def test_KubernetesResourceHandler_delete_missing_required_arguments(  # noqa: N802
     labels, child_resource_types, expected_context
 ):
     """Tests that KRH delete raises when missing required inputs."""
@@ -609,7 +612,7 @@ def test_KubernetesResourceHandler_delete_missing_required_arguments(
         krh.get_deployed_resources()
 
 
-def test_KubernetesResourceHandler_get_deployed_resources():
+def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
     """Tests that KRH.get_deployed_resources returns as expected."""
     # Arrange
     labels = {"some": "labels"}
@@ -652,7 +655,7 @@ def test_KubernetesResourceHandler_get_deployed_resources():
         ({"some": "labels"}, [], pytest.raises(ValueError)),
     ],
 )
-def test_KubernetesResourceHandler_get_deployed_resources_missing_required_arguments(
+def test_KubernetesResourceHandler_get_deployed_resources_missing_required_arguments(  # noqa: N802
     labels, child_resource_types, expected_context
 ):
     """Tests that KRH.get_deployed_resources raises when missing required inputs."""
@@ -672,7 +675,7 @@ def test_KubernetesResourceHandler_get_deployed_resources_missing_required_argum
         krh.get_deployed_resources()
 
 
-def test_KubernetesResourceHandler_reconcile():
+def test_KubernetesResourceHandler_reconcile():  # noqa: N802
     """Test that KRH.reconcile works when expected to."""
     # Arrange
     krh = kubernetes.KubernetesResourceHandler(
@@ -712,7 +715,7 @@ def test_KubernetesResourceHandler_reconcile():
         ({"some": "labels"}, [], pytest.raises(ValueError)),
     ],
 )
-def test_KubernetesResourceHandler_reconcile_missing_required_arguments(
+def test_KubernetesResourceHandler_reconcile_missing_required_arguments(  # noqa: N802
     labels, child_resource_types, expected_context
 ):
     """Test that KRH.reconcile raises when missing required inputs."""
