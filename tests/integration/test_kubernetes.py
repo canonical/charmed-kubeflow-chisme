@@ -11,7 +11,10 @@ from lightkube.core.exceptions import ApiError
 from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.core_v1 import Namespace, Pod, Service
 
-from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
+from charmed_kubeflow_chisme.kubernetes import (
+    KubernetesResourceHandler,
+    create_charm_default_labels,
+)
 
 # Note: all tests require a Kubernetes cluster to run against.
 
@@ -50,7 +53,7 @@ def test_KubernetesResourceHandler_apply(namespace):  # noqa: N802
         "test-krh-apply",
         template_files=template_files,
         context=context,
-        labels={"uniquelabel1": "uniquevalue1"},
+        labels=create_charm_default_labels(application_name='my-application', model_name='my-model', scope='my-scope'),
         child_resource_types=[Pod, Service, Namespace],
     )
 

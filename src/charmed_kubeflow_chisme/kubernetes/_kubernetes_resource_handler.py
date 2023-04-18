@@ -423,9 +423,12 @@ def _add_labels_to_resources(resources: LightkubeResourcesList, labels: dict):
     return resources
 
 
-def get_default_labels() -> dict:
+def create_charm_default_labels(application_name: str, model_name: str, scope: str) -> dict:
     """Returns a default label style for the KubernetesResourceHandler label selector."""
-    raise NotImplementedError()
+    return {
+        "app.kubernetes.io/instance": f"{application_name}-{model_name}",
+        "kubernetes-resource-handler-scope": scope,
+    }
 
 
 def _get_resource_classes_in_manifests(resource_list: LightkubeResourcesList):
