@@ -35,5 +35,6 @@ jobs:
         run: |
           sudo snap install microk8s --classic --channel=1.24/stable
           sudo usermod -a -G microk8s $USER
+          sg microk8s -c "microk8s config > ~/.kube/config"
       - name: Run integration tests
         run: sg microk8s -c "tox -vve integration"
