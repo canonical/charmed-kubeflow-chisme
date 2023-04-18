@@ -3,7 +3,7 @@
 import functools
 import logging
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple, Callable, Type
+from typing import Callable, Iterable, List, Optional, Tuple
 
 from jinja2 import Template
 from lightkube import Client, codecs
@@ -17,7 +17,6 @@ from ..status_handling import get_first_worst_error
 from ..types import LightkubeResourcesList, LightkubeResourceTypesList
 from ..types._charm_status import AnyCharmStatus
 from ._check_resources import check_resources
-
 
 ERROR_MESSAGE_NO_LABELS = "{caller} requires labels to be set"
 ERROR_MESSAGE_NO_CHILD_RESOURCE_TYPES = "{caller} requires labels to be set"
@@ -423,7 +422,7 @@ def get_default_labels() -> dict:
 
 
 def _get_resource_classes_in_manifests(resource_list: LightkubeResourcesList):
-    """Returns a list of the resource classes in a list of resources"""
+    """Returns a list of the resource classes in a list of resources."""
     resource_classes = []
     for resource in resource_list:
         if type(resource) not in resource_classes:
