@@ -8,7 +8,7 @@ from typing import Callable, Iterable, List, Optional, Tuple
 from jinja2 import Template
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
-from lightkube.core.resource import Resource, api_info
+from lightkube.core.resource import Resource, api_info, NamespacedResource, GlobalResource
 from ops.model import ActiveStatus, BlockedStatus
 
 from ..exceptions import ErrorWithStatus
@@ -165,10 +165,17 @@ class KubernetesResourceHandler:
         _validate_labels_and_child_resource_types(
             self.labels, self.child_resource_types, caller_name="get_deployed_resources"
         )
-
         resources = []
         for resource_type in self.child_resource_types:
-            resources.extend(self.lightkube_client.list(resource_type, labels=self._labels))
+            if issubclass(resource_type, NamespacedResource):
+                # Get resources from all namespaces
+                namespace = "*"
+            else:
+                # Global resources have no namespace
+                namespace = None
+            resources.extend(
+                self.lightkube_client.list(resource_type, namespace=namespace, labels=self._labels)
+            )
 
         return resources
 
