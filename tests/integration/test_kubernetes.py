@@ -46,6 +46,7 @@ def namespace():
 
 
 def test_KubernetesResourceHandler_apply(namespace):  # noqa: N802
+    """Tests that the KRH.apply works when expected."""
     lightkube_client = Client()
     template_files = [data_dir / "pods1.j2", data_dir / "services1.j2", data_dir / "namespace1.j2"]
     context = {"namespace": namespace}
