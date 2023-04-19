@@ -14,7 +14,7 @@ from ops.model import ActiveStatus, BlockedStatus
 from ..exceptions import ErrorWithStatus
 from ..lightkube.batch import apply_many, delete_many
 from ..status_handling import get_first_worst_error
-from ..types import LightkubeResourcesList, LightkubeResourceTypesList
+from ..types import LightkubeResourcesList, LightkubeResourceType, LightkubeResourceTypesList
 from ..types._charm_status import AnyCharmStatus
 from ._check_resources import check_resources
 
@@ -414,12 +414,28 @@ class KubernetesResourceHandler:
         return get_first_worst_error(errors).status
 
 
+def _add_label_field_to_resource(resource: LightkubeResourceType) -> LightkubeResourceType:
+    """Adds a metadata.labels field to a Lightkube resource.
+
+    Works around a bug where sometimes when the labels field is None it is not overwritable.
+    Converts the object to a dict, adds the labels field, and then converts it back to the
+    """
+    as_dict = resource.to_dict()
+    as_dict["metadata"]["labels"] = {}
+    resource = resource.from_dict(as_dict)
+    return resource
+
+
 def _add_labels_to_resources(resources: LightkubeResourcesList, labels: dict):
     """Adds the given labels to every Lightkube resource in a list."""
-    for resource in resources:
-        if resource.metadata.labels is None:
-            resource.metadata.labels = {}
-        resource.metadata.labels.update(labels)
+    for i in range(len(resources)):
+        if resources[i].metadata.labels is None:
+            resources[i].metadata.labels = {}
+
+        # Sometimes there is a bug where this field is not overwritable
+        if resources[i].metadata.labels is None:
+            resources[i] = _add_label_field_to_resource(resources[i])
+        resources[i].metadata.labels.update(labels)
     return resources
 
 
