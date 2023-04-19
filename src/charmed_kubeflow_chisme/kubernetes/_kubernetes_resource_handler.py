@@ -14,7 +14,11 @@ from ops.model import ActiveStatus, BlockedStatus
 from ..exceptions import ErrorWithStatus
 from ..lightkube.batch import apply_many, delete_many
 from ..status_handling import get_first_worst_error
-from ..types import LightkubeResourcesList, LightkubeResourceType, LightkubeResourceTypesList
+from ..types import (
+    LightkubeResourcesList,
+    LightkubeResourceType,
+    LightkubeResourceTypesList,
+)
 from ..types._charm_status import AnyCharmStatus
 from ._check_resources import check_resources
 
