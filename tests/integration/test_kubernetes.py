@@ -1,11 +1,12 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
+import logging
 import random
 import string
-import time
 from pathlib import Path
 
 import pytest
+import tenacity
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.models.meta_v1 import ObjectMeta
@@ -18,6 +19,7 @@ from charmed_kubeflow_chisme.kubernetes import (
 
 # Note: all tests require a Kubernetes cluster to run against.
 
+logger = logging.getLogger(__name__)
 data_dir = Path(__file__).parent.joinpath("data")
 
 
@@ -66,44 +68,129 @@ def test_KubernetesResourceHandler_apply(namespace):  # noqa: N802
     krh.apply()
 
     # Assert the resources exist
-    lightkube_client.get(Pod, "mypod", namespace=namespace)
-    lightkube_client.get(Pod, "mypod2", namespace=namespace)
-    lightkube_client.get(Service, "myservice", namespace=namespace)
-    lightkube_client.get(Service, "myservice2", namespace=namespace)
-    lightkube_client.get(Namespace, additional_namespace_name)
+    assert_resource_exists(
+        lightkube_client=lightkube_client,
+        resource_type=Pod,
+        resource_name="mypod",
+        resource_namespace=namespace,
+    )
+    assert_resource_exists(
+        lightkube_client=lightkube_client,
+        resource_type=Pod,
+        resource_name="mypod2",
+        resource_namespace=namespace,
+    )
+    assert_resource_exists(
+        lightkube_client=lightkube_client,
+        resource_type=Service,
+        resource_name="myservice",
+        resource_namespace=namespace,
+    )
+    assert_resource_exists(
+        lightkube_client=lightkube_client,
+        resource_type=Service,
+        resource_name="myservice2",
+        resource_namespace=namespace,
+    )
+    assert_resource_exists(
+        lightkube_client=lightkube_client,
+        resource_type=Namespace,
+        resource_name=additional_namespace_name,
+        resource_namespace=None,
+    )
 
     # Reconcile away the Services by updating the template files to remove the services and
     # namespace
     krh.template_files = [data_dir / "pods1.j2"]
     krh.reconcile()
 
-    # Give a few seconds for everything to be deleted
-    time.sleep(10)
-
     # Assert the Pods exist but the Services do not
-    lightkube_client.get(Pod, "mypod", namespace=namespace)
-    lightkube_client.get(Pod, "mypod2", namespace=namespace)
-    with pytest.raises(ApiError) as err:
-        lightkube_client.get(Service, "myservice", namespace=namespace)
-    assert err.value.status.code == 404
-
-    with pytest.raises(ApiError) as err:
-        lightkube_client.get(Service, "myservice2", namespace=namespace)
-    assert err.value.status.code == 404
-    with pytest.raises(ApiError) as err:
-        lightkube_client.get(Namespace, additional_namespace_name)
-    assert err.value.status.code == 404
+    assert_resource_exists(
+        lightkube_client=lightkube_client,
+        resource_type=Pod,
+        resource_name="mypod",
+        resource_namespace=namespace,
+    )
+    assert_resource_exists(
+        lightkube_client=lightkube_client,
+        resource_type=Pod,
+        resource_name="mypod2",
+        resource_namespace=namespace,
+    )
+    assert_resource_does_not_exist(
+        lightkube_client=lightkube_client,
+        resource_type=Service,
+        resource_name="myservice",
+        resource_namespace=namespace,
+    )
+    assert_resource_does_not_exist(
+        lightkube_client=lightkube_client,
+        resource_type=Service,
+        resource_name="myservice2",
+        resource_namespace=namespace,
+    )
+    assert_resource_does_not_exist(
+        lightkube_client=lightkube_client,
+        resource_type=Namespace,
+        resource_name=additional_namespace_name,
+        resource_namespace=None,
+    )
 
     # Delete everything we created
     krh.delete()
 
-    # Give a few seconds for everything to be deleted
-    time.sleep(10)
-
     # Assert deleted
-    with pytest.raises(ApiError) as err:
-        lightkube_client.get(Pod, "mypod", namespace=namespace)
-    assert err.value.status.code == 404
-    with pytest.raises(ApiError) as err:
-        lightkube_client.get(Pod, "mypod2", namespace=namespace)
-    assert err.value.status.code == 404
+    assert_resource_does_not_exist(
+        lightkube_client=lightkube_client,
+        resource_type=Pod,
+        resource_name="mypod",
+        resource_namespace=namespace,
+    )
+    assert_resource_does_not_exist(
+        lightkube_client=lightkube_client,
+        resource_type=Pod,
+        resource_name="mypod2",
+        resource_namespace=namespace,
+    )
+
+
+@tenacity.retry(
+    stop=tenacity.stop_after_delay(60),
+    wait=tenacity.wait_exponential(multiplier=1, min=1, max=10),
+    reraise=True,
+)
+def assert_resource_exists(lightkube_client, resource_type, resource_name, resource_namespace):
+    """Raises if the given resource exists."""
+    logger.info(
+        f"Checking if {resource_type} {resource_name} exists in namespace {resource_namespace}"
+    )
+    try:
+        lightkube_client.get(resource_type, resource_name, namespace=resource_namespace)
+    except Exception:
+        raise AssertionError(
+            f"Resource {resource_type} {resource_name} in namespace {resource_namespace} does not exist when it should"
+        )
+
+
+@tenacity.retry(
+    stop=tenacity.stop_after_delay(60),
+    wait=tenacity.wait_exponential(multiplier=1, min=1, max=10),
+    reraise=True,
+)
+def assert_resource_does_not_exist(
+    lightkube_client, resource_type, resource_name, resource_namespace
+):
+    """Raises if the given resource does not exist."""
+    logger.info(
+        f"Checking if {resource_type} {resource_name} does not exist in namespace {resource_namespace}"
+    )
+    try:
+        lightkube_client.get(resource_type, resource_name, namespace=resource_namespace)
+        raise AssertionError(
+            f"Resource {resource_type} {resource_name} in namespace {resource_namespace} exists when should not"
+        )
+    except ApiError as err:
+        # Resource does not exist, which is what we want
+        if err.status.code == 404:
+            return
+        raise err
