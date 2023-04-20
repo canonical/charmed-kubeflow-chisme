@@ -34,6 +34,9 @@ spec:
 We can use the `KubernetesResourceHandler` to render and apply these manifests by:
 
 ```python
+from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler, create_charm_default_labels
+from lightkube.core.resource import Service
+
 render_context = {
     "name": "my-nginx",
     "port": 8080,
@@ -58,6 +61,54 @@ krh.compute_unit_status()
 
 These helpers encapsulate the logic around looping through each template, rendering them with the context to get `Lightkube.Resource` objects, `apply`ing them to the Kubernetes Cluster in a safe order, etc.  
 
+If we plan on managing these resources over time, we can provide the optional `labels` and `child_resource_types` arguments:
+* `labels`: a set of labels used to identify the resources deployed by this resource handler, even during separate charm executions.  Use the included `create_charm_default_labels` for a standard set of labels.
+* `child_resource_types`: a list of `Lightkube.Resource` types that are expected to be deployed by this resource handler.
+
+By adding `labels` and `child_resource_types`, we can manage deployed resources including through reconciliation and deletion.  For example, if we have a `Deployment` and a `Service` that are both deployed by this resource handler, we can provide `child_resource_types=[Deployment, Service]` to the constructor.  This will allow us to later get all resources deployed by this resource handler by querying the cluster for all resources with the labels defined in `labels` and of type `Deployment` or `Service`.  
+
+For example:
+
+```python
+krh = KubernetesResourceHandler(
+    field_manager="field_manager",
+    template_files=["service.yaml.j2"],
+    context=render_context,
+    labels=create_charm_default_labels(
+        application_name="my-application", model_name="my-model", scope="my-scope"
+    ),
+    child_resource_types=[Service]
+)
+
+# Get the resources we currently have deployed
+# (this uses the labels and child_resource_types defined in the constructor.  See the docstring for more details)
+current_resources = krh.get_deployed_resources()
+# Returns []
+
+# Create our Service from before
+krh.apply()
+
+# Returns a list with our `my-nginx` Service
+current_resources = krh.get_deployed_resources()
+
+# Changes the name of the object, meaning we need to delete the old and create a new one
+new_render_context = {
+    "name": "my-nginx2",
+    "port": 8081,
+}
+krh.context = new_render_context
+
+# Reconcile removes the old object because it is not in the current manifests, and creates a new one.
+krh.reconcile()
+
+# Returns a list with our new `my-nginx2` Service
+current_resources = krh.get_deployed_resources()
+
+# And later, we can delete the resources
+krh.delete()
+# Where this would delete anything that was created by this resource handler, past or present. 
+```
+
 ### Recommended usage patterns
 
 The `KubernetesResourceHandler` can be used to manage one or more YAML templates, but it does not need to be the single monolith that manages all kubernetes resources in a charm.  For example, if you have a `service.yaml.j2`, `deployment.yaml.j2`, and `rbac.yaml.j2` which define resources that are always rendered and deployed together, it likely makes sense to use a single `KubernetesResourceHandler` for all three for convenience.  However, if you commonly need to update the `deployment.yaml.j2` without modifying the others, it might make more sense instantiate separate `KubernetesResourceHandler` objects, for the different files or more fine-grained groups of files.  
@@ -76,3 +127,4 @@ status, errors = check_resources(lightkube_resources)
 # * status==True and len(errors)==0 if all resources are ok
 # * status==False and len(errors)>0 if any resources are not ok
 ```
+

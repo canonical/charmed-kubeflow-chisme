@@ -3,19 +3,27 @@
 import functools
 import logging
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional, Tuple
 
 from jinja2 import Template
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
+from lightkube.core.resource import NamespacedResource, Resource, api_info
 from ops.model import ActiveStatus, BlockedStatus
 
 from ..exceptions import ErrorWithStatus
-from ..lightkube.batch import apply_many
+from ..lightkube.batch import apply_many, delete_many
 from ..status_handling import get_first_worst_error
-from ..types import CharmStatusType, LightkubeResourcesList
+from ..types import (
+    LightkubeResourcesList,
+    LightkubeResourceType,
+    LightkubeResourceTypesList,
+)
 from ..types._charm_status import AnyCharmStatus
 from ._check_resources import check_resources
+
+ERROR_MESSAGE_NO_LABELS = "{caller} requires labels to be set"
+ERROR_MESSAGE_NO_CHILD_RESOURCE_TYPES = "{caller} requires labels to be set"
 
 
 def auto_clear_manifests_cache(func):
@@ -43,6 +51,8 @@ class KubernetesResourceHandler:
         template_files: Optional[Iterable[str]] = None,
         context: Optional[dict] = None,
         logger: Optional[logging.Logger] = None,
+        labels: Optional[dict] = None,
+        child_resource_types: LightkubeResourceTypesList = None,
     ):
         """Returns a KubernetesResourceHandler instance.
 
@@ -59,12 +69,31 @@ class KubernetesResourceHandler:
             logger (logging.Logger): (Optional) A logger to use for logging (so that log messages
                                      emitted here will appear under the caller's log namespace).
                                      If not provided, a default logger will be created.
+            labels (dict): (Optional) A dict of labels to use as a label selector for all resources
+                           managed by this KRH.  These will be added to the rendered manifest at
+                           .apply() time and will be used to find existing resources in
+                           .get_deployed_resources().
+                           Must be set to use .delete(), .reconcile(), or
+                           .get_deployed_resources().
+                           Recommended input for this is:
+                             labels = {
+                              'app.kubernetes.io/name': f"{self.model.app.name}-{self.model.name}",
+                              'kubernetes-resource-handler-scope': 'some-user-chosen-scope'
+                             }
+                           See `get_default_labels` for a helper to generate this label dict.
+            child_resource_types (list): (Optional) List of Lightkube Resource objects that define
+                                         the types of child resources managed by this KRH.
+                                         Must be set to use to use .delete(), .reconcile(), or
+                                         .get_deployed_resources().
         """
         self._template_files = None
         self.template_files = template_files
         self._context = None
         self.context = context
         self._field_manager = field_manager
+        self.child_resource_types = child_resource_types
+        self._labels = None
+        self.labels = labels
 
         self._manifests = None
 
@@ -75,7 +104,7 @@ class KubernetesResourceHandler:
 
         self._lightkube_client = None
 
-    def compute_unit_status(self) -> CharmStatusType:
+    def compute_unit_status(self) -> AnyCharmStatus:
         """Returns a suggested unit status given the state of the managed Kubernetes resources.
 
         The returned status is computed by mapping the state of each resource to a suggested unit
@@ -113,9 +142,74 @@ class KubernetesResourceHandler:
         )
         return suggested_unit_status
 
-    def reconcile(self):
-        """To be implemented. This will reconcile resources, including deleting them."""
-        raise NotImplementedError()
+    def delete(self):
+        """Deletes all resources managed by this KubernetesResourceHandler.
+
+        Requires that self.labels and self.child_resource_types be set.
+        """
+        _validate_labels_and_child_resource_types(
+            self.labels, self.child_resource_types, caller_name="delete"
+        )
+
+        resources_to_delete = self.get_deployed_resources()
+        delete_many(self.lightkube_client, resources_to_delete)
+
+    def get_deployed_resources(self) -> LightkubeResourcesList:
+        """Returns a list of all resources deployed by this KubernetesResourceHandler.
+
+        Requires that self.labels and self.child_resource_types be set.
+
+        This method will:
+        * for each resource type listed in self.child_resource_types
+          * get all resources of that type in the Kubernetes cluster that match the label selector
+            defined in self.labels
+
+        Returns: A list of Lightkube Resource objects
+        """
+        _validate_labels_and_child_resource_types(
+            self.labels, self.child_resource_types, caller_name="get_deployed_resources"
+        )
+        resources = []
+        for resource_type in self.child_resource_types:
+            if issubclass(resource_type, NamespacedResource):
+                # Get resources from all namespaces
+                namespace = "*"
+            else:
+                # Global resources have no namespace
+                namespace = None
+            resources.extend(
+                self.lightkube_client.list(resource_type, namespace=namespace, labels=self._labels)
+            )
+
+        return resources
+
+    def reconcile(self, force=False):
+        """Reconciles the managed resources, removing, updating, or creating objects as required.
+
+        This method will:
+        * compute a list of Lightkube Resources that are the "desired resources" (the state we
+          want, given the current context
+        * for each resource type in self.child_resource_types, get all resources currently deployed
+          that match the label selector in self.labels
+        * compare the current and desired resources, deleting any resources that exist but are not
+          in the desired resource list
+        * .apply() to update existing objects to the desired state and create new ones
+
+        Args:
+            force: *(optional)* Passed to self.apply().  This will force apply over any resources
+                   marked as managed by another field manager.
+        """
+        existing_resources = self.get_deployed_resources()
+        desired_resources = self.render_manifests()
+
+        # Delete any resources that exist but are no longer in scope
+        resources_to_delete = _in_left_not_right(
+            existing_resources, desired_resources, hasher=_hash_lightkube_resource
+        )
+        delete_many(self._lightkube_client, resources_to_delete)
+
+        # Update remaining resources and create any new ones
+        self.apply(force=force)
 
     def render_manifests(
         self,
@@ -173,6 +267,10 @@ class KubernetesResourceHandler:
         self._manifests = codecs.load_all_yaml(
             "\n---\n".join(manifest_parts), create_resources_for_crds=create_resources_for_crds
         )
+
+        if self._labels is not None:
+            _add_labels_to_resources(self._manifests, self._labels)
+
         return self._manifests
 
     def _render_manifest_parts(self):
@@ -200,6 +298,11 @@ class KubernetesResourceHandler:
         Kubernetes server-side-apply.  The resources acted upon will be those returned by
         self.render_manifest().
 
+        If self.labels is set, the labels will be added to all resources before applying them.
+
+        If self.child_resource_types is set, the a ValueError will be raised if trying to create
+        a resource not in the list.
+
         This function will only add or modify existing objects, it will not delete any resources.
         This includes cases where the manifests have changed over time.  For example:
             * If `render_manifests()` yields the list of resources [PodA], calling `.apply()`
@@ -207,6 +310,7 @@ class KubernetesResourceHandler:
             * If later the charm state has changed and `render_manifests()` yields [PodB], calling
              `.apply()` results in PodB created and PodA being left unchanged (essentially
              orphaned)
+        To simultaneously create, update, and delete resources, see self.reconcile().
 
         Args:
             force: *(optional)* Force is going to "force" Apply requests. It means user will
@@ -214,6 +318,19 @@ class KubernetesResourceHandler:
         """
         resources = self.render_manifests(force_recompute=False)
         self.log.debug(f"Applying {len(resources)} resources")
+
+        if self.labels is not None:
+            resources = _add_labels_to_resources(resources, self.labels)
+
+        if self.child_resource_types is not None:
+            try:
+                _validate_resources(resources, allowed_resource_types=self.child_resource_types)
+            except ValueError as e:
+                raise ValueError(
+                    "Failed to validate resources before applying them.  This likely"
+                    " means we tried to create a resource of type not listed in"
+                    " `KRH.child_resource_types`."
+                ) from e
 
         try:
             apply_many(client=self.lightkube_client, objs=resources, force=force)
@@ -243,6 +360,16 @@ class KubernetesResourceHandler:
     @auto_clear_manifests_cache
     def context(self, value: dict):
         self._context = value
+
+    @property
+    def labels(self):
+        """Returns the dict of supplimentary labels used for identifying these manifests."""
+        return self._labels
+
+    @labels.setter
+    @auto_clear_manifests_cache
+    def labels(self, value: dict):
+        self._labels = value
 
     @property
     def lightkube_client(self) -> Client:
@@ -289,3 +416,111 @@ class KubernetesResourceHandler:
 
         # Return status based on the worst thing we encountered
         return get_first_worst_error(errors).status
+
+
+def _add_label_field_to_resource(resource: LightkubeResourceType) -> LightkubeResourceType:
+    """Adds a metadata.labels field to a Lightkube resource.
+
+    Works around a bug where sometimes when the labels field is None it is not overwritable.
+    Converts the object to a dict, adds the labels field, and then converts it back to the
+    """
+    as_dict = resource.to_dict()
+    as_dict["metadata"]["labels"] = {}
+    resource = resource.from_dict(as_dict)
+    return resource
+
+
+def _add_labels_to_resources(resources: LightkubeResourcesList, labels: dict):
+    """Adds the given labels to every Lightkube resource in a list."""
+    for i in range(len(resources)):
+        if resources[i].metadata.labels is None:
+            resources[i].metadata.labels = {}
+
+        # Sometimes there is a bug where this field is not overwritable
+        if resources[i].metadata.labels is None:
+            resources[i] = _add_label_field_to_resource(resources[i])
+        resources[i].metadata.labels.update(labels)
+    return resources
+
+
+def create_charm_default_labels(application_name: str, model_name: str, scope: str) -> dict:
+    """Returns a default label style for the KubernetesResourceHandler label selector."""
+    return {
+        "app.kubernetes.io/instance": f"{application_name}-{model_name}",
+        "kubernetes-resource-handler-scope": scope,
+    }
+
+
+def _get_resource_classes_in_manifests(resource_list: LightkubeResourcesList):
+    """Returns a list of the resource classes in a list of resources."""
+    resource_classes = []
+    for resource in resource_list:
+        if type(resource) not in resource_classes:
+            resource_classes.append(type(resource))
+    return resource_classes
+
+
+def _hash_lightkube_resource(resource: Resource) -> Tuple[str, str, str, str, str]:
+    """Hashes a Lightkube Resource by returning a tuple of (group, version, kind, name, namespace).
+
+    For global resources or resources without a namespace specified, namespace will be None.
+    """
+    resource_info = api_info(resource).resource
+
+    return (
+        resource_info.group,
+        resource_info.version,
+        resource_info.kind,
+        resource.metadata.name,
+        resource.metadata.namespace,
+    )
+
+
+def _in_left_not_right(left: list, right: list, hasher: Optional[Callable] = None) -> list:
+    """Returns the items in left that are not right (the Set difference).
+
+    Args:
+        left: a list
+        right: a list
+        hasher: (Optional) a function that hashes the items in left and right to something
+                immutable that can be compared.  If omitted, will use hash()
+
+    Returns:
+        A list of items in left that are not in right, based on the hasher function.
+    """
+    if hasher is None:
+        hasher = hash
+
+    left_as_dict = {hasher(resource): resource for resource in left}
+    right_as_dict = {hasher(resource): resource for resource in right}
+
+    keys_in_left_not_right = set(left_as_dict.keys()) - set(right_as_dict.keys())
+    items_in_left_not_right = [left_as_dict[k] for k in keys_in_left_not_right]
+
+    return items_in_left_not_right
+
+
+def _validate_labels_and_child_resource_types(labels, child_resource_types, caller_name):
+    """Validates labels and child_resource_types, raising a ValueError if either is empty."""
+    if not labels:
+        raise ValueError(ERROR_MESSAGE_NO_LABELS.format(caller=caller_name))
+    if not child_resource_types:
+        raise ValueError(ERROR_MESSAGE_NO_CHILD_RESOURCE_TYPES.format(caller=caller_name))
+
+
+def _validate_resources(resources, allowed_resource_types: LightkubeResourceTypesList):
+    """Validates that the resources are of a type in the allowed_resource_types list.
+
+    Side effect: raises a ValueError if any resource is not in the allowed_resource_types list.
+
+    Args:
+        resources: a list of Lightkube resources to validate
+        allowed_resource_types: a list of Lightkube resource classes to validate against
+    """
+    resource_types = _get_resource_classes_in_manifests(resources)
+    for resource_type in resource_types:
+        if resource_type not in allowed_resource_types:
+            raise ValueError(
+                f"Resource type {resource_type} not in allowed resource types"
+                f" '{allowed_resource_types}'"
+            )

@@ -4,10 +4,15 @@
 """Reusable typing definitions, useful for adding type hints."""
 
 from ._charm_status import CharmStatusType
-from ._lightkube import LightkubeResourcesList, LightkubeResourceType
+from ._lightkube import (
+    LightkubeResourcesList,
+    LightkubeResourceType,
+    LightkubeResourceTypesList,
+)
 
 __all__ = [
     CharmStatusType,
     LightkubeResourcesList,
     LightkubeResourceType,
+    LightkubeResourceTypesList,
 ]
