@@ -1,7 +1,8 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 class TestRock:
