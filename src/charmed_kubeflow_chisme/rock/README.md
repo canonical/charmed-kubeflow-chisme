@@ -1,4 +1,4 @@
-# TestRock
+# Test ROCK
 
-TestRock class provides utilities for testing ROCK images.
+Test ROCK utilities for testing ROCK images.
 
