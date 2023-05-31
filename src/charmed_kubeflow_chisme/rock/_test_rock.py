@@ -12,8 +12,8 @@ class TestRock:
         """Initializes and return TestRock instance."""
         # no initialization is currently needed
 
-    def get_rock_image_name_from_rockcraft(self, file):
-        """Read ROCK information and return ROCK image name."""
+    def get_rock_image_name_from_rockcraft(self, file: str):
+        """Reads a rockcraft.yaml file and returns the ROCK image name."""
         rockcraft = yaml.safe_load(Path(file).read_text())
         name = rockcraft["name"]
         version = rockcraft["version"]
