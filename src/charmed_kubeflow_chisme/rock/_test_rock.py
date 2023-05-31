@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-def get_rock_image_name_from_rockcraft(self, file: str):
+def get_rock_image_name_from_rockcraft(file: str):
     """Reads a rockcraft.yaml file and returns the ROCK image name."""
     rockcraft = yaml.safe_load(Path(file).read_text())
     name = rockcraft["name"]
