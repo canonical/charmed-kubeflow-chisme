@@ -5,7 +5,7 @@ from pathlib import Path
 
 class TestRock:
     def __init__(self):
-        """Initializes and returnd TestRock instance."""
+        """Initializes and return TestRock instance."""
         # no initialization is currently needed
 
     def get_rock_image_name_from_rockcraft(self, file):
