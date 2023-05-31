@@ -6,4 +6,3 @@
 from ._test_rock import TestRock
 
 __all__ = [TestRock]
-
