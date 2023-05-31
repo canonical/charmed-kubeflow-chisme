@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 def get_rock_image_version_from_rockcraft(file: str):
+    """Reads a rockcraft.yaml file and returns the ROCK image version."""
     version = rockcraft["version"]
     return version
 
