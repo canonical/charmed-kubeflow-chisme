@@ -15,14 +15,13 @@ def test_rock_cli_usage():
     It is possible to execute CheckRock as command line script. Such script can be used in tox.ini
     or any other environment.
     """
-    pipe = subprocess.Popen(
-        f"python -c 'from charmed_kubeflow_chisme.rock import CheckRock; CheckRock(\"{data_dir}/test_rockcraft.yaml\").get_image_name()'",
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+    subprocess.check_output(
+        [
+            "python",
+            "-c",
+            f"'from charmed_kubeflow_chisme.rock import CheckRock; print(CheckRock(\"{data_dir}/test_rockcraft.yaml\").get_version())'",
+        ],
     )
-    pipe.communicate()
-    assert pipe.returncode == 0
 
 
 def test_rock_instance_usage():
