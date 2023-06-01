@@ -6,17 +6,20 @@ from pathlib import Path
 import yaml
 
 
-def get_rock_image_version_from_rockcraft(file: str):
-    """Reads a rockcraft.yaml file and returns the ROCK image version."""
-    rockcraft = yaml.safe_load(Path(file).read_text())
-    version = rockcraft["version"]
+class TestRock(rockcraft_file: str):
+    """Class for testing ROCKs."""
+    self._rockcraft = yaml.safe_load(Path(rockcraft_file).read_text())
+
+
+def get_rock_image_version_from_rockcraft(self):
+    """Returns the ROCK image version."""
+    version = self._rockcraft["version"]
     return version
 
 
-def get_rock_image_name_from_rockcraft(file: str):
-    """Reads a rockcraft.yaml file and returns the ROCK image name."""
-    rockcraft = yaml.safe_load(Path(file).read_text())
-    name = rockcraft["name"]
-    version = get_rock_image_version_from_rockcraft(file)
-    arch = list(rockcraft["platforms"].keys())[0]
+def get_rock_image_name_from_rockcraft(self):
+    """Returns the ROCK image name."""
+    name = self._rockcraft["name"]
+    version = self.get_rock_image_version_from_rockcraft(file)
+    arch = list(self._rockcraft["platforms"].keys())[0]
     return f"{name}_{version}_{arch}"
