@@ -1,4 +1,4 @@
-# Test ROCK
+# Check ROCK
 
-Test ROCK utilities for testing ROCK images.
+Check ROCK class for testing ROCK images.
 

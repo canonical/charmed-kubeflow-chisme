@@ -3,6 +3,6 @@
 
 """Class for Handling Rocks in Charms and Tests."""
 
-from ._test_rock import TestRock
+from ._check_rock import CheckRock
 
-__all__ = [TestRock]
+__all__ = [CheckRock]
