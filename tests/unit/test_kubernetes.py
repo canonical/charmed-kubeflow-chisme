@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import copy
 import logging
@@ -495,27 +495,27 @@ def test_KubernetesResourceHandler_apply_with_labels(  # noqa N802
 
 
 @pytest.mark.parametrize(
-    "resources, child_resource_types, expected_raised_context",
+    "resources, resource_types, expected_raised_context",
     (
-        ([statefulset_with_replicas], [Service, StatefulSet], nullcontext()),
-        ([statefulset_with_replicas], [Service], pytest.raises(ValueError)),
+        ([statefulset_with_replicas], {Service, StatefulSet}, nullcontext()),
+        ([statefulset_with_replicas], {Service}, pytest.raises(ValueError)),
     ),
 )
-def test_KubernetesResourceHandler_apply_with_child_resource_types(  # noqa N802
+def test_KubernetesResourceHandler_apply_with_resource_types(  # noqa N802
     resources,
-    child_resource_types,
+    resource_types,
     expected_raised_context,
     mocker,
     simple_krh_instance,
     mocked_khr_lightkube_client_class,  # noqa F811
 ):
-    """Test KRH.apply with child_resource_types."""
+    """Test KRH.apply with resource_types."""
     # Arrange
     krh = kubernetes.KubernetesResourceHandler(
         field_manager="field-manager",
         template_files=["some-file"],
         context={"some": "context"},
-        child_resource_types=child_resource_types,
+        resource_types=resource_types,
     )
 
     mocked_render_manifests = mock.MagicMock()
@@ -566,7 +566,7 @@ def test_KubernetesResourceHandler_delete():  # noqa: N802
         template_files=[],
         context={},
         labels={"some": "labels"},
-        child_resource_types=["Some", "Types"],
+        resource_types={"Some", "Types"},
     )
     krh._lightkube_client = mock.MagicMock()
 
@@ -584,16 +584,16 @@ def test_KubernetesResourceHandler_delete():  # noqa: N802
 
 
 @pytest.mark.parametrize(
-    "labels, child_resource_types, expected_context",
+    "labels, resource_types, expected_context",
     [
-        (None, ["some", "resources"], pytest.raises(ValueError)),
-        ({}, ["some", "resources"], pytest.raises(ValueError)),
+        (None, {"some", "resources"}, pytest.raises(ValueError)),
+        ({}, {"some", "resources"}, pytest.raises(ValueError)),
         ({"some": "labels"}, None, pytest.raises(ValueError)),
-        ({"some": "labels"}, [], pytest.raises(ValueError)),
+        ({"some": "labels"}, {}, pytest.raises(ValueError)),
     ],
 )
 def test_KubernetesResourceHandler_delete_missing_required_arguments(  # noqa: N802
-    labels, child_resource_types, expected_context
+    labels, resource_types, expected_context
 ):
     """Tests that KRH delete raises when missing required inputs."""
     # Arrange
@@ -602,7 +602,7 @@ def test_KubernetesResourceHandler_delete_missing_required_arguments(  # noqa: N
         template_files=[],
         context={},
         labels=labels,
-        child_resource_types=child_resource_types,
+        resource_types=resource_types,
     )
 
     krh._lightkube_client = mock.MagicMock()
@@ -616,7 +616,7 @@ def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
     """Tests that KRH.get_deployed_resources returns as expected."""
     # Arrange
     labels = {"some": "labels"}
-    child_resource_types = [Pod, Service]
+    resource_types = {Pod, Service}
 
     expected_resources = [
         Pod(metadata=ObjectMeta(name="pod1", namespace="namespace1")),
@@ -630,7 +630,7 @@ def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
         template_files=[],
         context={},
         labels=labels,
-        child_resource_types=child_resource_types,
+        resource_types=resource_types,
     )
 
     krh._lightkube_client = mock.MagicMock()
@@ -640,23 +640,23 @@ def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
     resources = krh.get_deployed_resources()
 
     # Assert list called once for each resource type
-    krh._lightkube_client.list.call_count == len(child_resource_types)
+    krh._lightkube_client.list.call_count == len(resource_types)
 
     # Assert we got the results from list
     assert resources == expected_resources
 
 
 @pytest.mark.parametrize(
-    "labels, child_resource_types, expected_context",
+    "labels, resource_types, expected_context",
     [
-        (None, ["some", "resources"], pytest.raises(ValueError)),
-        ({}, ["some", "resources"], pytest.raises(ValueError)),
+        (None, {"some", "resources"}, pytest.raises(ValueError)),
+        ({}, {"some", "resources"}, pytest.raises(ValueError)),
         ({"some": "labels"}, None, pytest.raises(ValueError)),
-        ({"some": "labels"}, [], pytest.raises(ValueError)),
+        ({"some": "labels"}, {}, pytest.raises(ValueError)),
     ],
 )
 def test_KubernetesResourceHandler_get_deployed_resources_missing_required_arguments(  # noqa: N802
-    labels, child_resource_types, expected_context
+    labels, resource_types, expected_context
 ):
     """Tests that KRH.get_deployed_resources raises when missing required inputs."""
     # Arrange
@@ -665,7 +665,7 @@ def test_KubernetesResourceHandler_get_deployed_resources_missing_required_argum
         template_files=[],
         context={},
         labels=labels,
-        child_resource_types=child_resource_types,
+        resource_types=resource_types,
     )
 
     krh._lightkube_client = mock.MagicMock()
@@ -683,7 +683,7 @@ def test_KubernetesResourceHandler_reconcile():  # noqa: N802
         template_files=[],
         context={},
         labels={"name": "value", "name2": "value2"},
-        child_resource_types=[Pod, Service],
+        resource_types={Pod, Service},
     )
     krh._lightkube_client = mock.MagicMock()
     krh.apply = mock.MagicMock()
@@ -707,16 +707,16 @@ def test_KubernetesResourceHandler_reconcile():  # noqa: N802
 
 
 @pytest.mark.parametrize(
-    "labels, child_resource_types, expected_context",
+    "labels, resource_types, expected_context",
     [
-        (None, ["some", "resources"], pytest.raises(ValueError)),
-        ({}, ["some", "resources"], pytest.raises(ValueError)),
+        (None, {"some", "resources"}, pytest.raises(ValueError)),
+        ({}, {"some", "resources"}, pytest.raises(ValueError)),
         ({"some": "labels"}, None, pytest.raises(ValueError)),
-        ({"some": "labels"}, [], pytest.raises(ValueError)),
+        ({"some": "labels"}, {}, pytest.raises(ValueError)),
     ],
 )
 def test_KubernetesResourceHandler_reconcile_missing_required_arguments(  # noqa: N802
-    labels, child_resource_types, expected_context
+    labels, resource_types, expected_context
 ):
     """Test that KRH.reconcile raises when missing required inputs."""
     # Arrange
@@ -725,7 +725,7 @@ def test_KubernetesResourceHandler_reconcile_missing_required_arguments(  # noqa
         template_files=[],
         context={},
         labels=labels,
-        child_resource_types=child_resource_types,
+        resource_types=resource_types,
     )
     krh.apply = mock.MagicMock()
     krh._lightkube_client = mock.MagicMock()
@@ -854,7 +854,7 @@ def test_add_labels_to_manifest(resources, labels, expected):
                 StatefulSet(metadata=ObjectMeta(name="name", namespace="namespace")),
                 test_global_resource(metadata=ObjectMeta(name="name")),
             ],
-            [Service, StatefulSet, test_global_resource],
+            {Service, StatefulSet, test_global_resource},
         ),
     ],
 )
