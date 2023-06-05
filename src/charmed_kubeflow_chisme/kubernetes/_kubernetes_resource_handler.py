@@ -141,15 +141,18 @@ class KubernetesResourceHandler:
         )
         return suggested_unit_status
 
-    def delete(self):
+    def delete(self, ignore_missing=True):
         """Deletes all resources managed by this KubernetesResourceHandler.
 
         Requires that self.labels and self.resource_types be set.
+
+        Args:
+            ignore_missing: *(optional)* Avoid raising 404 errors on deletion (defaults to True)
         """
         _validate_labels_and_resource_types(self.labels, self.resource_types, caller_name="delete")
 
         resources_to_delete = self.get_deployed_resources()
-        delete_many(self.lightkube_client, resources_to_delete)
+        delete_many(self.lightkube_client, resources_to_delete, ignore_missing)
 
     def get_deployed_resources(self) -> LightkubeResourcesList:
         """Returns a list of all resources deployed by this KubernetesResourceHandler.
@@ -180,7 +183,7 @@ class KubernetesResourceHandler:
 
         return resources
 
-    def reconcile(self, force=False):
+    def reconcile(self, force=False, ignore_missing=True):
         """Reconciles the managed resources, removing, updating, or creating objects as required.
 
         This method will:
@@ -195,6 +198,7 @@ class KubernetesResourceHandler:
         Args:
             force: *(optional)* Passed to self.apply().  This will force apply over any resources
                    marked as managed by another field manager.
+            ignore_missing: *(optional)* Avoid raising 404 errors on deletion (defaults to True)
         """
         existing_resources = self.get_deployed_resources()
         desired_resources = self.render_manifests()
@@ -203,7 +207,7 @@ class KubernetesResourceHandler:
         resources_to_delete = _in_left_not_right(
             existing_resources, desired_resources, hasher=_hash_lightkube_resource
         )
-        delete_many(self._lightkube_client, resources_to_delete)
+        delete_many(self._lightkube_client, resources_to_delete, ignore_missing)
 
         # Update remaining resources and create any new ones
         self.apply(force=force)

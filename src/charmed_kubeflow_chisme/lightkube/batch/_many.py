@@ -1,10 +1,11 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 from typing import Iterable, TypeVar, Union
 
 import lightkube
 from lightkube.core import resource
+from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import GlobalResource, NamespacedResource
 
 # Replace with lightkube.sort_objects once gtsystem/lightkube#33 is merged
@@ -70,6 +71,7 @@ def apply_many(
 def delete_many(
     client: lightkube.Client,
     objs: Iterable[Union[GlobalResourceTypeVar, NamespacedResourceTypeVar]],
+    ignore_missing: bool = True,
 ) -> None:
     """Delete an iterable of objects using client.delete().
 
@@ -78,10 +80,12 @@ def delete_many(
 
     Args:
         client: Lightkube Client to use for deletions
-        objs:  iterable of objects to delete. This need to be instances of a resource kind and have
-               resource.metadata.namespaced defined if they are namespaced resources
+        objs: Iterable of objects to delete. This need to be instances of a resource kind and have
+              resource.metadata.namespaced defined if they are namespaced resources
+        ignore_missing: *(optional)* Avoid raising 404 errors on deletion (defaults to True)
     """
     objs = sort_objects(objs, reverse=True)
+    exceptions = []
 
     for obj in objs:
         if isinstance(obj, NamespacedResource):
@@ -93,5 +97,13 @@ def delete_many(
                 "delete_many only supports objects of types NamespacedResource or GlobalResource,"
                 f" got {type(obj)}"
             )
+        try:
+            client.delete(res=obj.__class__, name=obj.metadata.name, namespace=namespace)
+        except ApiError as error:
+            if error.status.code == 404 and ignore_missing:
+                continue
+            else:
+                exceptions.append(error)
 
-        client.delete(res=obj.__class__, name=obj.metadata.name, namespace=namespace)
+    if exceptions:
+        raise RuntimeError("Deleting K8s resources completed with errors", exceptions)
