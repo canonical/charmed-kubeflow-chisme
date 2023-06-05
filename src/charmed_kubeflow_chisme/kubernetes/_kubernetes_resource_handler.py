@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import functools
 import logging
@@ -291,7 +291,7 @@ class KubernetesResourceHandler:
             self.log.debug(f"Rendered manifest:\n{manifest_parts[-1]}")
         return manifest_parts
 
-    def apply(self, force: bool = False):
+    def apply(self, force: bool = True):
         """Applies the managed Kubernetes resources, adding or modifying these objects.
 
         This can be invoked to create and/or update resources in the kubernetes cluster using
@@ -313,7 +313,7 @@ class KubernetesResourceHandler:
         To simultaneously create, update, and delete resources, see self.reconcile().
 
         Args:
-            force: *(optional)* Force is going to "force" Apply requests. It means user will
+            force: *(optional)* Force is going to "force" apply requests. It means user will
                    re-acquire conflicting fields owned by other people.
         """
         resources = self.render_manifests(force_recompute=False)
@@ -327,24 +327,29 @@ class KubernetesResourceHandler:
                 _validate_resources(resources, allowed_resource_types=self.child_resource_types)
             except ValueError as e:
                 raise ValueError(
-                    "Failed to validate resources before applying them.  This likely"
-                    " means we tried to create a resource of type not listed in"
-                    " `KRH.child_resource_types`."
+                    "Failed to validate resources before applying them. This likely means we tried"
+                    " to create a resource of type not included in `KRH.child_resource_types`."
                 ) from e
 
         try:
             apply_many(client=self.lightkube_client, objs=resources, force=force)
         except ApiError as e:
-            # Handle forbidden error as this likely means we do not have --trust
             if e.status.code == 403:
+                # Handle forbidden error as this likely means we do not have --trust
                 self.log.error(
-                    "Received Forbidden (403) error from lightkube when creating resources.  "
-                    "This may be due to the charm lacking permissions to create cluster-scoped "
-                    "roles and resources.  Charm must be deployed with `--trust`"
+                    f"Received Forbidden (403) error from lightkube when creating resources: {e}"
+                    " This may be due to the charm lacking permissions to create cluster-scoped"
+                    " roles and resources. Charm must be deployed with `--trust`"
                 )
-                self.log.error(f"Error received: {str(e)}")
                 raise ErrorWithStatus(
-                    "Cannot apply required resources.  Charm may be missing `--trust`",
+                    "Cannot apply required resources. Charm may be missing `--trust`",
+                    BlockedStatus,
+                )
+            elif self._check_and_report_k8s_conflict(e):
+                # Conflict detected when applying K8s resources
+                raise ErrorWithStatus(
+                    "Cannot apply required resources: conflicts detected. Use with `force=True` to"
+                    " force applying changes to the cluster",
                     BlockedStatus,
                 )
             else:
@@ -416,6 +421,13 @@ class KubernetesResourceHandler:
 
         # Return status based on the worst thing we encountered
         return get_first_worst_error(errors).status
+
+    def _check_and_report_k8s_conflict(self, error) -> bool:
+        """Return True if error status code is 409 (conflict), False otherwise."""
+        if error.status.code == 409:
+            self.logger.warning(f"Encountered a conflict: {error}")
+            return True
+        return False
 
 
 def _add_label_field_to_resource(resource: LightkubeResourceType) -> LightkubeResourceType:
