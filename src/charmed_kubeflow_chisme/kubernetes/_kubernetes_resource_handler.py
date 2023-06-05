@@ -152,7 +152,13 @@ class KubernetesResourceHandler:
         )
 
         resources_to_delete = self.get_deployed_resources()
-        delete_many(self.lightkube_client, resources_to_delete)
+        try:
+            delete_many(self.lightkube_client, resources_to_delete)
+        except ApiError as error:
+            # do not log/report when resources were not found
+            if error.status.code != 404:
+                self.logger.error(f"Failed to delete K8s resources, with error: {error}")
+                raise error
 
     def get_deployed_resources(self) -> LightkubeResourcesList:
         """Returns a list of all resources deployed by this KubernetesResourceHandler.
