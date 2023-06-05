@@ -61,11 +61,11 @@ krh.compute_unit_status()
 
 These helpers encapsulate the logic around looping through each template, rendering them with the context to get `Lightkube.Resource` objects, `apply`ing them to the Kubernetes Cluster in a safe order, etc.  
 
-If we plan on managing these resources over time, we can provide the optional `labels` and `child_resource_types` arguments:
+If we plan on managing these resources over time, we can provide the optional `labels` and `resource_types` arguments:
 * `labels`: a set of labels used to identify the resources deployed by this resource handler, even during separate charm executions.  Use the included `create_charm_default_labels` for a standard set of labels.
-* `child_resource_types`: a list of `Lightkube.Resource` types that are expected to be deployed by this resource handler.
+* `resource_types`: a set of `Lightkube.Resource` types that are expected to be deployed by this resource handler.
 
-By adding `labels` and `child_resource_types`, we can manage deployed resources including through reconciliation and deletion.  For example, if we have a `Deployment` and a `Service` that are both deployed by this resource handler, we can provide `child_resource_types=[Deployment, Service]` to the constructor.  This will allow us to later get all resources deployed by this resource handler by querying the cluster for all resources with the labels defined in `labels` and of type `Deployment` or `Service`.  
+By adding `labels` and `resource_types`, we can manage deployed resources including through reconciliation and deletion.  For example, if we have a `Deployment` and a `Service` that are both deployed by this resource handler, we can provide `resource_types={Deployment, Service}` to the constructor.  This will allow us to later get all resources deployed by this resource handler by querying the cluster for all resources with the labels defined in `labels` and of type `Deployment` or `Service`.
 
 For example:
 
@@ -77,11 +77,11 @@ krh = KubernetesResourceHandler(
     labels=create_charm_default_labels(
         application_name="my-application", model_name="my-model", scope="my-scope"
     ),
-    child_resource_types=[Service]
+    resource_types={Service},
 )
 
 # Get the resources we currently have deployed
-# (this uses the labels and child_resource_types defined in the constructor.  See the docstring for more details)
+# (this uses the labels and resource_types defined in the constructor.  See the docstring for more details)
 current_resources = krh.get_deployed_resources()
 # Returns []
 
