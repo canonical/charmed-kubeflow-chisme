@@ -17,7 +17,7 @@ from ..status_handling import get_first_worst_error
 from ..types import (
     LightkubeResourcesList,
     LightkubeResourceType,
-    LightkubeResourceTypesList,
+    LightkubeResourceTypesSet,
 )
 from ..types._charm_status import AnyCharmStatus
 from ._check_resources import check_resources
@@ -52,7 +52,7 @@ class KubernetesResourceHandler:
         context: Optional[dict] = None,
         logger: Optional[logging.Logger] = None,
         labels: Optional[dict] = None,
-        child_resource_types: LightkubeResourceTypesList = None,
+        child_resource_types: LightkubeResourceTypesSet = None,
     ):
         """Returns a KubernetesResourceHandler instance.
 
@@ -81,9 +81,9 @@ class KubernetesResourceHandler:
                               'kubernetes-resource-handler-scope': 'some-user-chosen-scope'
                              }
                            See `get_default_labels` for a helper to generate this label dict.
-            child_resource_types (list): (Optional) List of Lightkube Resource objects that define
+            child_resource_types (set): (Optional) Set of Lightkube Resource objects that define
                                          the types of child resources managed by this KRH.
-                                         Must be set to use to use .delete(), .reconcile(), or
+                                         Must be set to use .delete(), .reconcile(), or
                                          .get_deployed_resources().
         """
         self._template_files = None
@@ -91,7 +91,7 @@ class KubernetesResourceHandler:
         self._context = None
         self.context = context
         self._field_manager = field_manager
-        self.child_resource_types = child_resource_types
+        self.child_resource_types = child_resource_types or set()
         self._labels = None
         self.labels = labels
 
@@ -160,7 +160,7 @@ class KubernetesResourceHandler:
         Requires that self.labels and self.child_resource_types be set.
 
         This method will:
-        * for each resource type listed in self.child_resource_types
+        * for each resource type included in self.child_resource_types
           * get all resources of that type in the Kubernetes cluster that match the label selector
             defined in self.labels
 
@@ -301,7 +301,7 @@ class KubernetesResourceHandler:
         If self.labels is set, the labels will be added to all resources before applying them.
 
         If self.child_resource_types is set, the a ValueError will be raised if trying to create
-        a resource not in the list.
+        a resource not in the set.
 
         This function will only add or modify existing objects, it will not delete any resources.
         This includes cases where the manifests have changed over time.  For example:
@@ -322,7 +322,7 @@ class KubernetesResourceHandler:
         if self.labels is not None:
             resources = _add_labels_to_resources(resources, self.labels)
 
-        if self.child_resource_types is not None:
+        if self.child_resource_types:
             try:
                 _validate_resources(resources, allowed_resource_types=self.child_resource_types)
             except ValueError as e:
@@ -451,13 +451,11 @@ def create_charm_default_labels(application_name: str, model_name: str, scope: s
     }
 
 
-def _get_resource_classes_in_manifests(resource_list: LightkubeResourcesList):
-    """Returns a list of the resource classes in a list of resources."""
-    resource_classes = []
-    for resource in resource_list:
-        if type(resource) not in resource_classes:
-            resource_classes.append(type(resource))
-    return resource_classes
+def _get_resource_classes_in_manifests(
+    resource_list: LightkubeResourcesList,
+) -> LightkubeResourceTypesSet:
+    """Returns a set of the resource classes in a list of resources."""
+    return {type(rsc) for rsc in resource_list}
 
 
 def _hash_lightkube_resource(resource: Resource) -> Tuple[str, str, str, str, str]:
@@ -508,14 +506,14 @@ def _validate_labels_and_child_resource_types(labels, child_resource_types, call
         raise ValueError(ERROR_MESSAGE_NO_CHILD_RESOURCE_TYPES.format(caller=caller_name))
 
 
-def _validate_resources(resources, allowed_resource_types: LightkubeResourceTypesList):
-    """Validates that the resources are of a type in the allowed_resource_types list.
+def _validate_resources(resources, allowed_resource_types: LightkubeResourceTypesSet):
+    """Validates that the resources are of a type in the allowed_resource_types set.
 
-    Side effect: raises a ValueError if any resource is not in the allowed_resource_types list.
+    Side effect: raises a ValueError if any resource is not in the allowed_resource_types set.
 
     Args:
         resources: a list of Lightkube resources to validate
-        allowed_resource_types: a list of Lightkube resource classes to validate against
+        allowed_resource_types: a set of Lightkube resource classes to validate against
     """
     resource_types = _get_resource_classes_in_manifests(resources)
     for resource_type in resource_types:

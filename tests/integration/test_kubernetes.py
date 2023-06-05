@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
 import random
@@ -59,7 +59,7 @@ def test_KubernetesResourceHandler_apply(namespace):  # noqa: N802
         labels=create_charm_default_labels(
             application_name="my-application", model_name="my-model", scope="my-scope"
         ),
-        child_resource_types=[Pod, Service, Namespace],
+        child_resource_types={Pod, Service, Namespace},
     )
 
     # Name of the additional namespace we create during test

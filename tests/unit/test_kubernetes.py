@@ -1,4 +1,4 @@
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import copy
 import logging
@@ -497,8 +497,8 @@ def test_KubernetesResourceHandler_apply_with_labels(  # noqa N802
 @pytest.mark.parametrize(
     "resources, child_resource_types, expected_raised_context",
     (
-        ([statefulset_with_replicas], [Service, StatefulSet], nullcontext()),
-        ([statefulset_with_replicas], [Service], pytest.raises(ValueError)),
+        ([statefulset_with_replicas], {Service, StatefulSet}, nullcontext()),
+        ([statefulset_with_replicas], {Service}, pytest.raises(ValueError)),
     ),
 )
 def test_KubernetesResourceHandler_apply_with_child_resource_types(  # noqa N802
@@ -566,7 +566,7 @@ def test_KubernetesResourceHandler_delete():  # noqa: N802
         template_files=[],
         context={},
         labels={"some": "labels"},
-        child_resource_types=["Some", "Types"],
+        child_resource_types={"Some", "Types"},
     )
     krh._lightkube_client = mock.MagicMock()
 
@@ -586,10 +586,10 @@ def test_KubernetesResourceHandler_delete():  # noqa: N802
 @pytest.mark.parametrize(
     "labels, child_resource_types, expected_context",
     [
-        (None, ["some", "resources"], pytest.raises(ValueError)),
-        ({}, ["some", "resources"], pytest.raises(ValueError)),
+        (None, {"some", "resources"}, pytest.raises(ValueError)),
+        ({}, {"some", "resources"}, pytest.raises(ValueError)),
         ({"some": "labels"}, None, pytest.raises(ValueError)),
-        ({"some": "labels"}, [], pytest.raises(ValueError)),
+        ({"some": "labels"}, {}, pytest.raises(ValueError)),
     ],
 )
 def test_KubernetesResourceHandler_delete_missing_required_arguments(  # noqa: N802
@@ -616,7 +616,7 @@ def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
     """Tests that KRH.get_deployed_resources returns as expected."""
     # Arrange
     labels = {"some": "labels"}
-    child_resource_types = [Pod, Service]
+    child_resource_types = {Pod, Service}
 
     expected_resources = [
         Pod(metadata=ObjectMeta(name="pod1", namespace="namespace1")),
@@ -649,10 +649,10 @@ def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
 @pytest.mark.parametrize(
     "labels, child_resource_types, expected_context",
     [
-        (None, ["some", "resources"], pytest.raises(ValueError)),
-        ({}, ["some", "resources"], pytest.raises(ValueError)),
+        (None, {"some", "resources"}, pytest.raises(ValueError)),
+        ({}, {"some", "resources"}, pytest.raises(ValueError)),
         ({"some": "labels"}, None, pytest.raises(ValueError)),
-        ({"some": "labels"}, [], pytest.raises(ValueError)),
+        ({"some": "labels"}, {}, pytest.raises(ValueError)),
     ],
 )
 def test_KubernetesResourceHandler_get_deployed_resources_missing_required_arguments(  # noqa: N802
@@ -683,7 +683,7 @@ def test_KubernetesResourceHandler_reconcile():  # noqa: N802
         template_files=[],
         context={},
         labels={"name": "value", "name2": "value2"},
-        child_resource_types=[Pod, Service],
+        child_resource_types={Pod, Service},
     )
     krh._lightkube_client = mock.MagicMock()
     krh.apply = mock.MagicMock()
@@ -709,10 +709,10 @@ def test_KubernetesResourceHandler_reconcile():  # noqa: N802
 @pytest.mark.parametrize(
     "labels, child_resource_types, expected_context",
     [
-        (None, ["some", "resources"], pytest.raises(ValueError)),
-        ({}, ["some", "resources"], pytest.raises(ValueError)),
+        (None, {"some", "resources"}, pytest.raises(ValueError)),
+        ({}, {"some", "resources"}, pytest.raises(ValueError)),
         ({"some": "labels"}, None, pytest.raises(ValueError)),
-        ({"some": "labels"}, [], pytest.raises(ValueError)),
+        ({"some": "labels"}, {}, pytest.raises(ValueError)),
     ],
 )
 def test_KubernetesResourceHandler_reconcile_missing_required_arguments(  # noqa: N802
@@ -854,7 +854,7 @@ def test_add_labels_to_manifest(resources, labels, expected):
                 StatefulSet(metadata=ObjectMeta(name="name", namespace="namespace")),
                 test_global_resource(metadata=ObjectMeta(name="name")),
             ],
-            [Service, StatefulSet, test_global_resource],
+            {Service, StatefulSet, test_global_resource},
         ),
     ],
 )
