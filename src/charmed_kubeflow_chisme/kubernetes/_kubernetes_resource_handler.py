@@ -23,7 +23,7 @@ from ..types._charm_status import AnyCharmStatus
 from ._check_resources import check_resources
 
 ERROR_MESSAGE_NO_LABELS = "{caller} requires labels to be set"
-ERROR_MESSAGE_NO_RESOURCE_TYPES = "{caller} requires labels to be set"
+ERROR_MESSAGE_NO_RESOURCE_TYPES = "{caller} requires labels to be defined"
 
 
 def auto_clear_manifests_cache(func):
