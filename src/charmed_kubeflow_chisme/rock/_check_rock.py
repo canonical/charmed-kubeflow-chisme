@@ -24,3 +24,7 @@ class CheckRock:
         version = self.get_version()
         arch = list(self._rockcraft["platforms"].keys())[0]
         return f"{name}_{version}_{arch}"
+
+    def get_services(self):
+        """Returns dictionary of services defined in ROCK."""
+        return self._rockcraft["services"]
