@@ -26,5 +26,5 @@ class CheckRock:
         return f"{name}_{version}_{arch}"
 
     def get_services(self):
-        """Returns list of services defined in ROCK."""
+        """Returns dictionary of services defined in ROCK."""
         return self._rockcraft["services"]
