@@ -21,6 +21,6 @@ class GenericCharmRuntimeError(Exception):
 
     __module__ = None
 
-    def __init__(self, msg: str):
-        super().__init__(str(msg))
+    def __init__(self, msg: str, *args):
+        super().__init__(str(msg), *args)
         self.msg = str(msg)
