@@ -152,7 +152,7 @@ class KubernetesResourceHandler:
         _validate_labels_and_resource_types(self.labels, self.resource_types, caller_name="delete")
 
         resources_to_delete = self.get_deployed_resources()
-        delete_many(self.lightkube_client, resources_to_delete, ignore_missing)
+        delete_many(self.lightkube_client, resources_to_delete, ignore_missing, self.log)
 
     def get_deployed_resources(self) -> LightkubeResourcesList:
         """Returns a list of all resources deployed by this KubernetesResourceHandler.
@@ -207,7 +207,7 @@ class KubernetesResourceHandler:
         resources_to_delete = _in_left_not_right(
             existing_resources, desired_resources, hasher=_hash_lightkube_resource
         )
-        delete_many(self._lightkube_client, resources_to_delete, ignore_missing)
+        delete_many(self._lightkube_client, resources_to_delete, ignore_missing, self.log)
 
         # Update remaining resources and create any new ones
         self.apply(force=force)
@@ -333,7 +333,7 @@ class KubernetesResourceHandler:
                 ) from e
 
         try:
-            apply_many(client=self.lightkube_client, objs=resources, force=force)
+            apply_many(client=self.lightkube_client, objs=resources, force=force, logger=self.log)
         except ApiError as e:
             if e.status.code == 403:
                 # Handle forbidden error as this likely means we do not have --trust
