@@ -53,13 +53,15 @@ class KubernetesResourceHandler:
         logger: Optional[logging.Logger] = None,
         labels: Optional[dict] = None,
         resource_types: LightkubeResourceTypesSet = None,
+        lightkube_client: Client = None,
     ):
         """Returns a KubernetesResourceHandler instance.
 
         Args:
             field_manager (str): The name of the field manager to use when using server-side-apply
                            in kubernetes.  A good option for this is to use the application name
-                           (eg: `self.model.app.name`).
+                           (eg: `self.model.app.name`).  If providing a `lightkube_client` arg,
+                           this value will override that lightkube_client's field_manager.
             template_files (iterable): (Optional) An iterable of template file paths to
                                                render.  This is required to `render_manifests`, but
                                                can be left unset at instantiation and defined later
@@ -84,6 +86,8 @@ class KubernetesResourceHandler:
             resource_types (set): (Optional) Set of Lightkube Resource objects that define the
                                    types of child resources managed by this KRH. Must be set to use
                                    .delete(), .reconcile(), or .get_deployed_resources().
+            lightkube_client (lightkube.Client): (Optional) Lightkube Client to use for all k8s
+                                                 operations.  If omitted, will create its own.
         """
         self._template_files = None
         self.template_files = template_files
@@ -101,7 +105,7 @@ class KubernetesResourceHandler:
         else:
             self.log = logger
 
-        self._lightkube_client = None
+        self._lightkube_client = lightkube_client
 
     def compute_unit_status(self) -> AnyCharmStatus:
         """Returns a suggested unit status given the state of the managed Kubernetes resources.
@@ -333,7 +337,13 @@ class KubernetesResourceHandler:
                 ) from e
 
         try:
-            apply_many(client=self.lightkube_client, objs=resources, force=force, logger=self.log)
+            apply_many(
+                client=self.lightkube_client,
+                objs=resources,
+                field_manager=self._field_manager,
+                force=force,
+                logger=self.log,
+            )
         except ApiError as e:
             if e.status.code == 403:
                 # Handle forbidden error as this likely means we do not have --trust
