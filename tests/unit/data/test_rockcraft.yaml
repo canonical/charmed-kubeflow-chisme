@@ -19,7 +19,11 @@ services:
       SERVICE_TYPE: "MODEL"
       PERSISTENCE: "0"
     user: ubuntu
-
+  test-service:
+    override: replace
+    summary: "sklearnserver service"
+    startup: enabled
+    command: echo "test-service"
 platforms:
   amd64:
 

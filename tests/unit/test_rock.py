@@ -29,3 +29,12 @@ def test_rock_instance_usage():
     check_rock = CheckRock(data_dir / "test_rockcraft.yaml")
     assert check_rock.get_version() == "v1.16.0_20.04_1"
     assert check_rock.get_image_name() == "sklearnserver_v1.16.0_20.04_1_amd64"
+
+
+def test_rock_services():
+    """Test service retrieval."""
+    check_rock = CheckRock(data_dir / "test_rockcraft.yaml")
+    services = check_rock.get_services()
+    assert services["sklearnserver"]
+    assert services["sklearnserver"]["startup"] == "enabled"
+    assert services["test-service"]
