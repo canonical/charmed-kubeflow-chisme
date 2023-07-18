@@ -8,7 +8,7 @@ from .component_graph import ComponentGraph
 from .component_graph_item import ComponentGraphItem
 from .kubernetes_component import KubernetesComponent
 from .leadership_gate_component import LeadershipGateComponent
-from .pebble_component import PebbleComponent, PebbleServiceComponent
+from .pebble_component import ContainerFileTemplate, PebbleComponent, PebbleServiceComponent
 
 __all__ = [
     CharmReconciler,
