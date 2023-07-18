@@ -34,7 +34,7 @@ class KubernetesComponent(Component):
         super().__init__(charm=charm, name=name)
         self._charm = charm
         self._resource_templates = resource_templates
-        self._krh_child_resource_types = krh_resource_types
+        self._krh_resource_types = krh_resource_types
         self._krh_labels = krh_labels
         self._lightkube_client = lightkube_client
         if context_callable is None:
@@ -59,7 +59,7 @@ class KubernetesComponent(Component):
             context=self._context_callable(),
             lightkube_client=self._lightkube_client,
             labels=self._krh_labels,
-            resource_types=self._krh_child_resource_types,
+            resource_types=self._krh_resource_types,
         )
         load_in_cluster_generic_resources(k8s_resource_handler.lightkube_client)
         return k8s_resource_handler
