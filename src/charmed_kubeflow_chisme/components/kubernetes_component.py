@@ -12,11 +12,10 @@ from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import (
     _hash_lightkube_resource,
     _in_left_not_right,
 )
-from charmed_kubeflow_chisme.types import LightkubeResourceTypesList
+from charmed_kubeflow_chisme.types import LightkubeResourceTypesSet
 from lightkube.core.exceptions import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from ops import ActiveStatus, BlockedStatus, CharmBase, StatusBase
-
 
 
 class KubernetesComponent(Component):
@@ -27,7 +26,7 @@ class KubernetesComponent(Component):
         charm: CharmBase,
         name: str,
         resource_templates: List[str],
-        krh_child_resource_types: LightkubeResourceTypesList,
+        krh_child_resource_types: LightkubeResourceTypesSet,
         krh_labels: dict,
         lightkube_client: lightkube.Client,
         context_callable: Optional[Callable] = None,
