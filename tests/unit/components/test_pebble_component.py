@@ -14,13 +14,14 @@ import charmed_kubeflow_chisme.components.pebble_component
 
 
 class TestPebbleComponent:
+    name = "test-component"
     container_name = "test-container"
 
     def test_ready_for_execution_if_service_up(self, harness_with_container):  # noqa: F811
         """Test that ready_for_execution returns True if the service is up."""
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleComponent(
-            charm=harness_with_container.charm, container_name=self.container_name
+            charm=harness_with_container.charm, name=self.name, container_name=self.container_name
         )
 
         assert pc.ready_for_execution is True
@@ -29,7 +30,7 @@ class TestPebbleComponent:
         """Test that ready_for_execution returns False if the service is up."""
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleComponent(
-            charm=harness_with_container.charm, container_name=self.container_name
+            charm=harness_with_container.charm, name=self.name, container_name=self.container_name
         )
 
         assert pc.ready_for_execution is False
@@ -37,7 +38,7 @@ class TestPebbleComponent:
     def test_status_if_container_ready(self, harness_with_container):  # noqa: F811
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleComponent(
-            charm=harness_with_container.charm, container_name=self.container_name
+            charm=harness_with_container.charm, name=self.name, container_name=self.container_name
         )
 
         assert isinstance(pc.status, ActiveStatus)
@@ -45,13 +46,14 @@ class TestPebbleComponent:
     def test_status_if_container_not_ready(self, harness_with_container):  # noqa: F811
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleComponent(
-            charm=harness_with_container.charm, container_name=self.container_name
+            charm=harness_with_container.charm, name=self.name, container_name=self.container_name
         )
 
         assert isinstance(pc.status, WaitingStatus)
 
 
 class TestPebbleServiceComponent:
+    name = "test-component"
     container_name = "test-container"
 
     def test_configure_charm(self, harness_with_container):  # noqa: F811
@@ -64,6 +66,7 @@ class TestPebbleServiceComponent:
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleServiceComponent(
             charm=harness_with_container.charm,
+            name=self.name,
             container_name=self.container_name,
             service_name="test-service",
         )
@@ -81,6 +84,7 @@ class TestPebbleServiceComponent:
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleServiceComponent(
             charm=harness_with_container.charm,
+            name=self.name,
             container_name=self.container_name,
             service_name="test-service",
         )
@@ -99,6 +103,7 @@ class TestPebbleServiceComponent:
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleServiceComponent(
             charm=harness_with_container.charm,
+            name=self.name,
             container_name=self.container_name,
             service_name="test-service",
         )
@@ -116,6 +121,7 @@ class TestPebbleServiceComponent:
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleServiceComponent(
             charm=harness_with_container.charm,
+            name=self.name,
             container_name=self.container_name,
             service_name="test-service",
         )
@@ -133,6 +139,7 @@ class TestPebbleServiceComponent:
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleServiceComponent(
             charm=harness_with_container.charm,
+            name=self.name,
             container_name=self.container_name,
             service_name="test-service",
         )
@@ -149,6 +156,7 @@ class TestPebbleServiceComponent:
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleServiceComponent(
             charm=harness_with_container.charm,
+            name=self.name,
             container_name=self.container_name,
             service_name="test-service",
         )
@@ -163,6 +171,7 @@ class TestPebbleServiceComponent:
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleServiceComponent(
             charm=harness_with_container.charm,
+            name=self.name,
             container_name=self.container_name,
             service_name="test-service",
         )
@@ -177,6 +186,7 @@ class TestPebbleServiceComponent:
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleServiceComponent(
             charm=harness_with_container.charm,
+            name=self.name,
             container_name=self.container_name,
             service_name="test-service",
         )
