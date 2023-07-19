@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 
 import pytest
-
 from fixtures import MinimallyExtendedComponent, harness  # noqa: F401
 
 from charmed_kubeflow_chisme.components.charm_reconciler import CharmReconciler
@@ -59,7 +58,7 @@ class TestBasicFunction:
         assert component_graph_item2.name in charm_reconciler._component_graph.component_items
         assert len(charm_reconciler._component_graph.component_items) == 2
 
-    def test_add_component_after_install(self, harness):
+    def test_add_component_after_install(self, harness):  # noqa: F811
         """Test that calling .add() after .install() correctly raises and Exception."""
         # Arrange
         charm = harness.charm

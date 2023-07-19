@@ -6,7 +6,6 @@ from ops import ActiveStatus, BlockedStatus, CharmBase, StatusBase, WaitingStatu
 from ops.pebble import Layer
 from ops.testing import Harness
 
-
 from charmed_kubeflow_chisme.components.component import Component
 from charmed_kubeflow_chisme.components.component_graph_item import ComponentGraphItem
 from charmed_kubeflow_chisme.components.pebble_component import (

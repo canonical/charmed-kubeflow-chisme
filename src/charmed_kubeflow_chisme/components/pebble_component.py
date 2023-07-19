@@ -8,10 +8,10 @@ from pathlib import Path
 from typing import Callable, List, Optional, Union
 
 import jinja2
-from charmed_kubeflow_chisme.components.component import Component
 from ops import ActiveStatus, CharmBase, StatusBase, WaitingStatus
 from ops.pebble import Layer, ServiceInfo
 
+from charmed_kubeflow_chisme.components.component import Component
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ class PebbleComponent(Component):
 
         Args:
             charm: the charm using this PebbleComponent
+            name: Name of this component
             container_name: Name of this container.  Note that this name is also used as the
                             parent object's Component.name parameter.
             files_to_push: Optional List of ContainerFile objects that define templates to be

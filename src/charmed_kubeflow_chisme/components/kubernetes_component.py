@@ -5,6 +5,10 @@
 from typing import Callable, List, Optional
 
 import lightkube
+from lightkube.core.exceptions import ApiError
+from lightkube.generic_resource import load_in_cluster_generic_resources
+from ops import ActiveStatus, BlockedStatus, CharmBase, StatusBase
+
 from charmed_kubeflow_chisme.components.component import Component
 from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
@@ -13,9 +17,6 @@ from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import (
     _in_left_not_right,
 )
 from charmed_kubeflow_chisme.types import LightkubeResourceTypesSet
-from lightkube.core.exceptions import ApiError
-from lightkube.generic_resource import load_in_cluster_generic_resources
-from ops import ActiveStatus, BlockedStatus, CharmBase, StatusBase
 
 
 class KubernetesComponent(Component):

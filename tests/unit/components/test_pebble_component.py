@@ -85,7 +85,9 @@ class TestPebbleServiceComponent:
             service_name="test-service",
         )
 
-        with mock.patch.object(charmed_kubeflow_chisme.components.pebble_component, "logging") as mock_logger:
+        with mock.patch.object(
+            charmed_kubeflow_chisme.components.pebble_component, "logging"
+        ) as mock_logger:
             pc.configure_charm("mock event")
             mock_logger.info.assert_called_once()
             assert f"Container {self.container_name}" in mock_logger.info.call_args_list[0].args[0]

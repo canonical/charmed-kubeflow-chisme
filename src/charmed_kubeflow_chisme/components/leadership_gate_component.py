@@ -1,9 +1,11 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+"""Reusable Component for blocking when not a leader."""
 import logging
 
-from ops import StatusBase, ActiveStatus, WaitingStatus
+from ops import ActiveStatus, StatusBase, WaitingStatus
 
 from charmed_kubeflow_chisme.components.component import Component
-
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ class LeadershipGateComponent(Component):
 
     @property
     def status(self) -> StatusBase:
+        """Returns the status of this Component."""
         if not self._charm.unit.is_leader():
             return WaitingStatus("Waiting for leadership")
 

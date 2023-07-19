@@ -10,9 +10,10 @@ from typing import Iterable, List, Optional
 
 from ops import BoundEvent, StatusBase
 
+from charmed_kubeflow_chisme.status_handling.multistatus import Prioritiser
+
 from .component import Component
 from .component_graph_item import ComponentGraphItem
-from charmed_kubeflow_chisme.status_handling.multistatus import Prioritiser
 
 
 class ComponentGraph:
