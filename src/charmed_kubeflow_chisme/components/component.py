@@ -113,11 +113,15 @@ class Component(Object, ABC):
         """
         pass
 
-    @property
     @abstractmethod
-    def status(self) -> StatusBase:
+    def get_status(self) -> StatusBase:
         """Returns the status of this Component.
 
         Override this method to implement the logic that establishes your Component
         status (eg: if I have data from my relation, I am Active)
         """
+
+    @property
+    def status(self) -> StatusBase:
+        """Returns the status of this Component."""
+        return self.get_status()

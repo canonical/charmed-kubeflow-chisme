@@ -23,8 +23,7 @@ class LeadershipGateComponent(Component):
         """Returns True if this is the leader, else False."""
         return self._charm.unit.is_leader()
 
-    @property
-    def status(self) -> StatusBase:
+    def get_status(self) -> StatusBase:
         """Returns the status of this Component."""
         if not self._charm.unit.is_leader():
             return WaitingStatus("Waiting for leadership")

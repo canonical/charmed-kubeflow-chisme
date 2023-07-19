@@ -87,8 +87,7 @@ class KubernetesComponent(Component):
         krh = self._get_kubernetes_resource_handler()
         krh.delete()
 
-    @property
-    def status(self) -> StatusBase:
+    def get_status(self) -> StatusBase:
         """Returns the status of this Component based on whether its desired resources exist.
 
         Todo: This could use improvements on validation, and some of the logic could be moved into

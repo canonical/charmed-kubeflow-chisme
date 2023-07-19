@@ -56,8 +56,7 @@ class ComponentGraphItem:
             return False
         return True
 
-    @property
-    def status(self) -> StatusBase:
+    def get_status(self) -> StatusBase:
         """Returns the Status of this Component in the context of Components it depends_on.
 
         If any depends_on Component is not in ActiveStatus, this returns a MaintenanceStatus
@@ -84,6 +83,11 @@ class ComponentGraphItem:
             return MaintenanceStatus("Execution pending.")
 
         return self.component.status
+
+    @property
+    def status(self) -> StatusBase:
+        """Returns the Status of this Component in the context of Components it depends_on."""
+        return self.get_status()
 
     def _inactive_prerequisites(self) -> List[ComponentGraphItem]:
         """Returns a list of any depends_on ComponentGraphItems that are not yet ActiveStatus."""

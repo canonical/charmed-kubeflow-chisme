@@ -100,8 +100,7 @@ class PebbleComponent(Component):
                 make_dirs=True,
             )
 
-    @property
-    def status(self) -> StatusBase:
+    def get_status(self) -> StatusBase:
         """Returns the status of this Component."""
         if not self.pebble_ready:
             return WaitingStatus("Waiting for Pebble to be ready.")
@@ -181,8 +180,7 @@ class PebbleServiceComponent(PebbleComponent):
 
         return services_not_ready
 
-    @property
-    def status(self) -> StatusBase:
+    def get_status(self) -> StatusBase:
         """Returns the status of this Pebble service container.
 
         Status is determined by checking whether the container and service are up.
