@@ -14,7 +14,9 @@ class Component(Object, ABC):
     containers or relation libraries.
     """
 
-    def __init__(self, charm: CharmBase, name: str):
+    def __init__(
+        self, charm: CharmBase, name: str, inputs_getter: Optional[Callable[[], Any]] = None
+    ):
         """Instantiate a Component.
 
         Args:
@@ -24,11 +26,16 @@ class Component(Object, ABC):
                    useful only in unit tests.
             name: Unique name of this instance of the class.  This is used as the ops.Object key
                   argument, as well as for some status/debug printing.
+            inputs_getter: (optional) a function that returns an object with inputs that can be
+                           used in the component.  Useful for instantiating objects when data is
+                           only available during runtime, like passing data from a one Component
+                           to another.
         """
         super().__init__(parent=charm, key=name)
         self.name = name  # Will be the same as self.handle.key
         self._charm = charm
         self._events_to_observe: List[BoundEvent] = []
+        self._inputs_getter = inputs_getter
 
     # Methods that can be used directly from the Component class for most cases
     def configure_charm(self, event):

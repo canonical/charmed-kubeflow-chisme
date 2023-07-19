@@ -48,7 +48,9 @@ class PebbleComponent(Component):
         charm: CharmBase,
         name: str,
         container_name: str,
+        *args,
         files_to_push: Optional[List[ContainerFileTemplate]] = None,
+        **kwargs,
     ):
         """Instantiate the PebbleComponent.
 
@@ -60,7 +62,7 @@ class PebbleComponent(Component):
             files_to_push: Optional List of ContainerFile objects that define templates to be
                            rendered and pushed into the container as files
         """
-        super().__init__(charm=charm, name=name)
+        super().__init__(charm, name, *args, **kwargs)
         self.container_name = container_name
         # TODO: Should a PebbleComponent automatically be subscribed to this event?  Or just
         #  a PebbleServiceComponent?
