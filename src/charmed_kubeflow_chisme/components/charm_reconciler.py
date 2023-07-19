@@ -34,6 +34,8 @@ class CharmReconciler(Object):
 
         self._charm = charm
         self._component_graph = component_graph
+        # Indicates whether `.install()` has been called before
+        self._installed = False
 
     def add(
         self,
@@ -42,11 +44,19 @@ class CharmReconciler(Object):
     ) -> ComponentGraphItem:
         """Add a component to the graph, returning a ComponentGraphItem for this Component.
 
+        Note that calling .add() after .install() raises a RuntimeError.  This is because
+        Components can request we observe custom events, so .install() should be the last step
+        in setting up the CharmReconciler.
+
         Args:
             component: the Component to add to this execution graph
             depends_on: the list of registered ComponentGraphItems that this Component depends on
                         being Active before it should run.
         """
+        if self._installed:
+            raise RuntimeError(
+                "Cannot .add() a Component after `CharmReconciler.install()` has been called"
+            )
         return self._component_graph.add(component, depends_on)
 
     def execute_components(self, event: EventBase):
@@ -82,6 +92,8 @@ class CharmReconciler(Object):
         but would be helpful if a standalone class.  Would include handling
         config-changed, update-status, etc.
         """
+        self._installed = True
+
         # Executing components
         # Install standard events
         charm.framework.observe(charm.on.install, self.execute_components)

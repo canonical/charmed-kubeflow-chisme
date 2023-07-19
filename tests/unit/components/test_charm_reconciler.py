@@ -1,6 +1,8 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import pytest
+
 from fixtures import MinimallyExtendedComponent, harness  # noqa: F401
 
 from charmed_kubeflow_chisme.components.charm_reconciler import CharmReconciler
@@ -56,3 +58,13 @@ class TestBasicFunction:
         assert component_graph_item1.name in charm_reconciler._component_graph.component_items
         assert component_graph_item2.name in charm_reconciler._component_graph.component_items
         assert len(charm_reconciler._component_graph.component_items) == 2
+
+    def test_add_component_after_install(self, harness):
+        """Test that calling .add() after .install() correctly raises and Exception."""
+        # Arrange
+        charm = harness.charm
+
+        charm_reconciler = CharmReconciler(charm)
+        charm_reconciler.install(charm)
+        with pytest.raises(RuntimeError):
+            charm_reconciler.add("dummy input")
