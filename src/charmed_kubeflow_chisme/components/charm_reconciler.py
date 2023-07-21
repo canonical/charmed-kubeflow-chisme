@@ -4,7 +4,7 @@
 import logging
 from typing import List, Optional
 
-from ops import CharmBase, EventBase, Object, StatusBase
+from ops import ActiveStatus, CharmBase, EventBase, Object, StatusBase
 
 from .component import Component
 from .component_graph import ComponentGraph
@@ -66,13 +66,34 @@ class CharmReconciler(Object):
         """
         logger.info(f"Starting `execute_components` for event '{event.handle}'")
 
+        # Set all .executed=False, just in case this is not a fresh init of the Charm.
+        # This is to protect against https://github.com/canonical/operator/issues/736 and
+        # how custom events also don't reinit the charm (discussed in
+        # https://github.com/canonical/operator/issues/952)
+        for component_graph_item in self._component_graph.component_items.values():
+            component_graph_item.executed = False
+
         # TODO: Think this through again.  Look ok still?
         for component_item in self._component_graph.yield_executable_component_items():
             logger.info(
                 f"Executing component_item.component.configure_charm for '{component_item.name}'"
             )
 
-            component_item.component.configure_charm(event)
+            # Execute the component and log any errors
+            try:
+                component_item.component.configure_charm(event)
+            except Exception as err:
+                msg = f"execute_components caught unhandled exception when executing configure_charm for {component_item.name}: {err}"
+                logger.error(msg)
+                # Sanity check: if the component execution failed, the component should not be
+                # Active.  Confirm this is true, and if it is not raise
+                component_status = component_item.component.get_status()
+                if isinstance(component_status, ActiveStatus):
+                    msg = f"After handling an uncaught execution error for " \
+                          f"{component_status.name}, it was found that the Component.status was" \
+                          f"Active.  This should not occur and is likely a bug"
+                    raise RuntimeError(msg) from err
+
             # TODO: If this component executes but does not go to ready, is there something we
             #  should do?  Omitted for now.
             # if not component_item.component.ready:
@@ -80,6 +101,10 @@ class CharmReconciler(Object):
 
         # TODO: Because on.commit didn't work for the Prioritiser, we add a call to Prioritiser
         #  here.  This should be improved on in future.
+        # TODO: Add some better logging here.  Summarize what happened in the execute_components,
+        #  what did we work on, what did we skip, etc.  Sometimes when debugging it is hard to know
+        #  what did/didn't execute here, especially with how the yield_executable_component_items()
+        #  works.
         logger.info("execute_components execution loop complete.")
         status = self._component_graph.status_prioritiser.highest()
         logger.info(f"Got status {status} from Prioritiser - updating unit status")
