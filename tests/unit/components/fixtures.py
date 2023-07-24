@@ -25,8 +25,7 @@ class MinimallyExtendedComponent(Component):
         # Mock placeholder for state that indicates this Component's work is complete
         self._completed_work = None
 
-    @property
-    def status(self) -> StatusBase:
+    def get_status(self) -> StatusBase:
         """Returns ActiveStatus if self._completed_work is not Falsey, else WaitingStatus."""
         if not self._completed_work:
             return WaitingStatus("Waiting for execution")
