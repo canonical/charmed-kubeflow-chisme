@@ -89,9 +89,11 @@ class CharmReconciler(Object):
                 # Active.  Confirm this is true, and if it is not raise
                 component_status = component_item.component.get_status()
                 if isinstance(component_status, ActiveStatus):
-                    msg = f"After handling an uncaught execution error for " \
-                          f"{component_status.name}, it was found that the Component.status was" \
-                          f"Active.  This should not occur and is likely a bug"
+                    msg = (
+                        f"After handling an uncaught execution error for "
+                        f"{component_status.name}, it was found that the Component.status was"
+                        f"Active.  This should not occur and is likely a bug"
+                    )
                     raise RuntimeError(msg) from err
 
             # TODO: If this component executes but does not go to ready, is there something we
