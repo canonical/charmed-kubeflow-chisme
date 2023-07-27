@@ -7,7 +7,7 @@
 
 import logging
 import typing
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import ops
 from ops import EventBase, Framework, Unit
@@ -36,9 +36,12 @@ class Prioritiser:
             raise ValueError(f"duplicate component {component!r}")
         self._components[component] = get_status
 
-    def highest(self) -> ops.StatusBase:
+    def highest(
+        self, statuses: Optional[List[Tuple[str, ops.StatusBase]]] = None
+    ) -> ops.StatusBase:
         """Return highest-priority status with message prefixed with component name."""
-        statuses = self.all()
+        if not statuses:
+            statuses = self.all()
         if not statuses:
             return ops.UnknownStatus()
         component, status = statuses[0]
