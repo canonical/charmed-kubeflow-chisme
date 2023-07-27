@@ -108,41 +108,46 @@ class CharmReconciler(Object):
         #  what did/didn't execute here, especially with how the yield_executable_component_items()
         #  works.
         logger.info("execute_components execution loop complete.")
-        status = self._component_graph.status_prioritiser.highest()
-        logger.info(f"Got status {status} from Prioritiser - updating unit status")
-        self._charm.unit.status = status
+        self._update_charm_status()
 
-    def install(self, charm: CharmBase):
-        """Installs execute_components as the handler for all necessary charm events.
+    def install_default_event_handlers(self):
+        """Installs event handlers for the Charm's core reconciliation events.
 
-        TODO: This might not be needed if implemented as an extension to CharmBase,
-        but would be helpful if a standalone class.  Would include handling
-        config-changed, update-status, etc.
+        Attaches an event handler for the following charm events:
+        * install
+        * config_changed
+        * remove
+        * update-status
+        * any other event that is specified by a Component via Component.events_to_observe,
+          for example a pebble-ready or relation event
         """
+        # Used as a guard against installing twice or .add()ing Components after calling this
+        # method.
+        if self._installed:
+            raise RuntimeError(
+                "CharmReconciler tried to install event handlers more than once.  To avoid "
+                "duplicate event handling, event handlers can only be installed once."
+            )
         self._installed = True
 
-        # Executing components
-        # Install standard events
-        charm.framework.observe(charm.on.install, self.execute_components)
-        charm.framework.observe(charm.on.config_changed, self.execute_components)
+        # Handle all default Charm reconciliation events
+        self._charm.framework.observe(self._charm.on.install, self.execute_components)
+        self._charm.framework.observe(self._charm.on.config_changed, self.execute_components)
 
-        # Install any custom events our component_graph needs
+        # Handle any additional events requested by our Components
         additional_events = self._component_graph.get_events_to_observe()
         for event in additional_events:
-            charm.framework.observe(event, self.execute_components)
+            self._charm.framework.observe(event, self.execute_components)
 
-        # Removing components
-        charm.framework.observe(charm.on.remove, self.remove_components)
+        self._charm.framework.observe(self._charm.on.remove, self.remove_components)
 
-        # Updating status
-        # TODO: Does this implicitly make an update_status?
-        # TODO: Disabled because prioritizer's install doesn't work.  See note on that method
-        # self.component_graph.status_prioritiser.install(charm.framework, charm.unit)
+        self._charm.framework.observe(self._charm.on.update_status, self.update_status)
 
     def remove_components(self, event: EventBase):
         """Runs Component.remove() for each component.
 
-        Note that the order in which Components are removed is not guaranteed.
+        Note: unlike execute_components(), the order of in which Components are .remove()'ed
+              is not guaranteed.
         """
         for component_item in self._component_graph.component_items.values():
             try:
@@ -167,3 +172,20 @@ class CharmReconciler(Object):
         charm's overall status.
         """
         raise NotImplementedError()
+
+    def _update_charm_status(self):
+        """Updates the attached Charm's status with the current worst Status of all Components.
+
+        Also logs the full status details to the charm logs.
+        """
+        logger.info(f"Status of all CharmReconciler Components:")
+        statuses = self._component_graph.status_prioritiser.all()
+        for _, status in statuses:
+            logger.info(f"Status: {self._component_graph.status_prioritiser.all()}")
+        status = self._component_graph.status_prioritiser.highest()
+        logger.info(f"Status of unit set to: {status}")
+        self._charm.unit.status = status
+
+    def update_status(self, event: EventBase):
+        """Handler for an update-status event.  Checks and emits the Status for all Components."""
+        self._update_charm_status()

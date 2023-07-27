@@ -59,11 +59,21 @@ class TestBasicFunction:
         assert len(charm_reconciler._component_graph.component_items) == 2
 
     def test_add_component_after_install(self, harness):  # noqa: F811
-        """Test that calling .add() after .install() correctly raises and Exception."""
+        """Test that calling .add() after .install() correctly raises an Exception."""
         # Arrange
         charm = harness.charm
 
         charm_reconciler = CharmReconciler(charm)
-        charm_reconciler.install(charm)
+        charm_reconciler.install_default_event_handlers()
         with pytest.raises(RuntimeError):
             charm_reconciler.add("dummy input")
+
+    def test_install_twice(self, harness):  # noqa: F811
+        """Test that calling .install_default_event_handlers twice correctly raises."""
+        # Arrange
+        charm = harness.charm
+
+        charm_reconciler = CharmReconciler(charm)
+        charm_reconciler.install_default_event_handlers()
+        with pytest.raises(RuntimeError):
+            charm_reconciler.install_default_event_handlers()
