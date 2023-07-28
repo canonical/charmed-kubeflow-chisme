@@ -47,7 +47,7 @@ class Prioritiser:
         component, status = statuses[0]
         if isinstance(status, ops.ActiveStatus) and not status.message:
             return ops.ActiveStatus()
-        return ops.StatusBase.from_name(status.name, f"[{component}] {status.message}")
+        return add_prefix_to_status(prefix=component, status=status)
 
     def install(self, framework: Framework, unit: Unit):
         """Installs this instance onto the framework events required.
@@ -73,8 +73,19 @@ class Prioritiser:
         with the same level, components added first come first.
         """
         # TODO: exception handling (log full details and yield ErrorStatus?)
-        statuses = [
-            (component, get_status()) for component, get_status in self._components.items()
-        ]
+        statuses = []
+        for component, get_status in self._components.items():
+            try:
+                status = get_status()
+            except Exception as err:
+                logger.error(f"Failed to compute status for {component}: got error: {str(err)}")
+                logger.error(f"Setting {component} status to BlockedStatus.")
+                status = ops.BlockedStatus("Failed to compute status.  See logs for details.")
+            statuses.append((component, status))
         statuses.sort(key=lambda s: self._PRIORITIES[s[1].name])
         return statuses
+
+
+def add_prefix_to_status(prefix: str, status: ops.StatusBase):
+    """Returns a new Status that is the same as given, but prefixed with [prefix]."""
+    return ops.StatusBase.from_name(status.name, f"[{prefix}] {status.message}")
