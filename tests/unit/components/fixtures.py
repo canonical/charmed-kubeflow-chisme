@@ -28,7 +28,7 @@ class MinimallyExtendedComponent(Component):
     def get_status(self) -> StatusBase:
         """Returns ActiveStatus if self._completed_work is not Falsey, else WaitingStatus."""
         if not self._completed_work:
-            return WaitingStatus("Waiting for execution")
+            return WaitingStatus(f"{self.name} waiting to be alive")
 
         return ActiveStatus()
 

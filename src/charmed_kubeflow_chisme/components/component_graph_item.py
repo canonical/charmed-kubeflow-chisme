@@ -6,11 +6,15 @@ from __future__ import (
     annotations,  # To enable type hinting a method in a class with its own class
 )
 
+import logging
 from typing import List, Optional
 
-from ops import ActiveStatus, MaintenanceStatus, StatusBase
+from ops import ActiveStatus, BlockedStatus, MaintenanceStatus, StatusBase
 
 from .component import Component
+
+
+logger = logging.getLogger(__name__)
 
 
 class ComponentGraphItem:
@@ -91,8 +95,21 @@ class ComponentGraphItem:
 
     def _inactive_prerequisites(self) -> List[ComponentGraphItem]:
         """Returns a list of any depends_on ComponentGraphItems that are not yet ActiveStatus."""
-        return [
-            prerequisite
-            for prerequisite in self.depends_on
-            if not isinstance(prerequisite.status, ActiveStatus)
-        ]
+        inactive_prerequisites = []
+
+        for prerequisite in self.depends_on:
+            try:
+                status = prerequisite.status
+            except Exception as err:
+                # TODO: This message appears in the logs, but the `err` is not shown.  Why?
+                logger.error(
+                    f"Failed to compute status for {prerequisite.name} during assessment of "
+                    f"prerequisites for {self.name}.  Got err: {err}"
+                )
+                status = BlockedStatus(
+                    f"Failed to compute status for prerequisite {prerequisite.name}"
+                )
+            if not isinstance(status, ActiveStatus):
+                inactive_prerequisites.append(prerequisite)
+
+        return inactive_prerequisites

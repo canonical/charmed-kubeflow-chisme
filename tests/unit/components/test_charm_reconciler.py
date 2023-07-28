@@ -1,11 +1,14 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+from unittest.mock import MagicMock
 
+from ops import ActiveStatus, BlockedStatus, WaitingStatus
 import pytest
-from fixtures import MinimallyExtendedComponent, harness  # noqa: F401
+from fixtures import MinimallyBlockedComponent, MinimallyExtendedComponent, harness  # noqa: F401
 
 from charmed_kubeflow_chisme.components.charm_reconciler import CharmReconciler
 from charmed_kubeflow_chisme.components.component_graph import ComponentGraph
+
 
 # TODO: Add tests for execute_components, install, remove_components
 
@@ -77,3 +80,94 @@ class TestBasicFunction:
         charm_reconciler.install_default_event_handlers()
         with pytest.raises(RuntimeError):
             charm_reconciler.install_default_event_handlers()
+
+
+class TestUpdateStatus:
+    def test_update_status_with_multiple_components_working(self, harness):
+        # Arrange
+        charm = harness.charm
+
+        charm_reconciler = CharmReconciler(charm)
+
+        component1 = MinimallyExtendedComponent(charm=charm, name="component1")
+        component1._completed_work = True
+        component2 = MinimallyExtendedComponent(charm=charm, name="component2")
+        component2._completed_work = True
+        component_graph_item1 = charm_reconciler.add(component1)
+        _ = charm_reconciler.add(
+            component2, depends_on=[component_graph_item1]
+        )
+
+        # Act
+        charm_reconciler.update_status("event")
+
+        # Assert
+        assert isinstance(harness.charm.unit.status, ActiveStatus)
+
+    def test_update_status_with_multiple_components_first_not_active(self, harness):
+        # Arrange
+        charm = harness.charm
+
+        charm_reconciler = CharmReconciler(charm)
+
+        component1 = MinimallyExtendedComponent(charm=charm, name="component1")
+        component1._completed_work = False
+        component2 = MinimallyExtendedComponent(charm=charm, name="component2")
+        component2._completed_work = True
+        component_graph_item1 = charm_reconciler.add(component1)
+        _ = charm_reconciler.add(
+            component2, depends_on=[component_graph_item1]
+        )
+
+        # Act
+        charm_reconciler.update_status("event")
+
+        # Assert
+        assert isinstance(harness.charm.unit.status, WaitingStatus)
+        assert f"{component1.name} waiting" in harness.charm.unit.status.message
+
+    def test_update_status_with_multiple_components_second_not_active(self, harness):
+        # Arrange
+        charm = harness.charm
+
+        charm_reconciler = CharmReconciler(charm)
+
+        component1 = MinimallyExtendedComponent(charm=charm, name="component1")
+        component1._completed_work = True
+        component2 = MinimallyBlockedComponent(charm=charm, name="component2")
+        component_graph_item1 = charm_reconciler.add(component1)
+        _ = charm_reconciler.add(
+            component2, depends_on=[component_graph_item1]
+        )
+
+        # Act
+        charm_reconciler.update_status("event")
+
+        # Assert
+        assert isinstance(harness.charm.unit.status, BlockedStatus)
+
+    def test_update_status_with_reconcile_true(self, harness):
+        # Arrange
+        charm = harness.charm
+
+        charm_reconciler = CharmReconciler(charm, reconcile_on_update_status=True)
+        charm_reconciler.execute_components = MagicMock()
+
+        # Act
+        charm_reconciler.update_status("event")
+
+        # Assert
+        charm_reconciler.execute_components.assert_called()
+
+    def test_update_status_with_reconcile_false(self, harness):
+        # Arrange
+        charm = harness.charm
+
+        charm_reconciler = CharmReconciler(charm, reconcile_on_update_status=False)
+        charm_reconciler.execute_components = MagicMock()
+
+        # Act
+        charm_reconciler.update_status("event")
+
+        # Assert
+        charm_reconciler.execute_components.assert_not_called()

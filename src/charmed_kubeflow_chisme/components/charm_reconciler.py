@@ -2,13 +2,15 @@
 # See LICENSE file for licensing details.
 """A reusable reconcile loop for Charms."""
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-from ops import ActiveStatus, CharmBase, EventBase, Object, StatusBase
+from ops import ActiveStatus, CharmBase, EventBase, MaintenanceStatus, Object, StatusBase
 
 from .component import Component
 from .component_graph import ComponentGraph
 from .component_graph_item import ComponentGraphItem
+from ..status_handling.multistatus import add_prefix_to_status
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,12 @@ logger = logging.getLogger(__name__)
 class CharmReconciler(Object):
     """A reusable reconcile loop for Charms."""
 
-    def __init__(self, charm: CharmBase, component_graph: Optional[ComponentGraph] = None):
+    def __init__(
+        self,
+        charm: CharmBase,
+        component_graph: Optional[ComponentGraph] = None,
+        reconcile_on_update_status: bool = False,
+    ):
         """A reusable reconcile loop for Charms.
 
         TODO: Do we really need to pass `charm` here?  We barely use it.  I think we need it (or
@@ -26,6 +33,9 @@ class CharmReconciler(Object):
             charm: a CharmBase object to operate from this CharmReconciler
             component_graph: (optional) a ComponentGraph that is used to define the execution order
                              of Components.  If None, an empty ComponentGraph will be created.
+            reconcile_on_update_status: If True, will do a full execution loop on the update-status
+                                        event.  Else, will only assess the status of all Components
+                                        without executing any.
         """
         super().__init__(parent=charm, key=None)
 
@@ -34,6 +44,7 @@ class CharmReconciler(Object):
 
         self._charm = charm
         self._component_graph = component_graph
+        self._reconcile_on_update_status = reconcile_on_update_status
         # Indicates whether `.install()` has been called before
         self._installed = False
 
@@ -75,26 +86,21 @@ class CharmReconciler(Object):
 
         # TODO: Think this through again.  Look ok still?
         for component_item in self._component_graph.yield_executable_component_items():
-            logger.info(
-                f"Executing component_item.component.configure_charm for '{component_item.name}'"
+            logger.info(f"Executing component: '{component_item.name}'")
+            self._charm.unit.status = MaintenanceStatus(
+                f"Reconciling charm: executing component {component_item.name}"
             )
 
             # Execute the component and log any errors
             try:
                 component_item.component.configure_charm(event)
+                logger.info(
+                    f"Execution for component '{component_item.name}' complete.  Component now has "
+                    f"status '{component_item.component.get_status()}'"
+                )
             except Exception as err:
                 msg = f"execute_components caught unhandled exception when executing configure_charm for {component_item.name}: {err}"
                 logger.error(msg)
-                # Sanity check: if the component execution failed, the component should not be
-                # Active.  Confirm this is true, and if it is not raise
-                component_status = component_item.component.get_status()
-                if isinstance(component_status, ActiveStatus):
-                    msg = (
-                        f"After handling an uncaught execution error for "
-                        f"{component_status.name}, it was found that the Component.status was"
-                        f"Active.  This should not occur and is likely a bug"
-                    )
-                    raise RuntimeError(msg) from err
 
             # TODO: If this component executes but does not go to ready, is there something we
             #  should do?  Omitted for now.
@@ -159,7 +165,7 @@ class CharmReconciler(Object):
                 )
 
     def status(self) -> StatusBase:
-        """Returns a status representing the the entire charm execution.
+        """Returns a status representing the entire charm execution.
 
         .install() would attach this to the update-status event.
 
@@ -173,19 +179,41 @@ class CharmReconciler(Object):
         """
         raise NotImplementedError()
 
+    def update_status(self, event: EventBase):
+        """Handler for an update-status event.  Updates charm with the aggregate status.
+
+        Optionally executes the Components before updating status, as defined by
+        self._reconcile_on_update_status.
+        """
+        if self._reconcile_on_update_status:
+            return self.execute_components(event)
+        else:
+            # Set all component_items to executed so they report status as if execution is
+            # complete.
+            for component_item in self._component_graph.component_items.values():
+                component_item.executed = True
+            return self._update_charm_status()
+
+    def _get_component_statuses(self) -> List[Tuple[str, StatusBase]]:
+        """Returns all charm Component Statuses as a list."""
+        return self._component_graph.status_prioritiser.all()
+
     def _update_charm_status(self):
-        """Updates the attached Charm's status with the current worst Status of all Components.
+        """Computes Component statuses, updating the attached Charm's with the aggregate status.
 
         Also logs the full status details to the charm logs.
         """
-        logger.info(f"Status of all CharmReconciler Components:")
-        statuses = self._component_graph.status_prioritiser.all()
-        for _, status in statuses:
-            logger.info(f"Status: {self._component_graph.status_prioritiser.all()}")
-        status = self._component_graph.status_prioritiser.highest()
+        statuses = self._get_component_statuses()
+        log_component_statuses(statuses, logger)
+
+        # Set the charm status to the worst of all statuses
+        status = self._component_graph.status_prioritiser.highest(statuses)
         logger.info(f"Status of unit set to: {status}")
         self._charm.unit.status = status
 
-    def update_status(self, event: EventBase):
-        """Handler for an update-status event.  Checks and emits the Status for all Components."""
-        self._update_charm_status()
+
+def log_component_statuses(statuses: List[Tuple[str, StatusBase]], logger: logging.Logger):
+    """Logs the status of all components in a CharmReconciler."""
+    logger.info(f"Status of all CharmReconciler Components:")
+    for name, status in statuses:
+        logger.info(f"Status: {add_prefix_to_status(name, status)}")
