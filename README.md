@@ -10,10 +10,11 @@ both the Charmed Operators maintained by the [Charmed Kubeflow](ckf) team as wel
 * [Exceptions](./src/charmed_kubeflow_chisme/exceptions/README.md): A collection of standard Exceptions for use when writing charms.
 * [Kubernetes](./src/charmed_kubeflow_chisme/kubernetes/README.md): Helpers for interacting with Kubernetes
 * [Lightkube](./src/charmed_kubeflow_chisme/lightkube/README.md): Helpers specific to using or extending [Lightkube](lightkube-rtd)
+* [Pebble](./src/charmed_kubeflow_chisme/pebble/README.md): Helpers for managing pebble when writing charms
+* [Reusable Charm Components](./src/charmed_kubeflow_chisme/components/README.md): The `Component` abstraction that encapsulates any piece of logic for a Charm, a reusable reconcile function `CharmReconciler` that executes `Components`, and a collection of `Components` for things like running Pebble containers or deploying Kubernetes resources
+* [Rock](./src/charmed_kubeflow_chisme/README.md): Utilities for testing ROCKs
 * [Status Handling](./src/charmed_kubeflow_chisme/status_handling/README.md): Helpers for working with Charm Status objects
 * [Types](./src/charmed_kubeflow_chisme/types/README.md): Reusable typing definitions, useful for adding type hints
-* [Pebble](./src/charmed_kubeflow_chisme/pebble/README.md): Helpers for managing pebble when writing charms
-* [Rock](./src/charmed_kubeflow_chisme/README.md): Utilities for testing ROCKs
 
 [ckf]: https://charmed-kubeflow.io/
 [lightkube-rtd]: https://lightkube.readthedocs.io/en/latest/
