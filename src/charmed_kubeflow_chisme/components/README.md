@@ -87,20 +87,4 @@ where `k8s_component`'s `depends_on=self.relation_x_component` establishes that 
 
 # How-to Guides
 
-TODO: Explain both Component and CharmReconciler
-
-# UNUSED TEXT / TODO
-
-`execute_components()` executes `Components` in the order defined by the dependencies between `Components`, allowing for `ComponentB` to depend on and need data from `ComponentA`, while `ComponentC`
-
-To control the order in which `execute_components()` executes `Components`, dependencies can be defined:
-
-```python
-class MyCharm(CharmBase):
-  def __init__()
-```
-
-
-* multistatus/prioritizer/aggregation
-* something showing dependency
-
+See guides in the [how-to](./how-to) folder.
