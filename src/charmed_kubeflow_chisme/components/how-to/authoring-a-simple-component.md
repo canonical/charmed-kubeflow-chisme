@@ -74,3 +74,7 @@ An implementation of `Component.get_status()` should be *holistic* and require o
 TODO: Add example.  Until then, see the `PebbleServiceComponent`
 
 TODO: This should be changed to have a better setter function, not just an override
+
+## Upgrades
+
+`Components` do not explicitly include upgrade information, but may implicitly handle the upgrade procedure.  See this [upgrades how-to](./upgrades-when-using-charm-reconciler.md) for more details.  
