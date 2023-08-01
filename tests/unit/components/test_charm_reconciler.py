@@ -151,23 +151,23 @@ class TestUpdateStatus:
         charm = harness.charm
 
         charm_reconciler = CharmReconciler(charm, reconcile_on_update_status=True)
-        charm_reconciler.execute_components = MagicMock()
+        charm_reconciler.reconcile = MagicMock()
 
         # Act
         charm_reconciler.update_status("event")
 
         # Assert
-        charm_reconciler.execute_components.assert_called()
+        charm_reconciler.reconcile.assert_called()
 
     def test_update_status_with_reconcile_false(self, harness):
         # Arrange
         charm = harness.charm
 
         charm_reconciler = CharmReconciler(charm, reconcile_on_update_status=False)
-        charm_reconciler.execute_components = MagicMock()
+        charm_reconciler.reconcile = MagicMock()
 
         # Act
         charm_reconciler.update_status("event")
 
         # Assert
-        charm_reconciler.execute_components.assert_not_called()
+        charm_reconciler.reconcile.assert_not_called()

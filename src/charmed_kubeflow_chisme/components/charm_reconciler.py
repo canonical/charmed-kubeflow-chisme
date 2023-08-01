@@ -4,7 +4,7 @@
 import logging
 from typing import List, Optional, Tuple
 
-from ops import ActiveStatus, CharmBase, EventBase, MaintenanceStatus, Object, StatusBase
+from ops import CharmBase, EventBase, MaintenanceStatus, Object, StatusBase
 
 from .component import Component
 from .component_graph import ComponentGraph
@@ -70,11 +70,8 @@ class CharmReconciler(Object):
             )
         return self._component_graph.add(component, depends_on)
 
-    def execute_components(self, event: EventBase):
-        """Executes all components that are ready for execution, ordered by their dependencies.
-
-        This would be the handler for charm events like config-changed, etc.
-        """
+    def reconcile(self, event: EventBase):
+        """Executes all components that are ready for execution, ordered by their dependencies."""
         logger.info(f"Starting `execute_components` for event '{event.handle}'")
 
         # Set all .executed=False, just in case this is not a fresh init of the Charm.
@@ -116,16 +113,24 @@ class CharmReconciler(Object):
         logger.info("execute_components execution loop complete.")
         self._update_charm_status()
 
-    def install_default_event_handlers(self):
-        """Installs event handlers for the Charm's core reconciliation events.
+    def install_default_event_handlers(
+        self,
+    ):
+        """Installs event handlers on the default list of charm events.
 
-        Attaches an event handler for the following charm events:
+        Attaches the `reconcile` handler for the following charm events:
         * install
         * config_changed
-        * remove
-        * update-status
+        * leader_elected
+        * leader_settings_changed
         * any other event that is specified by a Component via Component.events_to_observe,
           for example a pebble-ready or relation event
+
+        Attaches the `remove` handler for the following charm events:
+        * remove
+
+        Attaches the `update_status` handler for the following charm events:
+        * update-status
         """
         # Used as a guard against installing twice or .add()ing Components after calling this
         # method.
@@ -137,19 +142,20 @@ class CharmReconciler(Object):
         self._installed = True
 
         # Handle all default Charm reconciliation events
-        self._charm.framework.observe(self._charm.on.install, self.execute_components)
-        self._charm.framework.observe(self._charm.on.config_changed, self.execute_components)
-
+        self._charm.framework.observe(self._charm.on.install, self.reconcile)
+        self._charm.framework.observe(self._charm.on.config_changed, self.reconcile)
+        self._charm.framework.observe(self._charm.on.leader_elected, self.reconcile)
+        self._charm.framework.observe(self._charm.on.leader_settings_changed, self.reconcile)
         # Handle any additional events requested by our Components
         additional_events = self._component_graph.get_events_to_observe()
         for event in additional_events:
-            self._charm.framework.observe(event, self.execute_components)
+            self._charm.framework.observe(event, self.reconcile)
 
-        self._charm.framework.observe(self._charm.on.remove, self.remove_components)
+        self._charm.framework.observe(self._charm.on.remove, self.remove)
 
         self._charm.framework.observe(self._charm.on.update_status, self.update_status)
 
-    def remove_components(self, event: EventBase):
+    def remove(self, event: EventBase):
         """Runs Component.remove() for each component.
 
         Note: unlike execute_components(), the order of in which Components are .remove()'ed
@@ -186,7 +192,7 @@ class CharmReconciler(Object):
         self._reconcile_on_update_status.
         """
         if self._reconcile_on_update_status:
-            return self.execute_components(event)
+            return self.reconcile(event)
         else:
             # Set all component_items to executed so they report status as if execution is
             # complete.
