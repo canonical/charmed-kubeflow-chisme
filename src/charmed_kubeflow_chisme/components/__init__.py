@@ -13,6 +13,9 @@ from .pebble_component import (
     PebbleComponent,
     PebbleServiceComponent,
 )
+from .serialised_data_interface_components import (
+    SdiRelationBroadcasterComponent, SdiRelationDataReceiverComponent
+)
 
 __all__ = [
     CharmReconciler,
@@ -24,4 +27,6 @@ __all__ = [
     ContainerFileTemplate,
     PebbleComponent,
     PebbleServiceComponent,
+    SdiRelationBroadcasterComponent,
+    SdiRelationDataReceiverComponent,
 ]

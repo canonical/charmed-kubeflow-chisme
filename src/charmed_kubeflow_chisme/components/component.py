@@ -27,9 +27,9 @@ class Component(Object, ABC):
             name: Unique name of this instance of the class.  This is used as the ops.Object key
                   argument, as well as for some status/debug printing.
             inputs_getter: (optional) a function that returns an object with inputs that can be
-                           used in the component.  Useful for instantiating objects when data is
-                           only available during runtime, like passing data from a one Component
-                           to another.
+                           used in the component.  Needed only when instantiating objects that
+                           required data that is not available until later during runtime, like
+                           passing data from a one Component to another.
         """
         super().__init__(parent=charm, key=name)
         self.name = name  # Will be the same as self.handle.key
