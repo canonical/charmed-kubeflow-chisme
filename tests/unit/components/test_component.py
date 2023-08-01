@@ -8,18 +8,18 @@ from ops import ActiveStatus, WaitingStatus
 
 
 class TestMinimallyExtendedComponent:
-    def test_status_before_execution(self, harness):  # noqa: F811
+    def test_status_before_execution(self, harness):
         """Tests that the minimal implementation of Component does not raise a syntax error."""
         component = MinimallyExtendedComponent(charm=harness.charm, name="test-component")
         assert isinstance(component.status, WaitingStatus)
 
-    def test_status_after_execution(self, harness):  # noqa: F811
+    def test_status_after_execution(self, harness):
         """Tests that the minimal implementation of Component does not raise a syntax error."""
         component = MinimallyExtendedComponent(charm=harness.charm, name="test-component")
         component.configure_charm("mock event")
         assert isinstance(component.status, ActiveStatus)
 
-    def test_configure_charm_as_leader(self, harness):  # noqa: F811
+    def test_configure_charm_as_leader(self, harness):
         harness.set_leader(True)
         component = MinimallyExtendedComponent(charm=harness.charm, name="test-component")
 
@@ -28,7 +28,7 @@ class TestMinimallyExtendedComponent:
         assert results["configure_app_non_leader"] is False
         assert results["configure_unit"] is True
 
-    def test_configure_charm_as_non_leader(self, harness):  # noqa: F811
+    def test_configure_charm_as_non_leader(self, harness):
         harness.set_leader(False)
         component = MinimallyExtendedComponent(charm=harness.charm, name="test-component")
 

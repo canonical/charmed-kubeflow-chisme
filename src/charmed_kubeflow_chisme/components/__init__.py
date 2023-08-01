@@ -14,7 +14,8 @@ from .pebble_component import (
     PebbleServiceComponent,
 )
 from .serialised_data_interface_components import (
-    SdiRelationBroadcasterComponent, SdiRelationDataReceiverComponent
+    SdiRelationBroadcasterComponent,
+    SdiRelationDataReceiverComponent,
 )
 
 __all__ = [

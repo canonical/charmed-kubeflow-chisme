@@ -14,7 +14,7 @@ from charmed_kubeflow_chisme.components.component_graph_item import ComponentGra
 
 
 class TestAdd:
-    def test_add_new_components_succeeds(self, harness):  # noqa: F811
+    def test_add_new_components_succeeds(self, harness):
         """Tests that adding a new Component succeeds as expected."""
         cg = ComponentGraph()
         name = "component1"
@@ -40,7 +40,7 @@ class TestAdd:
         assert cgi3.name == name
         assert len(cgi3.depends_on) == 2
 
-    def test_add_existing_item_raises(self, harness):  # noqa: F811
+    def test_add_existing_item_raises(self, harness):
         """Tests that adding two Components of the same name raises an Exception."""
 
         class MockComponent:
@@ -60,9 +60,7 @@ class TestGetExecutableComponentItems:
         cg = ComponentGraph()
         assert len(cg.get_executable_component_items()) == 0
 
-    def test_when_component_graph_has_mix_of_executable_and_not_executable(
-        self, harness  # noqa: F811
-    ):
+    def test_when_component_graph_has_mix_of_executable_and_not_executable(self, harness):
         cg = ComponentGraph()
         name = "component1"
         cgi1 = cg.add(component=MinimallyExtendedComponent(harness.charm, name), depends_on=[])
@@ -91,7 +89,7 @@ class TestStatus:
         cg = ComponentGraph()
         assert isinstance(cg.status, UnknownStatus)
 
-    def test_with_items(self, harness):  # noqa: F811
+    def test_with_items(self, harness):
         """Tests that the Status of a ComponentGraph with items is returned correctly."""
         cg = ComponentGraph()
 
@@ -128,7 +126,7 @@ class TestYieldExecutableComponentItems:
         with pytest.raises(StopIteration):
             next(cg.yield_executable_component_items())
 
-    def test_no_executable_items(self, harness):  # noqa: F811
+    def test_no_executable_items(self, harness):
         """Tests that the generator does not yield anything if there is nothing executable."""
         cg = ComponentGraph()
         name = "component1"
@@ -138,7 +136,7 @@ class TestYieldExecutableComponentItems:
         with pytest.raises(StopIteration):
             next(cg.yield_executable_component_items())
 
-    def test_with_several_component_items(self, harness):  # noqa: F811
+    def test_with_several_component_items(self, harness):
         """An end-to-end style test of ComponentGraph.yield_executable_component_items()."""
         cg = ComponentGraph()
         name = "component1"
@@ -195,7 +193,7 @@ class TestEventsToObserve:
         cg = ComponentGraph()
         assert len(cg.get_events_to_observe()) == 0
 
-    def test_with_events_to_observe(self, harness):  # noqa: F811
+    def test_with_events_to_observe(self, harness):
         cg = ComponentGraph()
 
         component1 = MinimallyExtendedComponent(harness, "test1")

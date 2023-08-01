@@ -6,11 +6,10 @@ from typing import List, Optional, Tuple
 
 from ops import CharmBase, EventBase, MaintenanceStatus, Object, StatusBase
 
+from ..status_handling.multistatus import add_prefix_to_status
 from .component import Component
 from .component_graph import ComponentGraph
 from .component_graph_item import ComponentGraphItem
-from ..status_handling.multistatus import add_prefix_to_status
-
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +155,7 @@ class CharmReconciler(Object):
         self._charm.framework.observe(self._charm.on.update_status, self.update_status)
 
     def remove(self, event: EventBase):
-        """Runs Component.remove() for each component.
+        """Runs Component.remove for all components.
 
         Note: unlike execute_components(), the order of in which Components are .remove()'ed
               is not guaranteed.
@@ -220,6 +219,6 @@ class CharmReconciler(Object):
 
 def log_component_statuses(statuses: List[Tuple[str, StatusBase]], logger: logging.Logger):
     """Logs the status of all components in a CharmReconciler."""
-    logger.info(f"Status of all CharmReconciler Components:")
+    logger.info("Status of all CharmReconciler Components:")
     for name, status in statuses:
         logger.info(f"Status: {add_prefix_to_status(name, status)}")

@@ -13,7 +13,6 @@ from ops import ActiveStatus, BlockedStatus, MaintenanceStatus, StatusBase
 
 from .component import Component
 
-
 logger = logging.getLogger(__name__)
 
 

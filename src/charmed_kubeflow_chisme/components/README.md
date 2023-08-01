@@ -4,7 +4,7 @@ An encapsulation for any piece of logic (a `Component`) that is used in a Charm.
 
 # Summary
 
-These are tools for implementing a holistic, reconcile-style charm (one that typically reconciles all aspect of the charm on major events like `config-changed`, `install`, etc.), and for making resuable pieces of logic to be executed by that type of charm.
+These are tools for implementing a holistic, reconcile-style charm (one that typically reconciles all aspect of the charm on major events like `config-changed`, `install`, etc.), and for making reusable pieces of logic to be executed by that type of charm.
 
 Included here are:
 * the `Component` abstraction, which defines the minimum API that any piece of Charm logic should implement
@@ -19,7 +19,7 @@ The term "reconcile-style charm" here means a charm that, for any major Juju eve
 * observes the current input state, such as config values, relation data, etc.
 * applies the desired output state for the things it manages, such as updating Pebble services in a container or deploying Kubernetes resources to the state they should be based on the current inputs
 
-This reconciliation is typically done holistically on everything the Charm manages, rather than in an imperitive style based only on what this current event has indicated.  A similar concept is discussed as [Deltas vs holistic charming](https://discourse.charmhub.io/t/deltas-vs-holistic-charming/11095) in Discourse.  
+This reconciliation is typically done holistically on everything the Charm manages, rather than in an imperative style based only on what this current event has indicated.  A similar concept is discussed as [Deltas vs holistic charming](https://discourse.charmhub.io/t/deltas-vs-holistic-charming/11095) in Discourse.  
 
 A typical charm for this sort of pattern could look like:
 

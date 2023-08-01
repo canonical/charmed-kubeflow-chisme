@@ -17,7 +17,7 @@ class TestPebbleComponent:
     name = "test-component"
     container_name = "test-container"
 
-    def test_ready_for_execution_if_service_up(self, harness_with_container):  # noqa: F811
+    def test_ready_for_execution_if_service_up(self, harness_with_container):
         """Test that ready_for_execution returns True if the service is up."""
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleComponent(
@@ -26,7 +26,7 @@ class TestPebbleComponent:
 
         assert pc.ready_for_execution is True
 
-    def test_ready_for_execution_if_service_not_up(self, harness_with_container):  # noqa: F811
+    def test_ready_for_execution_if_service_not_up(self, harness_with_container):
         """Test that ready_for_execution returns False if the service is up."""
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleComponent(
@@ -35,7 +35,7 @@ class TestPebbleComponent:
 
         assert pc.ready_for_execution is False
 
-    def test_status_if_container_ready(self, harness_with_container):  # noqa: F811
+    def test_status_if_container_ready(self, harness_with_container):
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleComponent(
             charm=harness_with_container.charm, name=self.name, container_name=self.container_name
@@ -43,7 +43,7 @@ class TestPebbleComponent:
 
         assert isinstance(pc.status, ActiveStatus)
 
-    def test_status_if_container_not_ready(self, harness_with_container):  # noqa: F811
+    def test_status_if_container_not_ready(self, harness_with_container):
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleComponent(
             charm=harness_with_container.charm, name=self.name, container_name=self.container_name
@@ -56,7 +56,7 @@ class TestPebbleServiceComponent:
     name = "test-component"
     container_name = "test-container"
 
-    def test_configure_charm(self, harness_with_container):  # noqa: F811
+    def test_configure_charm(self, harness_with_container):
         """Test that, if a charm's container is ready, the pebble layer is updated/replanned.
 
         This test feels weak.  We rely on the object we're testing to give us the expected
@@ -79,7 +79,7 @@ class TestPebbleServiceComponent:
         ).services
         assert services_expected == services_actual
 
-    def test_configure_charm_if_container_not_ready(self, harness_with_container):  # noqa: F811
+    def test_configure_charm_if_container_not_ready(self, harness_with_container):
         """Test that, if a charm's container is not ready, we do not update our layer/replan."""
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleServiceComponent(
@@ -96,9 +96,7 @@ class TestPebbleServiceComponent:
             mock_logger.info.assert_called_once()
             assert f"Container {self.container_name}" in mock_logger.info.call_args_list[0].args[0]
 
-    def test_get_services_not_active_if_container_not_ready(
-        self, harness_with_container  # noqa: F811
-    ):
+    def test_get_services_not_active_if_container_not_ready(self, harness_with_container):
         """Test that get_services_not_active returns all services when container not ready."""
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleServiceComponent(
@@ -115,7 +113,7 @@ class TestPebbleServiceComponent:
         assert service_names_not_active_expected == service_names_not_active
 
     def test_get_services_not_active_if_container_ready_services_not_started(
-        self, harness_with_container  # noqa: F811
+        self, harness_with_container
     ):
         """Test that get_services_not_active returns all services when services not started."""
         harness_with_container.set_can_connect(self.container_name, True)
@@ -133,7 +131,7 @@ class TestPebbleServiceComponent:
         assert service_names_not_active_expected == service_names_not_active
 
     def test_get_services_not_active_if_container_ready_services_active(
-        self, harness_with_container  # noqa: F811
+        self, harness_with_container
     ):
         """Test that get_services_not_active returns empty list when services are started."""
         harness_with_container.set_can_connect(self.container_name, True)
@@ -151,7 +149,7 @@ class TestPebbleServiceComponent:
 
         assert services_not_active_expected == services_not_active
 
-    def test_status_container_not_ready(self, harness_with_container):  # noqa: F811
+    def test_status_container_not_ready(self, harness_with_container):
         """Test that status is Waiting if container not ready."""
         harness_with_container.set_can_connect(self.container_name, False)
         pc = MinimalPebbleServiceComponent(
@@ -166,7 +164,7 @@ class TestPebbleServiceComponent:
         assert isinstance(status, WaitingStatus)
         assert "Waiting for Pebble to" in pc.status.message
 
-    def test_status_container_ready_service_not_active(self, harness_with_container):  # noqa: F811
+    def test_status_container_ready_service_not_active(self, harness_with_container):
         """Test that status is Waiting if services not ready."""
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleServiceComponent(
@@ -181,7 +179,7 @@ class TestPebbleServiceComponent:
         assert isinstance(status, WaitingStatus)
         assert "Waiting for Pebble services (" in pc.status.message
 
-    def test_status_container_ready_service_active(self, harness_with_container):  # noqa: F811
+    def test_status_container_ready_service_active(self, harness_with_container):
         """Test that status is Active if container is ready and services are active."""
         harness_with_container.set_can_connect(self.container_name, True)
         pc = MinimalPebbleServiceComponent(

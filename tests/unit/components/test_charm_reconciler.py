@@ -2,19 +2,22 @@
 # See LICENSE file for licensing details.
 from unittest.mock import MagicMock
 
-from ops import ActiveStatus, BlockedStatus, WaitingStatus
 import pytest
-from fixtures import MinimallyBlockedComponent, MinimallyExtendedComponent, harness  # noqa: F401
+from fixtures import (  # noqa: F401
+    MinimallyBlockedComponent,
+    MinimallyExtendedComponent,
+    harness,
+)
+from ops import ActiveStatus, BlockedStatus, WaitingStatus
 
 from charmed_kubeflow_chisme.components.charm_reconciler import CharmReconciler
 from charmed_kubeflow_chisme.components.component_graph import ComponentGraph
-
 
 # TODO: Add tests for execute_components, install, remove_components
 
 
 class TestBasicFunction:
-    def test_init_with_component_graph(self, harness):  # noqa: F811
+    def test_init_with_component_graph(self, harness):
         """Test that initialising a CharmReconciler with a ComponentGraph works as expected."""
         # Arrange
         charm = harness.charm
@@ -28,7 +31,7 @@ class TestBasicFunction:
         # Assert
         assert charm_reconciler._component_graph == component_graph
 
-    def test_init_without_component_graph(self, harness):  # noqa: F811
+    def test_init_without_component_graph(self, harness):
         """Test that initialising a CharmReconciler without a ComponentGraph works as expected."""
         # Arrange
         charm = harness.charm
@@ -39,7 +42,7 @@ class TestBasicFunction:
         # Assert that we have a new ComponentGraph automatically created
         assert isinstance(charm_reconciler._component_graph, ComponentGraph)
 
-    def test_add_component(self, harness):  # noqa: F811
+    def test_add_component(self, harness):
         """Test that adding Components to a CharmReconciler works as expected."""
         # Arrange
         charm = harness.charm
@@ -61,7 +64,7 @@ class TestBasicFunction:
         assert component_graph_item2.name in charm_reconciler._component_graph.component_items
         assert len(charm_reconciler._component_graph.component_items) == 2
 
-    def test_add_component_after_install(self, harness):  # noqa: F811
+    def test_add_component_after_install(self, harness):
         """Test that calling .add() after .install() correctly raises an Exception."""
         # Arrange
         charm = harness.charm
@@ -71,7 +74,7 @@ class TestBasicFunction:
         with pytest.raises(RuntimeError):
             charm_reconciler.add("dummy input")
 
-    def test_install_twice(self, harness):  # noqa: F811
+    def test_install_twice(self, harness):
         """Test that calling .install_default_event_handlers twice correctly raises."""
         # Arrange
         charm = harness.charm
@@ -94,9 +97,7 @@ class TestUpdateStatus:
         component2 = MinimallyExtendedComponent(charm=charm, name="component2")
         component2._completed_work = True
         component_graph_item1 = charm_reconciler.add(component1)
-        _ = charm_reconciler.add(
-            component2, depends_on=[component_graph_item1]
-        )
+        _ = charm_reconciler.add(component2, depends_on=[component_graph_item1])
 
         # Act
         charm_reconciler.update_status("event")
@@ -115,9 +116,7 @@ class TestUpdateStatus:
         component2 = MinimallyExtendedComponent(charm=charm, name="component2")
         component2._completed_work = True
         component_graph_item1 = charm_reconciler.add(component1)
-        _ = charm_reconciler.add(
-            component2, depends_on=[component_graph_item1]
-        )
+        _ = charm_reconciler.add(component2, depends_on=[component_graph_item1])
 
         # Act
         charm_reconciler.update_status("event")
@@ -136,9 +135,7 @@ class TestUpdateStatus:
         component1._completed_work = True
         component2 = MinimallyBlockedComponent(charm=charm, name="component2")
         component_graph_item1 = charm_reconciler.add(component1)
-        _ = charm_reconciler.add(
-            component2, depends_on=[component_graph_item1]
-        )
+        _ = charm_reconciler.add(component2, depends_on=[component_graph_item1])
 
         # Act
         charm_reconciler.update_status("event")

@@ -4,8 +4,6 @@
 import logging
 from typing import Any, Callable, List, Optional, Union
 
-from charmed_kubeflow_chisme.components import Component
-from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
 from jsonschema import ValidationError
 from ops import ActiveStatus, BlockedStatus, CharmBase, StatusBase, WaitingStatus
 from serialized_data_interface import (
@@ -15,6 +13,9 @@ from serialized_data_interface import (
     get_interface,
 )
 from serialized_data_interface.errors import UnversionedRelation
+
+from charmed_kubeflow_chisme.components import Component
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +39,15 @@ class SdiRelationDataReceiverComponent(Component):
     """Wraps an SDI-backed relation that receives data."""
 
     def __init__(
-            self,
-            charm: CharmBase,
-            name: str,
-            relation_name,
-            *args,
-            inputs_getter: Optional[Callable[[], Any]] = None,
-            minimum_related_applications: Optional[int] = 1,
-            maximum_related_applications: Optional[int] = 1,
-            **kwargs,
+        self,
+        charm: CharmBase,
+        name: str,
+        relation_name,
+        *args,
+        inputs_getter: Optional[Callable[[], Any]] = None,
+        minimum_related_applications: Optional[int] = 1,
+        maximum_related_applications: Optional[int] = 1,
+        **kwargs,
     ):
         """Wraps an SDI-backed relation that receives data, validating basic requirements.
 
@@ -181,14 +182,14 @@ class SdiRelationBroadcasterComponent(Component):
     """Wraps an SDI-backed relation that sends the same data to all related applications."""
 
     def __init__(
-            self,
-            charm: CharmBase,
-            name: str,
-            relation_name,
-            data_to_send: dict,
-            *args,
-            inputs_getter: Optional[Callable[[], Any]] = None,
-            **kwargs,
+        self,
+        charm: CharmBase,
+        name: str,
+        relation_name,
+        data_to_send: dict,
+        *args,
+        inputs_getter: Optional[Callable[[], Any]] = None,
+        **kwargs,
     ):
         """Wraps an SDI-backed relation that sends the same data to all related applications.
 
@@ -268,9 +269,9 @@ class SdiRelationBroadcasterComponent(Component):
             #  Would that be too much?
             for attribute in required_attributes:
                 if not (
-                        attribute in this_apps_interface_data
-                        and this_apps_interface_data[attribute] is not None
-                        and this_apps_interface_data[attribute] != ""
+                    attribute in this_apps_interface_data
+                    and this_apps_interface_data[attribute] is not None
+                    and this_apps_interface_data[attribute] != ""
                 ):
                     missing_attributes.append(attribute)
 

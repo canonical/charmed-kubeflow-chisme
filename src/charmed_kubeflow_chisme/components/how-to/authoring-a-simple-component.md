@@ -23,7 +23,7 @@ class MyComponent(Component):
         """
 ```
 
-Depending on the needs of the `Component`, any or all of these can be implemented.  For example, a `Component` for a Pebble container likely needs to do work on every unit and should use `_configure_unit`, whereas Kubernetes resources that are created once for the application shoud use `_configure_app_leader`.  
+Depending on the needs of the `Component`, any or all of these can be implemented.  For example, a `Component` for a Pebble container likely needs to do work on every unit and should use `_configure_unit`, whereas Kubernetes resources that are created once for the application should use `_configure_app_leader`.  
 
 Implementation detail: `CharmReconciler.execute_components()` executes `Component.configure_charm()`, which then delegates execution to the `_configure_*` methods.  If you need behaviour not covered by the standard cases, you can directly override `Component.configure_charm()` to implement what your `Component` needs. 
 
