@@ -13,6 +13,7 @@ both the Charmed Operators maintained by the [Charmed Kubeflow](ckf) team as wel
 * [Pebble](./src/charmed_kubeflow_chisme/pebble/README.md): Helpers for managing pebble when writing charms
 * [Rock](./src/charmed_kubeflow_chisme/README.md): Utilities for testing ROCKs
 * [Status Handling](./src/charmed_kubeflow_chisme/status_handling/README.md): Helpers for working with Charm Status objects
+* [Testing](./src/charmed_kubeflow_chisme/testing/README.md): Utilities for testing Charms
 * [Types](./src/charmed_kubeflow_chisme/types/README.md): Reusable typing definitions, useful for adding type hints
 
 [ckf]: https://charmed-kubeflow.io/
