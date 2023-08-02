@@ -14,6 +14,7 @@ both the Charmed Operators maintained by the [Charmed Kubeflow](ckf) team as wel
 * [Reusable Charm Components](./src/charmed_kubeflow_chisme/components/README.md): The `Component` abstraction that encapsulates any piece of logic for a Charm, a reusable reconcile function `CharmReconciler` that executes `Components`, and a collection of `Components` for things like running Pebble containers or deploying Kubernetes resources
 * [Rock](./src/charmed_kubeflow_chisme/README.md): Utilities for testing ROCKs
 * [Status Handling](./src/charmed_kubeflow_chisme/status_handling/README.md): Helpers for working with Charm Status objects
+* [Testing](./src/charmed_kubeflow_chisme/testing/README.md): Utilities for testing Charms
 * [Types](./src/charmed_kubeflow_chisme/types/README.md): Reusable typing definitions, useful for adding type hints
 
 [ckf]: https://charmed-kubeflow.io/
