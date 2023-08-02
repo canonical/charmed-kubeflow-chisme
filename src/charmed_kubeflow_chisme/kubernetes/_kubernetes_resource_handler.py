@@ -3,7 +3,7 @@
 import functools
 import logging
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 from jinja2 import Template
 from lightkube import Client, codecs
@@ -48,7 +48,7 @@ class KubernetesResourceHandler:
     def __init__(
         self,
         field_manager: str,
-        template_files: Optional[Iterable[str]] = None,
+        template_files: Optional[Iterable[Union[str, Path]]] = None,
         context: Optional[dict] = None,
         logger: Optional[logging.Logger] = None,
         labels: Optional[dict] = None,

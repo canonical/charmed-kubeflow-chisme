@@ -1,8 +1,8 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """A reusable Component for Kubernetes resources."""
-
-from typing import Callable, List, Optional
+from pathlib import Path
+from typing import Callable, Optional, Iterable, Union
 
 import lightkube
 from lightkube.core.exceptions import ApiError
@@ -26,7 +26,7 @@ class KubernetesComponent(Component):
         self,
         charm: CharmBase,
         name: str,
-        resource_templates: List[str],
+        resource_templates: Iterable[Union[str, Path]],
         krh_resource_types: LightkubeResourceTypesSet,
         krh_labels: dict,
         lightkube_client: lightkube.Client,
@@ -91,7 +91,7 @@ class KubernetesComponent(Component):
         """Returns the status of this Component based on whether its desired resources exist.
 
         Todo: This could use improvements on validation, and some of the logic could be moved into
-        the KubernetesResourceHandler class.
+         the KubernetesResourceHandler class.
         """
         if not self._charm.unit.is_leader():
             # We have no work to do, so we are always active.
