@@ -5,7 +5,7 @@ This guide describes how to define an upgrade procedure for a charm that uses th
 ## How charm upgrades work in general
 
 When a charm is upgraded (refreshed from one version to another), the following occurs ([reference](https://juju.is/docs/sdk/upgrade-charm-event)):
-1. old version of the charm receives no indication of the upgrade (it might receive a `stop` event?  Not sure)
+1. old version of the charm receives no indication of the upgrade (it receives a stop `stop` event, but nothing specifically identifies this stop as upgrade related)
 2. new charm is deployed after the old version has been removed
 3. new charm receives an `upgrade-charm` event
 4. new charm receives a `config-changed` event (this is guaranteed to fire after `upgrade-charm`)
@@ -33,3 +33,22 @@ In cases where special logic is required for migrating part of the charm, there 
 Option (1) is good when the actions needed for migration are inexpensive and idempotent, for example an `if` statement that looks at a relation's data, if it sees keys that were in the old schema, removes them and migrates the data.  Using this approach will make the regular `config-changed` behaviour of your charm implicitly do upgrades and requires no additional event handling.
 
 Option (2) is good when option (1) is not suitable.  In this case, you can write any charm code needed to do work on the `upgrade-charm` event.  This code is written like any regular charm event handler, not as part of the `CharmReconciler`.  
+
+An example of option (2) would be:
+
+```python
+class MyCharm(CharmBase):
+    def __init__(self):
+        ...
+        
+        # Handle charm upgrade
+        self.framework.observe(self.on.upgrade_charm, self.upgrade_charm)
+
+    def upgrade_charm(self, _: BoundEvent):
+        """Handler for an upgrade-charm event.
+
+        This handler should do anything required for upgrade that is not already covered by a
+        regular Component in self.charm_reconciler.
+        """
+        do_upgrade()
+```
