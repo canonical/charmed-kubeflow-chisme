@@ -50,10 +50,12 @@ class MinimallyBlockedComponent(MinimallyExtendedComponent):
 
 
 class MinimalPebbleComponent(PebbleComponent):
+    """A minimal implementation of PebbleComponent."""
     pass
 
 
 class MinimalPebbleServiceComponent(PebbleServiceComponent):
+    """A minimal implementation of PebbleServiceComponent."""
     def get_layer(self) -> Layer:
         return Layer(
             {
@@ -150,6 +152,7 @@ class DummyCharm(CharmBase):
 
 @pytest.fixture()
 def harness():
+    """Instantiated harness for the DummyCharm."""
     harness = Harness(DummyCharm, meta="")
     harness.begin()
     return harness
@@ -164,6 +167,7 @@ containers:
 
 @pytest.fixture()
 def harness_with_container():
+    """Instantiated harness of the DummyCharm with a container in metadata."""
     harness = Harness(DummyCharm, meta=METADATA_WITH_CONTAINER)
     harness.begin()
     return harness

@@ -86,7 +86,9 @@ class TestBasicFunction:
 
 
 class TestUpdateStatus:
+    """Tests for CharmReconciler's update status handling."""
     def test_update_status_with_multiple_components_working(self, harness):
+        """Tests that update_status works when multiple working components are attached."""
         # Arrange
         charm = harness.charm
 
@@ -106,6 +108,7 @@ class TestUpdateStatus:
         assert isinstance(harness.charm.unit.status, ActiveStatus)
 
     def test_update_status_with_multiple_components_first_not_active(self, harness):
+        """Tests that update_status does not go Active when a component is not Active."""
         # Arrange
         charm = harness.charm
 
@@ -126,6 +129,7 @@ class TestUpdateStatus:
         assert f"{component1.name} waiting" in harness.charm.unit.status.message
 
     def test_update_status_with_multiple_components_second_not_active(self, harness):
+        """Tests that update_status does not go Active when a component is not Active."""
         # Arrange
         charm = harness.charm
 
@@ -144,6 +148,7 @@ class TestUpdateStatus:
         assert isinstance(harness.charm.unit.status, BlockedStatus)
 
     def test_update_status_with_reconcile_true(self, harness):
+        """Test that if reconcile_on_update_status=True, update-status triggers a reconcile."""
         # Arrange
         charm = harness.charm
 
@@ -157,6 +162,8 @@ class TestUpdateStatus:
         charm_reconciler.reconcile.assert_called()
 
     def test_update_status_with_reconcile_false(self, harness):
+        """Test that if reconcile_on_update_status=False, update-status does not reconcile."""
+
         # Arrange
         charm = harness.charm
 

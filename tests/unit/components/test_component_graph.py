@@ -56,11 +56,14 @@ class TestAdd:
 
 
 class TestGetExecutableComponentItems:
+    """Tests for ComponentGraph.get_executable_component_items."""
     def test_when_component_graph_is_empty(self):
+        """Test that an empty graph works as expected."""
         cg = ComponentGraph()
         assert len(cg.get_executable_component_items()) == 0
 
     def test_when_component_graph_has_mix_of_executable_and_not_executable(self, harness):
+        """Test that a populated graph works as expected."""
         cg = ComponentGraph()
         name = "component1"
         cgi1 = cg.add(component=MinimallyExtendedComponent(harness.charm, name), depends_on=[])
@@ -84,6 +87,7 @@ class TestGetExecutableComponentItems:
 
 
 class TestStatus:
+    """Tests for ComponentGraph.status"""
     def test_no_items(self):
         """Tests that the Status of an empty ComponentGraph is UnknownStatus."""
         cg = ComponentGraph()
@@ -120,6 +124,7 @@ class TestStatus:
 
 
 class TestYieldExecutableComponentItems:
+    """Tests for ComponentGraph.yield_executable_component_items."""
     def test_no_items(self):
         """Tests that the generator does not yield anything if there are no items."""
         cg = ComponentGraph()
@@ -189,11 +194,14 @@ class TestYieldExecutableComponentItems:
 
 
 class TestEventsToObserve:
+    """Tests for ComponentGraph.events_to_observe."""
     def test_if_empty(self):
+        """Test that events_to_observe works if graph is empty."""
         cg = ComponentGraph()
         assert len(cg.get_events_to_observe()) == 0
 
     def test_with_events_to_observe(self, harness):
+        """Test that events_to_observe works if graph is populated."""
         cg = ComponentGraph()
 
         component1 = MinimallyExtendedComponent(harness, "test1")
