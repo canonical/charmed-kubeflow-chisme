@@ -163,7 +163,6 @@ class TestUpdateStatus:
 
     def test_update_status_with_reconcile_false(self, harness):
         """Test that if reconcile_on_update_status=False, update-status does not reconcile."""
-
         # Arrange
         charm = harness.charm
 

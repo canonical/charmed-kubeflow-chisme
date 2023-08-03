@@ -87,7 +87,7 @@ class TestGetExecutableComponentItems:
 
 
 class TestStatus:
-    """Tests for ComponentGraph.status"""
+    """Tests for ComponentGraph.status."""
     def test_no_items(self):
         """Tests that the Status of an empty ComponentGraph is UnknownStatus."""
         cg = ComponentGraph()
