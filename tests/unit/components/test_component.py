@@ -47,23 +47,21 @@ def configure_charm_and_spy(component):
             configure_app_non_leader: Boolean of whether this method was called
             configure_unit: Boolean of whether this method was called
     """
-    with (
-        patch.object(
-            component, "_configure_app_leader", wraps=component._configure_app_leader
-        ) as spied_configure_app_leader,
-        patch.object(
+    # When we move to python 3.9+, un-nest these with blocks
+    with patch.object(
+        component, "_configure_app_leader", wraps=component._configure_app_leader
+    ) as spied_configure_app_leader:
+        with patch.object(
             component, "_configure_app_non_leader", wraps=component._configure_app_non_leader
-        ) as spied_configure_app_non_leader,
-        patch.object(
-            component, "_configure_unit", wraps=component._configure_unit
-        ) as spied_configure_unit,
-    ):
-        # TODO: Make a real event somehow
-        event = "TODO: make this a real event"
-        component.configure_charm(event)
-        results = {
-            "configure_app_leader": spied_configure_app_leader.called,
-            "configure_app_non_leader": spied_configure_app_non_leader.called,
-            "configure_unit": spied_configure_unit.called,
-        }
-        return results
+        ) as spied_configure_app_non_leader:
+            with patch.object(
+                component, "_configure_unit", wraps=component._configure_unit
+            ) as spied_configure_unit:
+                event = "fake event"
+                component.configure_charm(event)
+                results = {
+                    "configure_app_leader": spied_configure_app_leader.called,
+                    "configure_app_non_leader": spied_configure_app_non_leader.called,
+                    "configure_unit": spied_configure_unit.called,
+                }
+                return results
