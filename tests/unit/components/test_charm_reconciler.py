@@ -172,6 +172,7 @@ class TestUpdateStatus:
 
 class MockEvent:
     """Mock for an ops.EventBase."""
+
     def __init__(self, handle):
         """Mock for an ops.EventBase."""
         self.handle = handle
