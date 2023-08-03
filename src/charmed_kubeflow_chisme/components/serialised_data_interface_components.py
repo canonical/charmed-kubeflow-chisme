@@ -142,8 +142,6 @@ class SdiRelationDataReceiverComponent(Component):
                 * nothing is related to us (as there is no work to do)
                 * we have one or more relations, and we have sent data to all of them
         """
-        logging.info("in ObjectStorageRequirerComponent.is_ready")
-
         try:
             # If we successfully get data, we are active
             self.get_data()
