@@ -87,6 +87,7 @@ class TestBasicFunction:
 
 class TestUpdateStatus:
     """Tests for CharmReconciler's update status handling."""
+
     def test_update_status_with_multiple_components_working(self, harness):
         """Tests that update_status works when multiple working components are attached."""
         # Arrange

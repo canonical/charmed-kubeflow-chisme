@@ -57,6 +57,7 @@ class TestAdd:
 
 class TestGetExecutableComponentItems:
     """Tests for ComponentGraph.get_executable_component_items."""
+
     def test_when_component_graph_is_empty(self):
         """Test that an empty graph works as expected."""
         cg = ComponentGraph()
@@ -88,6 +89,7 @@ class TestGetExecutableComponentItems:
 
 class TestStatus:
     """Tests for ComponentGraph.status."""
+
     def test_no_items(self):
         """Tests that the Status of an empty ComponentGraph is UnknownStatus."""
         cg = ComponentGraph()
@@ -125,6 +127,7 @@ class TestStatus:
 
 class TestYieldExecutableComponentItems:
     """Tests for ComponentGraph.yield_executable_component_items."""
+
     def test_no_items(self):
         """Tests that the generator does not yield anything if there are no items."""
         cg = ComponentGraph()
@@ -195,6 +198,7 @@ class TestYieldExecutableComponentItems:
 
 class TestEventsToObserve:
     """Tests for ComponentGraph.events_to_observe."""
+
     def test_if_empty(self):
         """Test that events_to_observe works if graph is empty."""
         cg = ComponentGraph()
