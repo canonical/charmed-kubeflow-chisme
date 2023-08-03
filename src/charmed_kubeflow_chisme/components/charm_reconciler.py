@@ -191,8 +191,16 @@ class CharmReconciler(Object):
         self._reconcile_on_update_status.
         """
         if self._reconcile_on_update_status:
+            logger.info(
+                f"CharmReconciler.update_status executing full charm reconcile because"
+                f"reconcile_on_update_status={self._reconcile_on_update_status}"
+            )
             return self.reconcile(event)
         else:
+            logger.info(
+                f"CharmReconciler.update_status updating Component statuses without a full charm"
+                f"reconcile because reconcile_on_update_status={self._reconcile_on_update_status}"
+            )
             # Set all component_items to executed so they report status as if execution is
             # complete.
             for component_item in self._component_graph.component_items.values():
