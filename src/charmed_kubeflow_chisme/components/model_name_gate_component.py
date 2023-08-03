@@ -11,9 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class ModelNameGateComponent(Component):
-    """Raises BlockedStatus if the model name is not the expected, according
-    to arguments.
-    """
+    """Raises BlockedStatus if the model name is not the expected, according to arguments."""
+
     def __init__(
         self,
         *args,

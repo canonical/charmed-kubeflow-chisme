@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 """A reusable Component for Kubernetes resources."""
 from pathlib import Path
-from typing import Callable, Optional, Iterable, Union
+from typing import Callable, Iterable, Optional, Union
 
 import lightkube
 from lightkube.core.exceptions import ApiError
