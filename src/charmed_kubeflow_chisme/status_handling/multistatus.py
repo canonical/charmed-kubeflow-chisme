@@ -81,7 +81,7 @@ class Prioritiser:
                 _ = err  # Suppress the lint about broad exceptions
                 logger.error(
                     f"Failed to compute status for {component} - setting to BlockedStatus",
-                    exc_info=True
+                    exc_info=True,
                 )
                 status = ops.BlockedStatus("Failed to compute status.  See logs for details.")
             statuses.append((component, status))

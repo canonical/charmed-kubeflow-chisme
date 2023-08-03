@@ -96,8 +96,10 @@ class CharmReconciler(Object):
                 )
             except Exception as err:
                 _ = err  # Suppress the lint about broad exceptions
-                msg = f"execute_components caught unhandled exception when executing " \
-                      f"configure_charm for {component_item.name}"
+                msg = (
+                    f"execute_components caught unhandled exception when executing "
+                    f"configure_charm for {component_item.name}"
+                )
                 logger.error(msg, exc_info=True)
 
         logger.info("execute_components execution loop complete.")
@@ -157,10 +159,7 @@ class CharmReconciler(Object):
                 logger.info(f"Successfully removed component {component_item.name}")
             except Exception as err:
                 _ = err  # Suppress the lint about broad exceptions
-                logger.warning(
-                    f"Failed to remove component {component_item.name}",
-                    exc_info=True
-                )
+                logger.warning(f"Failed to remove component {component_item.name}", exc_info=True)
 
     def status(self) -> StatusBase:
         """Returns a status representing the entire charm execution.
