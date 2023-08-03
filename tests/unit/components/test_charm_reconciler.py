@@ -100,7 +100,7 @@ class TestUpdateStatus:
         _ = charm_reconciler.add(component2, depends_on=[component_graph_item1])
 
         # Act
-        charm_reconciler.update_status("event")
+        charm_reconciler.update_status(MockEvent("abc"))
 
         # Assert
         assert isinstance(harness.charm.unit.status, ActiveStatus)
@@ -109,7 +109,7 @@ class TestUpdateStatus:
         # Arrange
         charm = harness.charm
 
-        charm_reconciler = CharmReconciler(charm)
+        charm_reconciler = CharmReconciler(charm, reconcile_on_update_status=False)
 
         component1 = MinimallyExtendedComponent(charm=charm, name="component1")
         component1._completed_work = False
@@ -119,7 +119,7 @@ class TestUpdateStatus:
         _ = charm_reconciler.add(component2, depends_on=[component_graph_item1])
 
         # Act
-        charm_reconciler.update_status("event")
+        charm_reconciler.update_status(MockEvent("event"))
 
         # Assert
         assert isinstance(harness.charm.unit.status, WaitingStatus)
@@ -129,7 +129,7 @@ class TestUpdateStatus:
         # Arrange
         charm = harness.charm
 
-        charm_reconciler = CharmReconciler(charm)
+        charm_reconciler = CharmReconciler(charm, reconcile_on_update_status=False)
 
         component1 = MinimallyExtendedComponent(charm=charm, name="component1")
         component1._completed_work = True
@@ -138,7 +138,7 @@ class TestUpdateStatus:
         _ = charm_reconciler.add(component2, depends_on=[component_graph_item1])
 
         # Act
-        charm_reconciler.update_status("event")
+        charm_reconciler.update_status(MockEvent("event"))
 
         # Assert
         assert isinstance(harness.charm.unit.status, BlockedStatus)
@@ -151,7 +151,7 @@ class TestUpdateStatus:
         charm_reconciler.reconcile = MagicMock()
 
         # Act
-        charm_reconciler.update_status("event")
+        charm_reconciler.update_status(MockEvent("event"))
 
         # Assert
         charm_reconciler.reconcile.assert_called()
@@ -164,7 +164,14 @@ class TestUpdateStatus:
         charm_reconciler.reconcile = MagicMock()
 
         # Act
-        charm_reconciler.update_status("event")
+        charm_reconciler.update_status(MockEvent("event"))
 
         # Assert
         charm_reconciler.reconcile.assert_not_called()
+
+
+class MockEvent:
+    """Mock for an ops.EventBase."""
+    def __init__(self, handle):
+        """Mock for an ops.EventBase."""
+        self.handle = handle
