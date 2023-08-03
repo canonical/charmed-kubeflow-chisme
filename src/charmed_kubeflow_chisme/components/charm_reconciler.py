@@ -21,7 +21,7 @@ class CharmReconciler(Object):
         self,
         charm: CharmBase,
         component_graph: Optional[ComponentGraph] = None,
-        reconcile_on_update_status: bool = False,
+        reconcile_on_update_status: bool = True,
     ):
         """A reusable reconcile loop for Charms.
 
