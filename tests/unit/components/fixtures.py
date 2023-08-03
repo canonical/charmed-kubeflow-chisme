@@ -51,11 +51,13 @@ class MinimallyBlockedComponent(MinimallyExtendedComponent):
 
 class MinimalPebbleComponent(PebbleComponent):
     """A minimal implementation of PebbleComponent."""
+
     pass
 
 
 class MinimalPebbleServiceComponent(PebbleServiceComponent):
     """A minimal implementation of PebbleServiceComponent."""
+
     def get_layer(self) -> Layer:
         return Layer(
             {
