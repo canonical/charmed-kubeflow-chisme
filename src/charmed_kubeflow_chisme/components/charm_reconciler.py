@@ -95,8 +95,10 @@ class CharmReconciler(Object):
                     f"status '{component_item.component.get_status()}'"
                 )
             except Exception as err:
-                msg = f"execute_components caught unhandled exception when executing configure_charm for {component_item.name}: {err}"
-                logger.error(msg)
+                _ = err  # Suppress the lint about broad exceptions
+                msg = f"execute_components caught unhandled exception when executing " \
+                      f"configure_charm for {component_item.name}"
+                logger.error(msg, exc_info=True)
 
             # TODO: If this component executes but does not go to ready, is there something we
             #  should do?  Omitted for now.
@@ -165,8 +167,10 @@ class CharmReconciler(Object):
                 component_item.component.remove(event)
                 logger.info(f"Successfully removed component {component_item.name}")
             except Exception as err:
+                _ = err  # Suppress the lint about broad exceptions
                 logger.warning(
-                    f"Failed to remove component {component_item.name} - caught error {err}"
+                    f"Failed to remove component {component_item.name}",
+                    exc_info=True
                 )
 
     def status(self) -> StatusBase:

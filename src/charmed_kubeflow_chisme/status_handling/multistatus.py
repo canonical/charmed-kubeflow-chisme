@@ -78,8 +78,11 @@ class Prioritiser:
             try:
                 status = get_status()
             except Exception as err:
-                logger.error(f"Failed to compute status for {component}: got error: {str(err)}")
-                logger.error(f"Setting {component} status to BlockedStatus.")
+                _ = err  # Suppress the lint about broad exceptions
+                logger.error(
+                    f"Failed to compute status for {component} - setting to BlockedStatus",
+                    exc_info=True
+                )
                 status = ops.BlockedStatus("Failed to compute status.  See logs for details.")
             statuses.append((component, status))
         statuses.sort(key=lambda s: self._PRIORITIES[s[1].name])
