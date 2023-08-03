@@ -17,20 +17,20 @@ class ModelNameGateComponent(Component):
     def __init__(
         self,
         *args,
-        model: str,
+        model_name: str,
         **kwargs,
     ):
         """Reusable Component for blocking when model name is not the expected."""
         super().__init__(*args, **kwargs)
-        self.model = model
+        self.model_name = model_name
 
     def ready_for_execution(self) -> bool:
-        """Returns True if charm is deployed to model named "kubeflow", else False."""
-        return self._charm.model.name == self.model
+        """Returns True if charm is deployed to the required model, else False."""
+        return self._charm.model.name == self.model_name
 
     def get_status(self) -> StatusBase:
-        """Returns True if charm is deployed to model named "kubeflow", else False."""
-        if self._charm.model.name != self.model:
-            return BlockedStatus(f"Charm must be deployed to model named {self.model}")
+        """Returns Active if charm is deployed to the required model, else Blocked."""
+        if self._charm.model.name != self.model_name:
+            return BlockedStatus(f"Charm must be deployed to model named {self.model_name}")
 
         return ActiveStatus()
