@@ -147,6 +147,16 @@ class CharmReconciler(Object):
 
         self._charm.framework.observe(self._charm.on.update_status, self.update_status)
 
+        self.framework.observe(self._charm.on.collect_unit_status, self.on_collect_status)
+
+    def on_collect_status(self, event):
+        """Push the status of all components to the ops framework status pool."""
+        statuses = self._get_component_statuses()
+        for name, status in statuses:
+            this_status = add_prefix_to_status(name, status)
+            logger.info(f"Adding status to event.add_status: {this_status}")
+            event.add_status(this_status)
+
     def remove(self, event: EventBase):
         """Runs Component.remove for all components.
 
