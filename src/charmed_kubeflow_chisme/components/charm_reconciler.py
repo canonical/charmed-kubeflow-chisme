@@ -100,17 +100,6 @@ class CharmReconciler(Object):
                       f"configure_charm for {component_item.name}"
                 logger.error(msg, exc_info=True)
 
-            # TODO: If this component executes but does not go to ready, is there something we
-            #  should do?  Omitted for now.
-            # if not component_item.component.ready:
-            #     raise NotImplementedError()
-
-        # TODO: Because on.commit didn't work for the Prioritiser, we add a call to Prioritiser
-        #  here.  This should be improved on in future.
-        # TODO: Add some better logging here.  Summarize what happened in the execute_components,
-        #  what did we work on, what did we skip, etc.  Sometimes when debugging it is hard to know
-        #  what did/didn't execute here, especially with how the yield_executable_component_items()
-        #  works.
         logger.info("execute_components execution loop complete.")
         self._update_charm_status()
 
