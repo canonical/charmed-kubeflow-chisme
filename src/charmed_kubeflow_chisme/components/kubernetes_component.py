@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """A reusable Component for Kubernetes resources."""
+import logging
 from pathlib import Path
 from typing import Callable, Iterable, Optional, Union
 
@@ -18,6 +19,7 @@ from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import (
 )
 from charmed_kubeflow_chisme.types import LightkubeResourceTypesSet
 
+logger = logging.getLogger(__name__)
 
 class KubernetesComponent(Component):
     """A reusable Component for Kubernetes resources."""
@@ -104,6 +106,7 @@ class KubernetesComponent(Component):
         # TODO: This feels awkward.  This will happen both if we haven't deployed anything yet (a
         #  typical case of "just wait longer") and if a resource has been lost.  How to handle this
         #  better?
+        logger.info(f"---- MISSING RESOURCES: {missing_resources}")
         if len(missing_resources) > 0:
             return BlockedStatus(
                 "Not all resources found in cluster.  This may be transient if we haven't tried "
