@@ -13,17 +13,21 @@ class CheckRock:
         """Initialize class with information from given rockcraft file."""
         self._rockcraft = yaml.safe_load(Path(rockcraft_file).read_text())
 
+    def get_name(self):
+        """Returns the name of the ROCK."""
+        return self._rockcraft["name"]
+    
     def get_version(self):
         """Returns the ROCK image version."""
         version = self._rockcraft["version"]
         return version
 
-    def get_image_name(self):
-        """Returns the ROCK image name."""
+    def get_rock_filename(self):
+        """Returns the ROCK filename."""
         name = self._rockcraft["name"]
         version = self.get_version()
         arch = list(self._rockcraft["platforms"].keys())[0]
-        return f"{name}_{version}_{arch}"
+        return f"{name}_{version}_{arch}.rock"
 
     def get_services(self):
         """Returns dictionary of services defined in ROCK."""
