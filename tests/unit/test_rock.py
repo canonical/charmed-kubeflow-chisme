@@ -27,8 +27,9 @@ def test_rock_cli_usage():
 def test_rock_instance_usage():
     """Test usage of instance of CheckRock."""
     check_rock = CheckRock(data_dir / "test_rockcraft.yaml")
+    assert check_rock.get_name() == "sklearnserver"
     assert check_rock.get_version() == "v1.16.0_20.04_1"
-    assert check_rock.get_image_name() == "sklearnserver_v1.16.0_20.04_1_amd64"
+    assert check_rock.get_rock_filename() == "sklearnserver_v1.16.0_20.04_1_amd64.rock"
 
 
 def test_rock_services():
