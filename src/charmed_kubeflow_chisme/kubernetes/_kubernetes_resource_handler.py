@@ -379,7 +379,7 @@ class KubernetesResourceHandler:
 
     @property
     def labels(self):
-        """Returns the dict of supplimentary labels used for identifying these manifests."""
+        """Returns the dict of supplementary labels used for identifying these manifests."""
         return self._labels
 
     @labels.setter
