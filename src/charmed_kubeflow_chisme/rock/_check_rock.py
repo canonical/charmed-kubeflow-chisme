@@ -16,7 +16,7 @@ class CheckRock:
     def get_name(self):
         """Returns the name of the ROCK."""
         return self._rockcraft["name"]
-    
+
     def get_version(self):
         """Returns the ROCK image version."""
         version = self._rockcraft["version"]
