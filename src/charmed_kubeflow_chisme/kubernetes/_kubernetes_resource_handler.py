@@ -3,7 +3,7 @@
 import functools
 import logging
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 from jinja2 import Template
 from lightkube import Client, codecs
@@ -48,7 +48,7 @@ class KubernetesResourceHandler:
     def __init__(
         self,
         field_manager: str,
-        template_files: Optional[Iterable[str]] = None,
+        template_files: Optional[Iterable[Union[str, Path]]] = None,
         context: Optional[dict] = None,
         logger: Optional[logging.Logger] = None,
         labels: Optional[dict] = None,
@@ -145,15 +145,18 @@ class KubernetesResourceHandler:
         )
         return suggested_unit_status
 
-    def delete(self):
+    def delete(self, ignore_missing=True):
         """Deletes all resources managed by this KubernetesResourceHandler.
 
         Requires that self.labels and self.resource_types be set.
+
+        Args:
+            ignore_missing: *(optional)* Avoid raising 404 errors on deletion (defaults to True)
         """
         _validate_labels_and_resource_types(self.labels, self.resource_types, caller_name="delete")
 
         resources_to_delete = self.get_deployed_resources()
-        delete_many(self.lightkube_client, resources_to_delete)
+        delete_many(self.lightkube_client, resources_to_delete, ignore_missing, self.log)
 
     def get_deployed_resources(self) -> LightkubeResourcesList:
         """Returns a list of all resources deployed by this KubernetesResourceHandler.
@@ -184,7 +187,7 @@ class KubernetesResourceHandler:
 
         return resources
 
-    def reconcile(self, force=False):
+    def reconcile(self, force=False, ignore_missing=True):
         """Reconciles the managed resources, removing, updating, or creating objects as required.
 
         This method will:
@@ -199,6 +202,7 @@ class KubernetesResourceHandler:
         Args:
             force: *(optional)* Passed to self.apply().  This will force apply over any resources
                    marked as managed by another field manager.
+            ignore_missing: *(optional)* Avoid raising 404 errors on deletion (defaults to True)
         """
         existing_resources = self.get_deployed_resources()
         desired_resources = self.render_manifests()
@@ -207,7 +211,7 @@ class KubernetesResourceHandler:
         resources_to_delete = _in_left_not_right(
             existing_resources, desired_resources, hasher=_hash_lightkube_resource
         )
-        delete_many(self._lightkube_client, resources_to_delete)
+        delete_many(self._lightkube_client, resources_to_delete, ignore_missing, self.log)
 
         # Update remaining resources and create any new ones
         self.apply(force=force)
@@ -292,7 +296,7 @@ class KubernetesResourceHandler:
             self.log.debug(f"Rendered manifest:\n{manifest_parts[-1]}")
         return manifest_parts
 
-    def apply(self, force: bool = False):
+    def apply(self, force: bool = True):
         """Applies the managed Kubernetes resources, adding or modifying these objects.
 
         This can be invoked to create and/or update resources in the kubernetes cluster using
@@ -314,7 +318,7 @@ class KubernetesResourceHandler:
         To simultaneously create, update, and delete resources, see self.reconcile().
 
         Args:
-            force: *(optional)* Force is going to "force" Apply requests. It means user will
+            force: *(optional)* Force is going to "force" apply requests. It means user will
                    re-acquire conflicting fields owned by other people.
         """
         resources = self.render_manifests(force_recompute=False)
@@ -328,24 +332,35 @@ class KubernetesResourceHandler:
                 _validate_resources(resources, allowed_resource_types=self.resource_types)
             except ValueError as e:
                 raise ValueError(
-                    "Failed to validate resources before applying them.  This likely"
-                    " means we tried to create a resource of type not listed in"
-                    " `KRH.resource_types`."
+                    "Failed to validate resources before applying them. This likely means we tried"
+                    " to create a resource of type not included in `KRH.resource_types`."
                 ) from e
 
         try:
-            apply_many(client=self.lightkube_client, objs=resources, field_manager=self._field_manager, force=force)
+            apply_many(
+                client=self.lightkube_client,
+                objs=resources,
+                field_manager=self._field_manager,
+                force=force,
+                logger=self.log,
+            )
         except ApiError as e:
-            # Handle forbidden error as this likely means we do not have --trust
             if e.status.code == 403:
+                # Handle forbidden error as this likely means we do not have --trust
                 self.log.error(
-                    "Received Forbidden (403) error from lightkube when creating resources.  "
-                    "This may be due to the charm lacking permissions to create cluster-scoped "
-                    "roles and resources.  Charm must be deployed with `--trust`"
+                    f"Received Forbidden (403) error from lightkube when creating resources: {e}"
+                    " This may be due to the charm lacking permissions to create cluster-scoped"
+                    " roles and resources. Charm must be deployed with `--trust`"
                 )
-                self.log.error(f"Error received: {str(e)}")
                 raise ErrorWithStatus(
-                    "Cannot apply required resources.  Charm may be missing `--trust`",
+                    "Cannot apply required resources. Charm may be missing `--trust`",
+                    BlockedStatus,
+                )
+            elif self._check_and_report_k8s_conflict(e):
+                # Conflict detected when applying K8s resources
+                raise ErrorWithStatus(
+                    "Cannot apply required resources: conflicts detected. Use with `force=True` to"
+                    " force applying changes to the cluster",
                     BlockedStatus,
                 )
             else:
@@ -364,7 +379,7 @@ class KubernetesResourceHandler:
 
     @property
     def labels(self):
-        """Returns the dict of supplimentary labels used for identifying these manifests."""
+        """Returns the dict of supplementary labels used for identifying these manifests."""
         return self._labels
 
     @labels.setter
@@ -417,6 +432,13 @@ class KubernetesResourceHandler:
 
         # Return status based on the worst thing we encountered
         return get_first_worst_error(errors).status
+
+    def _check_and_report_k8s_conflict(self, error) -> bool:
+        """Return True if error status code is 409 (conflict), False otherwise."""
+        if error.status.code == 409:
+            self.logger.warning(f"Encountered a conflict: {error}")
+            return True
+        return False
 
 
 def _add_label_field_to_resource(resource: LightkubeResourceType) -> LightkubeResourceType:
