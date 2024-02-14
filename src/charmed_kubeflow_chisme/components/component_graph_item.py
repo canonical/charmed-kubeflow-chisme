@@ -2,9 +2,7 @@
 # See LICENSE file for licensing details.
 """A wrapper around a Component for use in a ComponentGraph."""
 
-from __future__ import (
-    annotations,  # To enable type hinting a method in a class with its own class
-)
+from __future__ import annotations  # To enable type hinting a method in a class with its own class
 
 import logging
 from typing import List, Optional

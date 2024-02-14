@@ -6,19 +6,10 @@ from contextlib import nullcontext
 from unittest.mock import MagicMock
 
 import pytest
-from ops.model import (
-    ActiveStatus,
-    BlockedStatus,
-    MaintenanceStatus,
-    StatusBase,
-    WaitingStatus,
-)
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
-from charmed_kubeflow_chisme.status_handling import (
-    get_first_worst_error,
-    set_and_log_status,
-)
+from charmed_kubeflow_chisme.status_handling import get_first_worst_error, set_and_log_status
 
 BlockedError1 = ErrorWithStatus("Blocked1", BlockedStatus)
 BlockedError2 = ErrorWithStatus("Blocked2", BlockedStatus)
