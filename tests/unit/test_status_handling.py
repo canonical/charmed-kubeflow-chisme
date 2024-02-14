@@ -3,13 +3,16 @@
 
 import logging
 from contextlib import nullcontext
+from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
+from ops.pebble import CheckInfo, CheckLevel, CheckStatus
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
-from charmed_kubeflow_chisme.status_handling import get_first_worst_error, set_and_log_status
+from charmed_kubeflow_chisme.status_handling import check_workload_health, get_first_worst_error, set_and_log_status
+
 
 BlockedError1 = ErrorWithStatus("Blocked1", BlockedStatus)
 BlockedError2 = ErrorWithStatus("Blocked2", BlockedStatus)
@@ -60,3 +63,43 @@ def test_set_and_log_status(type: StatusBase, message: str, expected_level: str,
     assert mock_unit.status == status
     assert [message] == [rec.message for rec in caplog.records]
     assert [expected_level] == [rec.levelname for rec in caplog.records]
+
+
+def test_check_workload_health_check_up(
+    mocked_container,
+    caplog,
+):
+    container_name = "test-container"
+    health_check = "up"
+    mocked_container.get_check.return_value = CheckInfo(
+        name="up", status=CheckStatus.UP, level=CheckLevel.ALIVE, failures=0, threshold=3
+    )
+    logger = logging.getLogger()
+
+    check_workload_health(mocked_container, container_name, health_check, logger)
+
+
+def test_check_workload_health_check_down(
+    mocked_container,
+    caplog,
+):
+    container_name = "test-container"
+    health_check = "up"
+    mocked_container.get_check.return_value = CheckInfo(
+        name="up", status=CheckStatus.DOWN, level=CheckLevel.ALIVE, failures=0, threshold=3
+    )
+    logger = logging.getLogger()
+
+    with pytest.raises(ErrorWithStatus):
+        check_workload_health(mocked_container, container_name, health_check, logger)
+    assert ["Container test-container failed health check."] == [
+        rec.message for rec in caplog.records
+    ]
+    assert ["ERROR"] == [rec.levelname for rec in caplog.records]
+
+
+@pytest.fixture()
+def mocked_container(mocker):
+    mocked_container = mocker.patch("ops.model.Container")
+    mocked_container.return_value = mock.MagicMock()
+    yield mocked_container

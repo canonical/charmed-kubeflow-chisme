@@ -3,7 +3,8 @@
 
 """Utilities for interacting with Charm Status objects."""
 
+from ._check_workload_health import check_workload_health
 from ._get_first_worst_error import get_first_worst_error
 from ._set_and_log_status import set_and_log_status
 
-__all__ = [get_first_worst_error, set_and_log_status]
+__all__ = [get_first_worst_error, set_and_log_status, check_workload_health]
