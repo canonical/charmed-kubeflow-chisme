@@ -23,6 +23,10 @@ class ComponentGraph:
         self.component_items: dict[str, ComponentGraphItem] = {}
         self.status_prioritiser = Prioritiser()
 
+    def __len__(self) -> int:
+        """Returns the number of component_items we have."""
+        return len(self.component_items)
+
     def add(
         self,
         component: Component,

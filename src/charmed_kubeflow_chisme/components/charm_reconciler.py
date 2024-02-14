@@ -4,7 +4,14 @@
 import logging
 from typing import List, Optional, Tuple
 
-from ops import CharmBase, EventBase, MaintenanceStatus, Object, StatusBase
+from ops import (
+    ActiveStatus,
+    CharmBase,
+    EventBase,
+    MaintenanceStatus,
+    Object,
+    StatusBase,
+)
 
 from ..status_handling.multistatus import add_prefix_to_status
 from .component import Component
@@ -207,8 +214,18 @@ class CharmReconciler(Object):
         """Computes Component statuses, updating the attached Charm's with the aggregate status.
 
         Also logs the full status details to the charm logs.
+
+        By default, if this CharmReconciler has no components then it is active.
         """
         statuses = self._get_component_statuses()
+        print("##########################")
+        print(len(self._component_graph))
+        print("##########################")
+        if len(self._component_graph) == 0:
+            # If we have nothing to be inactive, we are active.
+            self._charm.unit.status = ActiveStatus()
+            return
+
         log_component_statuses(statuses, logger)
 
         # Set the charm status to the worst of all statuses
