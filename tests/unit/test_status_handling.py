@@ -11,8 +11,11 @@ from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, StatusBase
 from ops.pebble import CheckInfo, CheckLevel, CheckStatus
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
-from charmed_kubeflow_chisme.status_handling import check_workload_health, get_first_worst_error, set_and_log_status
-
+from charmed_kubeflow_chisme.status_handling import (
+    check_workload_health,
+    get_first_worst_error,
+    set_and_log_status,
+)
 
 BlockedError1 = ErrorWithStatus("Blocked1", BlockedStatus)
 BlockedError2 = ErrorWithStatus("Blocked2", BlockedStatus)
