@@ -218,9 +218,6 @@ class CharmReconciler(Object):
         By default, if this CharmReconciler has no components then it is active.
         """
         statuses = self._get_component_statuses()
-        print("##########################")
-        print(len(self._component_graph))
-        print("##########################")
         if len(self._component_graph) == 0:
             # If we have nothing to be inactive, we are active.
             self._charm.unit.status = ActiveStatus()
