@@ -3,11 +3,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-from fixtures import (  # noqa: F401
-    MinimallyBlockedComponent,
-    MinimallyExtendedComponent,
-    harness,
-)
+from fixtures import MinimallyBlockedComponent, MinimallyExtendedComponent, harness  # noqa: F401
 from ops import ActiveStatus, BlockedStatus, WaitingStatus
 
 from charmed_kubeflow_chisme.components.charm_reconciler import CharmReconciler

@@ -8,10 +8,7 @@ from typing import NamedTuple
 from unittest import mock
 
 import pytest
-from lightkube.generic_resource import (
-    create_global_resource,
-    create_namespaced_resource,
-)
+from lightkube.generic_resource import create_global_resource, create_namespaced_resource
 from lightkube.models.apps_v1 import StatefulSetSpec, StatefulSetStatus
 from lightkube.models.core_v1 import PodTemplateSpec
 from lightkube.models.meta_v1 import LabelSelector, ObjectMeta
@@ -36,9 +33,7 @@ from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import (
     _validate_resources,
     codecs,
 )
-from charmed_kubeflow_chisme.kubernetes._validate_statefulset import (
-    validate_statefulset,
-)
+from charmed_kubeflow_chisme.kubernetes._validate_statefulset import validate_statefulset
 from charmed_kubeflow_chisme.lightkube.mocking import FakeApiError
 
 data_dir = Path(__file__).parent.joinpath("data")

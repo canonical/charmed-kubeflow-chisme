@@ -9,11 +9,7 @@ from .component_graph_item import ComponentGraphItem
 from .kubernetes_component import KubernetesComponent
 from .leadership_gate_component import LeadershipGateComponent
 from .model_name_gate_component import ModelNameGateComponent
-from .pebble_component import (
-    ContainerFileTemplate,
-    PebbleComponent,
-    PebbleServiceComponent,
-)
+from .pebble_component import ContainerFileTemplate, PebbleComponent, PebbleServiceComponent
 from .serialised_data_interface_components import (
     SdiRelationBroadcasterComponent,
     SdiRelationDataReceiverComponent,

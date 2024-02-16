@@ -4,14 +4,7 @@
 import logging
 from typing import List, Optional, Tuple
 
-from ops import (
-    ActiveStatus,
-    CharmBase,
-    EventBase,
-    MaintenanceStatus,
-    Object,
-    StatusBase,
-)
+from ops import ActiveStatus, CharmBase, EventBase, MaintenanceStatus, Object, StatusBase
 
 from ..status_handling.multistatus import add_prefix_to_status
 from .component import Component

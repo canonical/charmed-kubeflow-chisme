@@ -2,11 +2,7 @@
 # See LICENSE file for licensing details.
 
 import pytest
-from fixtures import (  # noqa: F401
-    MinimallyBlockedComponent,
-    MinimallyExtendedComponent,
-    harness,
-)
+from fixtures import MinimallyBlockedComponent, MinimallyExtendedComponent, harness  # noqa: F401
 from ops import BlockedStatus, UnknownStatus
 
 from charmed_kubeflow_chisme.components.component_graph import ComponentGraph

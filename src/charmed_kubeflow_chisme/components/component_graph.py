@@ -2,9 +2,7 @@
 # See LICENSE file for licensing details.
 """A collection of ComponentGraphItems that keeps their order."""
 
-from __future__ import (
-    annotations,  # To enable type hinting a method in a class with its own class
-)
+from __future__ import annotations  # To enable type hinting a method in a class with its own class
 
 from typing import Iterable, List, Optional
 
