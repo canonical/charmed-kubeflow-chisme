@@ -2,8 +2,8 @@
 # See LICENSE file for licensing details.
 
 from lightkube.models.core_v1 import ServicePort
-from ..lib.charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
-from ..lib.charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from ..libraries.charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
+from ..libraries.charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 
 def create_metrics_endpoint(charm, metrics_port:str , metrics_path: str) -> MetricsEndpointProvider:
         metrics_service_port = ServicePort(int(metrics_port), name="metrics-port")
