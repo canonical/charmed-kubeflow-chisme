@@ -1,8 +1,10 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+from pathlib import Path
 from unittest import mock
 
+from charmed_kubeflow_chisme.components import ContainerFileTemplate
 from fixtures import (  # noqa: F401
     MinimalPebbleComponent,
     MinimalPebbleServiceComponent,
@@ -194,3 +196,57 @@ class TestPebbleServiceComponent:
         status = pc.status
 
         assert isinstance(status, ActiveStatus)
+
+
+class TestContainerFileTemplate:
+    def test_static_inputs(self):
+        """Tests that the ContainerFileTemplate can accept static inputs."""
+        source_template_path = "source_template_path"
+        destination_path = "destination_path"
+        context = {"key": "value"}
+        user = "user"
+        group = "group"
+        permissions = "permissions"
+
+        # Test these without using kwargs to ensure they API doesn't change
+        cft = ContainerFileTemplate(
+            source_template_path,
+            destination_path,
+            context_function=context,
+            user=user,
+            group=group,
+            permissions=permissions,
+        )
+
+        assert cft.destination_path == Path(destination_path)
+        assert cft.source_template_path == Path(source_template_path)
+        assert cft.context_function() == context
+        assert cft.user == user
+        assert cft.group == group
+        assert cft.permissions == permissions
+
+    def test_lazy_inputs(self):
+        """Tests that the ContainerFileTemplate can accept lazy inputs."""
+        source_template_path = "source_template_path"
+        destination_path = "destination_path"
+        context = {"key": "value"}
+        user = "user"
+        group = "group"
+        permissions = "permissions"
+
+        # Test these without using kwargs to ensure they API doesn't change
+        cft = ContainerFileTemplate(
+            source_template_path,
+            destination_path,
+            lambda: context,
+            user,
+            group,
+            permissions,
+        )
+
+        assert cft.destination_path == Path(destination_path)
+        assert cft.source_template_path == Path(source_template_path)
+        assert cft.context_function() == context
+        assert cft.user == user
+        assert cft.group == group
+        assert cft.permissions == permissions
