@@ -1,10 +1,10 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+import tempfile
 from pathlib import Path
 from unittest import mock
 
-from charmed_kubeflow_chisme.components import ContainerFileTemplate
+import pytest
 from fixtures import (  # noqa: F401
     MinimalPebbleComponent,
     MinimalPebbleServiceComponent,
@@ -13,6 +13,7 @@ from fixtures import (  # noqa: F401
 from ops import ActiveStatus, WaitingStatus
 
 import charmed_kubeflow_chisme.components.pebble_component
+from charmed_kubeflow_chisme.components import ContainerFileTemplate, LazyContainerFileTemplate
 
 
 class TestPebbleComponent:
@@ -250,3 +251,152 @@ class TestContainerFileTemplate:
         assert cft.user == user
         assert cft.group == group
         assert cft.permissions == permissions
+
+
+class TestLazyContainerFileTemplate:
+    def test_static_inputs(self):
+        """Tests that the LazyContainerFileTemplate can accept static inputs."""
+        destination_path = "destination_path"
+        source_template_path = "source_template_path"
+        context = {"key": "value"}
+        user = "user"
+        group = "group"
+        permissions = "permissions"
+
+        # Test these without using kwargs to ensure they API doesn't change
+        cft = LazyContainerFileTemplate(
+            destination_path,
+            source_template_path=source_template_path,
+            context=context,
+            user=user,
+            group=group,
+            permissions=permissions,
+        )
+
+        assert cft.destination_path == Path(destination_path)
+        assert cft.source_template_path == Path(source_template_path)
+        assert cft.context == context
+        assert cft.user == user
+        assert cft.group == group
+        assert cft.permissions == permissions
+
+    def test_lazy_inputs(self):
+        """Tests that the LazyContainerFileTemplate can accept lazy inputs."""
+        destination_path = "destination_path"
+        source_template_path = "source_template_path"
+        context = {"key": "value"}
+        user = "user"
+        group = "group"
+        permissions = "permissions"
+
+        # Test these without using kwargs to ensure they API doesn't change
+        cft = LazyContainerFileTemplate(
+            destination_path,
+            source_template_path=lambda: source_template_path,
+            context=lambda: context,
+            user=user,
+            group=group,
+            permissions=permissions,
+        )
+
+        assert cft.destination_path == Path(destination_path)
+        assert cft.source_template_path == Path(source_template_path)
+        assert cft.context == context
+        assert cft.user == user
+        assert cft.group == group
+        assert cft.permissions == permissions
+
+    @pytest.mark.parametrize(
+        "source_template, source_template_path",
+        [
+            (None, None),
+            ("not none", "not none"),
+        ],
+    )
+    def test_requires_exactly_one_of_source_template_and_source_template_path(
+        self, source_template, source_template_path
+    ):
+        """Tests LazyContainerFileTemplate requires one of source_template/source_template_path."""
+        with pytest.raises(ValueError):
+            LazyContainerFileTemplate(
+                "destination_path",
+                source_template_path=source_template_path,
+                source_template=source_template,
+                context={},
+                user="user",
+                group="group",
+                permissions="permissions",
+            )
+
+    def test_get_source_template_given_source_template(self):
+        """Tests get_source_template returns the expected value when provided source_template."""
+        source_template = "source_template"
+        cft = LazyContainerFileTemplate(
+            "destination_path",
+            source_template=source_template,
+            context={},
+            user="user",
+            group="group",
+            permissions="permissions",
+        )
+
+        assert cft.get_source_template() == source_template
+
+    def test_get_source_template_given_source_template_file(self):
+        """Tests get_source_template returns expected value when provided source_template_file."""
+        source_template = "source_template"
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(source_template.encode())
+            # Ensure the text is written to the file and not kept buffered
+            f.flush()
+            cft = LazyContainerFileTemplate(
+                "destination_path",
+                source_template_path=f.name,
+                context={},
+                user="user",
+                group="group",
+                permissions="permissions",
+            )
+
+            assert cft.get_source_template() == source_template
+
+    def test_render(self):
+        """Tests render given a source_template and context."""
+        source_template = "unrendered {{ key }} template"
+        expected = "unrendered value template"
+        cft = LazyContainerFileTemplate(
+            "destination_path",
+            source_template=source_template,
+            context={"key": "value"},
+            user="user",
+            group="group",
+            permissions="permissions",
+        )
+
+        assert cft.render() == expected
+
+    def test_get_inputs_for_push(self):
+        """Tests get_inputs_for_push returns the expected inputs."""
+        source_template = "unrendered {{ key }} template"
+        expected_rendered = "unrendered value template"
+        user = "user"
+        group = "group"
+        permissions = "permissions"
+        cft = LazyContainerFileTemplate(
+            "destination_path",
+            source_template=source_template,
+            context={"key": "value"},
+            user=user,
+            group=group,
+            permissions=permissions,
+        )
+        expected = {
+            "path": Path("destination_path"),
+            "source": expected_rendered,
+            "user": user,
+            "group": group,
+            "permissions": permissions,
+            "make_dirs": True,
+        }
+
+        assert cft.get_inputs_for_push() == expected
