@@ -399,7 +399,7 @@ class TestLazyContainerFileTemplate:
             permissions="permissions",
         )
 
-        assert cft.render() == expected
+        assert cft.render_source_template() == expected
 
     def test_get_inputs_for_push(self):
         """Tests get_inputs_for_push returns the expected inputs."""

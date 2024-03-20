@@ -92,7 +92,7 @@ class LazyContainerFileTemplate:
         """Returns a dict of the inputs expected by ops.model.Container.push()."""
         return dict(
             path=self.destination_path,
-            source=self.render(),
+            source=self.render_source_template(),
             user=self.user,
             group=self.group,
             permissions=self.permissions,
@@ -106,7 +106,7 @@ class LazyContainerFileTemplate:
         else:
             return self.source_template
 
-    def render(self):
+    def render_source_template(self):
         """Renders the source template with the given context, returning as a string."""
         source_template = self.get_source_template()
         template = jinja2.Template(source_template)
