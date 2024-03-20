@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class LazyContainerFileTemplate:
-    """A lazy container file template that can be rendered and pushed into a Pebble container."""
+    """A lazy file template renderer for use in pushing files to a Pebble container."""
 
     def __init__(
         self,
@@ -28,7 +28,32 @@ class LazyContainerFileTemplate:
         group: Optional[str] = None,
         permissions: Optional[str] = None,
     ):
-        """A ContainerFileTemplate that lazily generates its template from a path or string."""
+        """A lazy file template renderer for use in pushing files to a Pebble container.
+
+        This generates a file from a template provided as a string or a file path.  The file will
+        be rendered with a context provided as a dict.
+
+        source_template_path, source_template, and context can also be provided as callables that
+        return the appropriate value.  This allows for lazy evaluation of these values, which can
+        be useful for using in charm Components.
+
+        Args:
+            destination_path: The path to the file in the container.
+            source_template_path: The path to the source template file.
+                                  Can be provided as a Path, str, or a function that returns
+                                  either.
+                                  Only one of source_template_path or source_template can be set.
+            source_template: The source template string.  Only one of source_template_path or this
+                             can be set.
+                             Can be provided as a str or a function that returns a str.
+            context: A dict of context for rendering the file.  Leave this as None or {} if the
+                     template does not need rendering.
+                     Can be also be provided as a function returning a dict so the input can be
+                     lazily evaluated.
+            user: The user to own the file in the container.
+            group: The group to own the file in the container.
+            permissions: The permissions to set on the file in the container.
+        """
         if source_template_path is not None and source_template is not None:
             raise ValueError("Only one of source_template_path or source_template can be set.")
         elif source_template_path is None and source_template is None:
@@ -90,7 +115,7 @@ class LazyContainerFileTemplate:
 
 
 class ContainerFileTemplate(LazyContainerFileTemplate):
-    """A container file template that can be rendered and pushed into a Pebble container."""
+    """A file template renderer for use in pushing files to a Pebble container."""
 
     def __init__(
         self,
@@ -103,9 +128,33 @@ class ContainerFileTemplate(LazyContainerFileTemplate):
     ):
         """Defines a file template that should be rendered and pushed into a Pebble container.
 
+        This generates a file from a template provided as a file path.  The file will
+        be rendered with a context provided as a dict.
+
+        source_template_path and context_function can also be provided as callables that return the
+        appropriate value.  This allows for lazy evaluation of these values, which can be useful
+        for using in charm Components.
+
         This is a backwards-compatible refactor of the original ContainerFileTemplate using
         LazyContainerFileTemplate as the backend implementation.  This was introduced because
-        LazyContainerFileTemplate introduced a breaking change in the API.
+        ContainerFileTemplate had two required arguments, source_template_path and
+        destination_path, whereas LazyContainerFileTemplate only requires destination_path.  This
+        forced the order of the arguments to be changed, which is a breaking change in the API.
+
+        Args:
+            destination_path: The path to the file in the container.
+            source_template_path: The path to the source template file.
+                                  Can be provided as a Path, str, or a function that returns
+                                  either.
+                                  Only one of source_template_path or source_template can be set.
+            context_function: A dict of context for rendering the file.  Leave this as None or {}
+                              if the
+                              template does not need rendering.
+                              Can be also be provided as a function returning a dict so the input
+                              can be lazily evaluated.
+            user: The user to own the file in the container.
+            group: The group to own the file in the container.
+            permissions: The permissions to set on the file in the container.
         """
         if context_function is None:
 
