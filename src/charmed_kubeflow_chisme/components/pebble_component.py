@@ -3,7 +3,6 @@
 """Reusable Components for Pebble containers."""
 import logging
 from abc import abstractmethod
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, List, Optional, Union
 
@@ -16,28 +15,177 @@ from charmed_kubeflow_chisme.components.component import Component
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ContainerFileTemplate:
-    """Dataclass for defining templates that should be rendered as files in Pebble Containers."""
+class LazyContainerFileTemplate:
+    """A lazy file template renderer for use in pushing files to a Pebble container."""
 
-    source_template_path: Union[Path, str]
-    destination_path: Union[Path, str]
-    context_function: Optional[Union[Callable, dict]] = None
-    user: Optional[str] = None
-    group: Optional[str] = None
-    permissions: Optional[str] = None
+    def __init__(
+        self,
+        destination_path: Union[Path, str],
+        source_template_path: Optional[Union[Path, str, Callable[[], Union[Path, str]]]] = None,
+        source_template: Optional[Union[str, Callable[[], str]]] = None,
+        context: Optional[Union[dict, Callable[[], dict]]] = None,
+        user: Optional[str] = None,
+        group: Optional[str] = None,
+        permissions: Optional[str] = None,
+    ):
+        """A lazy file template renderer for use in pushing files to a Pebble container.
 
-    def __setattr__(self, name, value):
-        """Custom setter that converts the types of some inputs."""
-        if name in ["source_template_path", "destination_path"]:
-            value = Path(value)
-        if name == "context_function":
-            if value is None:
-                value = lambda: {}  # noqa: E731
-            elif not callable(value):
-                value = lambda: value  # noqa: E731
+        This generates a file from a template provided as a string or a file path.  The file will
+        be rendered with a context provided as a dict.
 
-        super().__setattr__(name, value)
+        source_template_path, source_template, and context can also be provided as callables that
+        return the appropriate value.  This allows for lazy evaluation of these values, which can
+        be useful for using in charm Components.
+
+        Args:
+            destination_path: The path to the file in the container.
+            source_template_path: The path to the source template file.
+                                  Can be provided as a Path, str, or a function that returns
+                                  either.
+                                  Only one of source_template_path or source_template can be set.
+            source_template: The source template string.
+                             Can be provided as a str or a function that returns a str.
+                             Only one of source_template_path or this can be set.
+            context: A dict of context for rendering the file.  Leave this as None or {} if the
+                     template does not need rendering.
+                     Can be also be provided as a function returning a dict so the input can be
+                     lazily evaluated.
+            user: The user to own the file in the container.
+            group: The group to own the file in the container.
+            permissions: The permissions to set on the file in the container.
+        """
+        if source_template_path is not None and source_template is not None:
+            raise ValueError("Only one of source_template_path or source_template can be set.")
+        elif source_template_path is None and source_template is None:
+            raise ValueError("One of source_template_path or source_template must be set.")
+
+        self.destination_path = Path(destination_path)
+        self._source_template_path = source_template_path
+        self._source_template = source_template
+        self._context = context
+        self.user = user
+        self.group = group
+        self.permissions = permissions
+
+    @property
+    def context(self):
+        """Returns the context_function input, rendered to a dict."""
+        if callable(self._context):
+            return self._context()
+        return self._context or {}
+
+    @property
+    def source_template_path(self):
+        """Returns the source_template_path input, rendered to a Path."""
+        if callable(self._source_template_path):
+            return Path(self._source_template_path())
+        return Path(self._source_template_path)
+
+    @property
+    def source_template(self):
+        """Returns the source_template input, rendered to a string."""
+        if callable(self._source_template):
+            return self._source_template()
+        return self._source_template
+
+    def get_inputs_for_push(self):
+        """Returns a dict of the inputs expected by ops.model.Container.push()."""
+        return dict(
+            path=self.destination_path,
+            source=self.render_source_template(),
+            user=self.user,
+            group=self.group,
+            permissions=self.permissions,
+            make_dirs=True,
+        )
+
+    def get_source_template(self):
+        """Returns the source template, regardless of whether specified via path or string."""
+        if self._source_template_path is not None:
+            return self.source_template_path.read_text()
+        else:
+            return self.source_template
+
+    def render_source_template(self):
+        """Renders the source template with the given context, returning as a string."""
+        source_template = self.get_source_template()
+        template = jinja2.Template(source_template)
+        rendered = template.render(**self.context)
+        return rendered
+
+
+class ContainerFileTemplate(LazyContainerFileTemplate):
+    """A file template renderer for use in pushing files to a Pebble container."""
+
+    def __init__(
+        self,
+        source_template_path: Union[Path, str, Callable[[], Union[Path, str]]],
+        destination_path: Union[Path, str],
+        context_function: Optional[Union[dict, Callable[[], dict]]] = None,
+        user: Optional[str] = None,
+        group: Optional[str] = None,
+        permissions: Optional[str] = None,
+    ):
+        """Defines a file template that should be rendered and pushed into a Pebble container.
+
+        This generates a file from a template provided as a file path.  The file will
+        be rendered with a context provided as a dict.
+
+        source_template_path and context_function can also be provided as callables that return the
+        appropriate value.  This allows for lazy evaluation of these values, which can be useful
+        for using in charm Components.
+
+        This is a backwards-compatible refactor of the original ContainerFileTemplate using
+        LazyContainerFileTemplate as the backend implementation.  This was introduced because
+        ContainerFileTemplate had two required arguments, source_template_path and
+        destination_path, whereas LazyContainerFileTemplate only requires destination_path.  This
+        forced the order of the arguments to be changed, which is a breaking change in the API.
+
+        Args:
+            destination_path: The path to the file in the container.
+            source_template_path: The path to the source template file.
+                                  Can be provided as a Path, str, or a function that returns
+                                  either.
+                                  Only one of source_template_path or source_template can be set.
+            context_function: A dict of context for rendering the file.  Leave this as None or {}
+                              if the
+                              template does not need rendering.
+                              Can be also be provided as a function returning a dict so the input
+                              can be lazily evaluated.
+            user: The user to own the file in the container.
+            group: The group to own the file in the container.
+            permissions: The permissions to set on the file in the container.
+        """
+        if context_function is None:
+
+            def context_function_():
+                return {}
+
+        elif not callable(context_function):
+
+            def context_function_():
+                return context_function
+
+        else:
+            context_function_ = context_function
+
+        super().__init__(
+            destination_path=destination_path,
+            source_template_path=source_template_path,
+            source_template=None,
+            context=context_function_,
+            user=user,
+            group=group,
+            permissions=permissions,
+        )
+
+    @property
+    def context_function(self):
+        """Returns the context_function input, unrendered.
+
+        For backwards compatibility with previous versions of ContainerFileTemplate.
+        """
+        return self._context
 
 
 class PebbleComponent(Component):
@@ -49,7 +197,9 @@ class PebbleComponent(Component):
         name: str,
         container_name: str,
         *args,
-        files_to_push: Optional[List[ContainerFileTemplate]] = None,
+        files_to_push: Optional[
+            List[Union[ContainerFileTemplate, LazyContainerFileTemplate]]
+        ] = None,
         **kwargs,
     ):
         """Instantiate the PebbleComponent.
@@ -59,8 +209,9 @@ class PebbleComponent(Component):
             name: Name of this component
             container_name: Name of this container.  Note that this name is also used as the
                             parent object's Component.name parameter.
-            files_to_push: Optional List of ContainerFile objects that define templates to be
-                           rendered and pushed into the container as files
+            files_to_push: Optional List of LazyContainerFileTemplate or ContainerFileTemplate
+                           objects that define templates to be rendered and pushed into the
+                           container as files
         """
         super().__init__(charm, name, *args, **kwargs)
         self.container_name = container_name
@@ -89,16 +240,7 @@ class PebbleComponent(Component):
         """Renders and pushes the files defined in self._files_to_push into the container."""
         container = self._charm.unit.get_container(self.container_name)
         for container_file_template in self._files_to_push:
-            template = jinja2.Template(container_file_template.source_template_path.read_text())
-            rendered = template.render(**container_file_template.context_function())
-            container.push(
-                path=container_file_template.destination_path,
-                source=rendered,
-                user=container_file_template.user,
-                group=container_file_template.group,
-                permissions=container_file_template.permissions,
-                make_dirs=True,
-            )
+            container.push(**container_file_template.get_inputs_for_push())
 
     def get_status(self) -> StatusBase:
         """Returns the status of this Component."""
