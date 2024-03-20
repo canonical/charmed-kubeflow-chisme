@@ -235,7 +235,7 @@ class TestContainerFileTemplate:
         group = "group"
         permissions = "permissions"
 
-        # Test these without using kwargs to ensure they API doesn't change
+        # Test these without using kwargs to ensure the API doesn't change
         cft = ContainerFileTemplate(
             source_template_path,
             destination_path,
