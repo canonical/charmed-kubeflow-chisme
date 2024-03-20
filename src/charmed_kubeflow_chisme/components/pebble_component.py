@@ -43,9 +43,9 @@ class LazyContainerFileTemplate:
                                   Can be provided as a Path, str, or a function that returns
                                   either.
                                   Only one of source_template_path or source_template can be set.
-            source_template: The source template string.  Only one of source_template_path or this
-                             can be set.
+            source_template: The source template string.
                              Can be provided as a str or a function that returns a str.
+                             Only one of source_template_path or this can be set.
             context: A dict of context for rendering the file.  Leave this as None or {} if the
                      template does not need rendering.
                      Can be also be provided as a function returning a dict so the input can be
