@@ -197,7 +197,9 @@ class PebbleComponent(Component):
         name: str,
         container_name: str,
         *args,
-        files_to_push: Optional[List[ContainerFileTemplate]] = None,
+        files_to_push: Optional[
+            List[Union[ContainerFileTemplate, LazyContainerFileTemplate]]
+        ] = None,
         **kwargs,
     ):
         """Instantiate the PebbleComponent.
@@ -207,8 +209,9 @@ class PebbleComponent(Component):
             name: Name of this component
             container_name: Name of this container.  Note that this name is also used as the
                             parent object's Component.name parameter.
-            files_to_push: Optional List of ContainerFile objects that define templates to be
-                           rendered and pushed into the container as files
+            files_to_push: Optional List of LazyContainerFileTemplate or ContainerFileTemplate
+                           objects that define templates to be rendered and pushed into the
+                           container as files
         """
         super().__init__(charm, name, *args, **kwargs)
         self.container_name = container_name
