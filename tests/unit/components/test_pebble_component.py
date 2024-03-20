@@ -280,8 +280,8 @@ class TestLazyContainerFileTemplate:
         assert cft.group == group
         assert cft.permissions == permissions
 
-    def test_lazy_inputs(self):
-        """Tests that the LazyContainerFileTemplate can accept lazy inputs."""
+    def test_lazy_inputs_with_source_template_path(self):
+        """Tests that LazyContainerFileTemplate accepts lazy inputs and source_template_path."""
         destination_path = "destination_path"
         source_template_path = "source_template_path"
         context = {"key": "value"}
@@ -301,6 +301,32 @@ class TestLazyContainerFileTemplate:
 
         assert cft.destination_path == Path(destination_path)
         assert cft.source_template_path == Path(source_template_path)
+        assert cft.context == context
+        assert cft.user == user
+        assert cft.group == group
+        assert cft.permissions == permissions
+
+    def test_lazy_inputs_with_source_template(self):
+        """Tests that LazyContainerFileTemplate accepts lazy inputs and source_template."""
+        destination_path = "destination_path"
+        source_template = "source_template"
+        context = {"key": "value"}
+        user = "user"
+        group = "group"
+        permissions = "permissions"
+
+        # Test these without using kwargs to ensure they API doesn't change
+        cft = LazyContainerFileTemplate(
+            destination_path,
+            source_template=lambda: source_template,
+            context=lambda: context,
+            user=user,
+            group=group,
+            permissions=permissions,
+        )
+
+        assert cft.destination_path == Path(destination_path)
+        assert cft.source_template == source_template
         assert cft.context == context
         assert cft.user == user
         assert cft.group == group
