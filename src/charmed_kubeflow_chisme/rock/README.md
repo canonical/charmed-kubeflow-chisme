@@ -1,4 +1,4 @@
-# Check ROCK
+# Check rock
 
-Check ROCK class for testing ROCK images.
+Check rock class for testing rocks.
 
