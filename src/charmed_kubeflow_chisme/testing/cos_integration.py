@@ -1,15 +1,15 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+"""Utilities for testing COS integration with charms."""
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, Set
 
 import yaml
 from juju.action import Action
 from juju.application import Application
 from juju.model import Model
-from juju.relation import Relation
 from juju.unit import Unit
 
 log = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ def _get_alert_rules(data: str) -> Set[str]:
 
 
 def _get_metrics_endpoint(data: str) -> Set[str]:
-    """Get set of metrics enpoints from string.
+    """Get set of metrics endpoints from string.
 
     This function is excpection data defined as string.
 
@@ -213,11 +213,11 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
 
 
 async def assert_metrics_endpoint(app: Application, metrics_endpoints: Set[str]) -> None:
-    """Assert function to check defined metrics enpoints in relation data.
+    """Assert function to check defined metrics endpoints in relation data.
 
     This function compare metrics endpoints defined in METRICS_ENDPOINT_RELATION relation data bag
-    and provided metrics enpoint. e.g. {"*:5000/metrics", "*:8000/metrics"}
-    This function will also check the accesibility of such endpoint.
+    and provided metrics endpoint. e.g. {"*:5000/metrics", "*:8000/metrics"}
+    This function will also check the accessibility of such endpoint.
     """
     relation_data = await _get_app_relation_data(app, METRICS_ENDPOINT_RELATION)
     assert "scrape_jobs" in relation_data, "relation is missing scrape_jobs"

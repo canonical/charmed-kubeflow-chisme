@@ -94,7 +94,7 @@ async def test_get_app_relation_data_no_relations():
     app.units = [unit]
     relation = Mock(spec_set=Relation)()
     endpoint = Mock(spec_set=Endpoint)()
-    endpoint.name = "different-enpoint"
+    endpoint.name = "different-endpoint"
     relation.endpoints = [endpoint]
     app.relations = [relation]
 
@@ -196,7 +196,7 @@ async def test_run_on_unit_fail():
     mock_result.return_value.results = {"return-code": 1}
 
     with pytest.raises(AssertionError, match="cmd `test` failed with error `None`"):
-        result = await _run_on_unit(unit, "test")
+        await _run_on_unit(unit, "test")
 
 
 @pytest.mark.asyncio
@@ -263,8 +263,10 @@ async def test_assert_alert_rules_fail(mock_get_alert_rules, mock_get_app_relati
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoint(mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data):
-    """Test assert function for metrics enpoint with empty data bag."""
+async def test_assert_metrics_endpoint(
+    mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
+):
+    """Test assert function for metrics endpoint with empty data bag."""
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {}
 
@@ -280,8 +282,10 @@ async def test_assert_metrics_endpoint(mock_check_metrics_endpoint, mock_get_met
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoint(mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data):
-    """Test assert function for metrics enpoint."""
+async def test_assert_metrics_endpoint(
+    mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
+):
+    """Test assert function for metrics endpoint."""
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {"scrape_jobs": "..."}
     mock_get_metrics_endpoint.return_value = exp_metrics_endpoint = {"*:5000/metrics"}
@@ -297,8 +301,10 @@ async def test_assert_metrics_endpoint(mock_check_metrics_endpoint, mock_get_met
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoint_fail(mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data):
-    """Test assert function for metrics enpoint failing."""
+async def test_assert_metrics_endpoint_fail(
+    mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
+):
+    """Test assert function for metrics endpoint failing."""
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {"scrape_jobs": "..."}
     mock_get_metrics_endpoint.return_value = {"*:5000/metrics"}
