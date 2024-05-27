@@ -5,7 +5,7 @@
 ## `deploy_and_assert_grafana_agent`
 
 Helper function to deploy [grafana-agent-k8s](https://charmhub.io/grafana-agent-k8s) to test the model and add a relation to the charm being tested.
-Relation can be disabledled by flags:
+Relation can be disabled by flags:
 - dashboard=False, to disable `<app>:grafana-dashboard grafana-agent-k8s:grafana-dashboards-consumer` relation
 - metrics=False, to disable `<app>:metrics-endpoint grafana-agent-k8s:metrics-endpoint` relation
 
@@ -31,6 +31,17 @@ async def test_alert_rules(ops_test):
     """Test alert_rules defione in relation data bag."""
     app = ops_test.model.applications["my-charm"]
     await assert_alert_rules(app, {"MyAler1", "MyAler2"})
+```
+
+This tool also provides helper function to collect all alert rules from charm source code.
+
+Example usage:
+```python
+async def test_alert_rules(ops_test):
+    """Test alert_rules defione in relation data bag."""
+    app = ops_test.model.applications["my-charm"]
+    alert_rules = get_alert_rules()
+    await assert_alert_rules(app, alert_rules)
 ```
 
 ## `assert_metrics_endpoint`

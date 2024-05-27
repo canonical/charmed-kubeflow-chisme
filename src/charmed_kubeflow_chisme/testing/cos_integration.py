@@ -185,17 +185,14 @@ async def _run_on_unit(unit: Unit, cmd: str) -> Action:
     return result
 
 
-# def get_charm_alert_rules() -> Set[str]:
-#     """Get all alert rules.
+def get_alert_rules(path: Path = ALER_RULES_DIRECTORY) -> Set[str]:
+    """Get all alert rules from files."""
+    alert_rules = set()
+    for file_type in ["*.rule", "*.rules"]:
+        for file in path.glob(file_type):
+            alert_rules |= _get_alert_rules(file.read_text())
 
-#     TODO: files with .rules can have multiple rules
-#     """
-#     alert_rules = set()
-#     for file_type in ["*.rule", "*.rules"]:
-#         for file in ALER_RULES_DIRECTORY.glob(file_type):
-#             alert_rules |= _get_alert_rules(file.read_text())
-
-#     return alert_rules
+    return alert_rules
 
 
 async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:

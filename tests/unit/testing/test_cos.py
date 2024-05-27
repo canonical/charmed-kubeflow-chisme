@@ -1,6 +1,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
@@ -19,6 +20,7 @@ from charmed_kubeflow_chisme.testing.cos_integration import (
     assert_alert_rules,
     assert_metrics_endpoint,
     deploy_and_assert_grafana_agent,
+    get_alert_rules,
 )
 
 
@@ -315,3 +317,11 @@ async def test_assert_metrics_endpoint_fail(
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_called_once_with("...")
     mock_check_metrics_endpoint.assert_not_awaited()
+
+
+def test_get_alert_rules():
+    """Test load alert rules from directory."""
+    exp_alert_rules = {"MyAlert1", "MyAlert2"}
+    path = Path(__file__).parent / "../data"
+
+    assert get_alert_rules(path) == exp_alert_rules
