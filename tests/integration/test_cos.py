@@ -21,8 +21,8 @@ charmed_kubeflow_chisme.testing.cos_integration.APP_METRICS_ENDPOINT = "self-met
 @pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test):
     """Test deployment of grafana-agent-k8s and relate it with charm."""
-    await ops_test.model.deploy("blackbox-exporter-k8s", channel="latest/stable")
-    await ops_test.model.wait_for_idle()
+    await ops_test.model.deploy("blackbox-exporter-k8s", channel="latest/stable", trust=True)
+    await ops_test.model.wait_for_idle(raise_on_blocked=True)
 
     await deploy_and_assert_grafana_agent(ops_test.model, "blackbox-exporter-k8s", dashboard=True)
 
