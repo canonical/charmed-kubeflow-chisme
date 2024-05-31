@@ -18,7 +18,7 @@ from charmed_kubeflow_chisme.testing.cos_integration import (
     _get_metrics_endpoint,
     _run_on_unit,
     assert_alert_rules,
-    assert_metrics_endpoint,
+    assert_metrics_endpoints,
     deploy_and_assert_grafana_agent,
     get_alert_rules,
 )
@@ -40,20 +40,20 @@ async def test_deploy_and_assert_grafana_agent_invalid_app():
     "kwargs, exp_awaits",
     [
         (
-            {},
+            {"metrics": True, "dashboard": True},
             [
                 call("my-app:grafana-dashboard", "grafana-agent-k8s:grafana-dashboards-consumer"),
                 call("my-app:metrics-endpoint", "grafana-agent-k8s:metrics-endpoint"),
             ],
         ),
         (
-            {"dashboard": False},
+            {"metrics": True, "dashboard": False},
             [
                 call("my-app:metrics-endpoint", "grafana-agent-k8s:metrics-endpoint"),
             ],
         ),
         (
-            {"metrics": False},
+            {"metrics": False, "dashboard": True},
             [
                 call("my-app:grafana-dashboard", "grafana-agent-k8s:grafana-dashboards-consumer"),
             ],
@@ -63,17 +63,49 @@ async def test_deploy_and_assert_grafana_agent_invalid_app():
 )
 async def test_deploy_and_assert_grafana_agent(kwargs, exp_awaits):
     """Test deploy grafana-agent-k8s along test app."""
-    app = "my-app"
-    model = AsyncMock(spec_set=Model)
-    model.applications = [app]
+    app = Mock(spec_set=Application)()
+    app.name = "my-app"
 
-    await deploy_and_assert_grafana_agent(model, app, **kwargs)
+    grafana_aget_app = Mock(spec_set=Application)()
+    grafana_aget_app.name = "grafana-agent-k8s"
+    grafana_aget_unit = Mock(spec_set=Unit)()
+    grafana_aget_unit.workload_status_message = "send-remote-write: off, grafana-cloud-config: off"
+    grafana_aget_app.units = [grafana_aget_unit]
+
+    model = AsyncMock(spec_set=Model)
+    model.applications = {app.name: app, grafana_aget_app.name: grafana_aget_app}
+
+    await deploy_and_assert_grafana_agent(model, app.name, **kwargs)
 
     model.deploy.assert_awaited_once_with("grafana-agent-k8s", channel="latest/stable")
-    model.add_relation.assert_has_awaits(exp_awaits)
+    model.integrate.assert_has_awaits(exp_awaits)
     model.wait_for_idle.assert_awaited_once_with(
         apps=["grafana-agent-k8s"], status="blocked", timeout=300
     )
+
+
+@pytest.mark.asyncio
+async def test_deploy_and_assert_grafana_agent_failed():
+    """Test deploy grafana-agent-k8s failed reached expected state."""
+    app = Mock(spec_set=Application)()
+    app.name = "my-app"
+
+    grafana_aget_app = Mock(spec_set=Application)()
+    grafana_aget_app.name = "grafana-agent-k8s"
+    grafana_aget_unit = Mock(spec_set=Unit)()
+    grafana_aget_unit.workload_status_message = "different message"
+    grafana_aget_app.units = [grafana_aget_unit]
+
+    model = AsyncMock(spec_set=Model)
+    model.applications = {app.name: app, grafana_aget_app.name: grafana_aget_app}
+
+    with pytest.raises(
+        AssertionError,
+        match="grafana-agent-k8s did not reach expected state. 'different message' != .*",
+    ):
+        await deploy_and_assert_grafana_agent(model, app.name)
+
+    model.deploy.assert_awaited_once_with("grafana-agent-k8s", channel="latest/stable")
 
 
 @pytest.mark.asyncio
@@ -100,9 +132,24 @@ async def test_get_app_relation_data_no_relations():
     relation.endpoints = [endpoint]
     app.relations = [relation]
 
-    with pytest.raises(
-        AssertionError, match="metrics-endpoint is missing or there are too many of them"
-    ):
+    with pytest.raises(AssertionError, match="metrics-endpoint is missing"):
+        await _get_app_relation_data(app, "metrics-endpoint")
+
+
+@pytest.mark.asyncio
+async def test_get_app_relation_data_too_many():
+    """Test getting application data from relation data bag with too many relations."""
+    app = Mock(spec_set=Application)()
+    unit = Mock(spec_set=Unit)()
+    app.name = "my-app"
+    app.units = [unit]
+    relation = Mock(spec_set=Relation)()
+    endpoint = Mock(spec_set=Endpoint)()
+    endpoint.name = "metrics-endpoint"
+    relation.endpoints = [endpoint]
+    app.relations = [relation] * 3  # three relations
+
+    with pytest.raises(AssertionError, match="too many relations with metrics-endpoint endpoint"):
         await _get_app_relation_data(app, "metrics-endpoint")
 
 
@@ -265,7 +312,7 @@ async def test_assert_alert_rules_fail(mock_get_alert_rules, mock_get_app_relati
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoint(
+async def test_assert_metrics_endpoints(
     mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint with empty data bag."""
@@ -273,7 +320,7 @@ async def test_assert_metrics_endpoint(
     mock_get_app_relation_data.return_value = {}
 
     with pytest.raises(AssertionError, match="relation is missing scrape_jobs"):
-        await assert_metrics_endpoint(app, {})
+        await assert_metrics_endpoints(app, {})
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_not_called()
@@ -284,7 +331,7 @@ async def test_assert_metrics_endpoint(
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoint(
+async def test_assert_metrics_endpoints(
     mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint."""
@@ -292,7 +339,7 @@ async def test_assert_metrics_endpoint(
     mock_get_app_relation_data.return_value = {"scrape_jobs": "..."}
     mock_get_metrics_endpoint.return_value = exp_metrics_endpoint = {"*:5000/metrics"}
 
-    await assert_metrics_endpoint(app, exp_metrics_endpoint)
+    await assert_metrics_endpoints(app, exp_metrics_endpoint)
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_called_once_with("...")
@@ -303,7 +350,7 @@ async def test_assert_metrics_endpoint(
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoint_fail(
+async def test_assert_metrics_endpoints_fail(
     mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint failing."""
@@ -312,7 +359,7 @@ async def test_assert_metrics_endpoint_fail(
     mock_get_metrics_endpoint.return_value = {"*:5000/metrics"}
 
     with pytest.raises(AssertionError):
-        await assert_metrics_endpoint(app, {"*:8000/metrics"})
+        await assert_metrics_endpoints(app, {"*:8000/metrics"})
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_called_once_with("...")

@@ -5,7 +5,7 @@ import pytest
 
 from charmed_kubeflow_chisme.testing import (
     assert_alert_rules,
-    assert_metrics_endpoint,
+    assert_metrics_endpoints,
     deploy_and_assert_grafana_agent,
 )
 
@@ -20,14 +20,14 @@ async def test_build_and_deploy(ops_test):
 
 
 async def test_alert_rules(ops_test):
-    """Test alert_rules defione in relation data bag."""
+    """Test alert_rules are defined in relation data bag."""
     app = ops_test.model.applications["mlflow-server"]
     await assert_alert_rules(
         app, {"MLFlowServerUnitIsUnavailable", "MLFlowRequestDurationTooLong"}
     )
 
 
-async def test_metrics_endpoint(ops_test):
-    """Test metrics_endpoint defione in relation data bag."""
+async def test_metrics_endpoints(ops_test):
+    """Test metrics_endpoints are defined in relation data bag."""
     app = ops_test.model.applications["mlflow-server"]
-    await assert_metrics_endpoint(app, {"*:5000/metrics", "*:8000/metrics"})
+    await assert_metrics_endpoints(app, {"*:5000/metrics", "*:8000/metrics"})

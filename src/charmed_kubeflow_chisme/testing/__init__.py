@@ -4,7 +4,7 @@
 
 from .cos_integration import (
     assert_alert_rules,
-    assert_metrics_endpoint,
+    assert_metrics_endpoints,
     deploy_and_assert_grafana_agent,
     get_alert_rules,
 )
@@ -19,7 +19,7 @@ __all__ = [
     add_data_to_sdi_relation,
     add_sdi_relation_to_harness,
     assert_alert_rules,
-    assert_metrics_endpoint,
+    assert_metrics_endpoints,
     deploy_and_assert_grafana_agent,
     get_alert_rules,
 ]

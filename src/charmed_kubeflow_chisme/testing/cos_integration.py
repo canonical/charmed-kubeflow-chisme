@@ -15,58 +15,74 @@ from juju.unit import Unit
 log = logging.getLogger(__name__)
 
 GRAFANA_AGENT_APP = "grafana-agent-k8s"
-METRICS_ENDPOINT_RELATION = "metrics-endpoint"
-GRAFANA_DASHBOARD_RELATION = "grafana-dashboard"
-ALER_RULES_DIRECTORY = Path("./src/prometheus_alert_rules")
+GRAFANA_AGENT_METRICS_ENDPOINT = "metrics-endpoint"
+GRAFANA_AGENT_GRAFANA_DASHBOARD = "grafana-dashboards-consumer"
+GRAFANA_AGENT_MESSAGE = "send-remote-write: off, grafana-cloud-config: off"
+
+APP_METRICS_ENDPOINT = "metrics-endpoint"
+APP_GRAFANA_DASHBOARD = "grafana-dashboard"
+ALERT_RULES_DIRECTORY = Path("./src/prometheus_alert_rules")
 
 
 async def deploy_and_assert_grafana_agent(
     model: Model,
     app: str,
     channel: str = "latest/stable",
-    dashboard: bool = True,
     metrics: bool = True,
+    dashboard: bool = False,
 ) -> None:
-    """Deploy grafana-agent-k8 and add relate it with app.
+    """Deploy grafana-agent-k8s and add relate it with app.
 
     Helper function to deploy and relate grafana-agent-k8s with provided app.
 
     Args:
-        model: libjuju model object
-        app: name of application with which the Grafana agent should be related
-        channel: grafana-agent-k8s channel name, latest/stable as default
-        dashboard: relate <app>:grafana-dashboard grafana-agent-k8s:grafana-dashboards-consumer
-        metrics: relate <app>:metrics-endpoint grafana-agent-k8s:metrics-endpoint
+        model (juju.model.Model): Juju model object.
+        app (str): Name of application with which the Grafana agent should be related.
+        channel (str): Channel name for grafana-agent-k8s. Defaults to latest/stable.
+        metrics (bool): Boolean that defines if the <app>:metrics-endpoint
+            grafana-agent-k8s:metrics-endpoint relation is created. Defaults to True.
+        dashboard (bool): Boolean that defines if the <app>:grafana-dashboard
+            grafana-agent-k8s:grafana-dashboards-consumer relation is created. Defaults to False.
     """
-    assert app in model.applications, f"application {app} was not found"
+    assert app in model.applications, f"application {app} was not found in model {model.name}"
 
     log.info("deploying %s from %s channel", GRAFANA_AGENT_APP, channel)
     await model.deploy(GRAFANA_AGENT_APP, channel=channel)
 
     if dashboard is True:
         log.info(
-            "juju relate %s:%s %s:grafana-dashboards-consumer",
+            "Adding relation: %s:%s and %s:%s",
             app,
-            GRAFANA_DASHBOARD_RELATION,
+            APP_GRAFANA_DASHBOARD,
             GRAFANA_AGENT_APP,
+            GRAFANA_AGENT_GRAFANA_DASHBOARD,
         )
-        await model.add_relation(
-            f"{app}:{GRAFANA_DASHBOARD_RELATION}",
-            f"{GRAFANA_AGENT_APP}:grafana-dashboards-consumer",
+        await model.integrate(
+            f"{app}:{APP_GRAFANA_DASHBOARD}",
+            f"{GRAFANA_AGENT_APP}:{GRAFANA_AGENT_GRAFANA_DASHBOARD}",
         )
 
     if metrics is True:
         log.info(
-            "juju relate %s:%s %s:metrics-endpoint",
+            "Adding relation: %s:%s and %s:%s",
             app,
-            METRICS_ENDPOINT_RELATION,
+            APP_METRICS_ENDPOINT,
             GRAFANA_AGENT_APP,
+            GRAFANA_AGENT_METRICS_ENDPOINT,
         )
-        await model.add_relation(
-            f"{app}:{METRICS_ENDPOINT_RELATION}", f"{GRAFANA_AGENT_APP}:metrics-endpoint"
+        await model.integrate(
+            f"{app}:{APP_METRICS_ENDPOINT}",
+            f"{GRAFANA_AGENT_APP}:{GRAFANA_AGENT_METRICS_ENDPOINT}",
         )
 
+    # Note(rgildein): Since we are not deploying cos, grafana-agent-k8s will in block state with
+    # missing relations.
     await model.wait_for_idle(apps=[GRAFANA_AGENT_APP], status="blocked", timeout=5 * 60)
+    for unit in model.applications[GRAFANA_AGENT_APP].units:
+        msg = unit.workload_status_message
+        assert (
+            msg == GRAFANA_AGENT_MESSAGE
+        ), f"{GRAFANA_AGENT_APP} did not reach expected state. '{msg}' != '{GRAFANA_AGENT_MESSAGE}'"
 
 
 async def _check_metrics_endpoint(app: Application, metrics_endpoint: str) -> None:
@@ -98,7 +114,8 @@ async def _get_app_relation_data(app: Application, endpoint_name: str) -> Dict[s
     ]
     log.info("found relations %s for %s:%s", relations, app.name, endpoint_name)
 
-    assert len(relations) == 1, f"{endpoint_name} is missing or there are too many of them"
+    assert not (len(relations) == 0), f"{endpoint_name} is missing"
+    assert not (len(relations) > 1), f"too many relations with {endpoint_name} endpoint"
     relation = relations[0]
 
     cmd = f"relation-get --format=yaml -r {relation.entity_id} --app - {app.name}"
@@ -145,7 +162,7 @@ def _get_alert_rules(data: str) -> Set[str]:
 def _get_metrics_endpoint(data: str) -> Set[str]:
     """Get set of metrics endpoints from string.
 
-    This function is excpection data defined as string.
+    This function is expecting data defined as string.
 
     ```json
     [
@@ -185,8 +202,12 @@ async def _run_on_unit(unit: Unit, cmd: str) -> Action:
     return result
 
 
-def get_alert_rules(path: Path = ALER_RULES_DIRECTORY) -> Set[str]:
-    """Get all alert rules from files."""
+def get_alert_rules(path: Path = ALERT_RULES_DIRECTORY) -> Set[str]:
+    """Get all alert rules from files.
+
+    Args:
+        path (Path): Path of alert rules directory. Defaults to "./src/prometheus_alert_rules".
+    """
     alert_rules = set()
     for file_type in ["*.rule", "*.rules"]:
         for file in path.glob(file_type):
@@ -196,12 +217,16 @@ def get_alert_rules(path: Path = ALER_RULES_DIRECTORY) -> Set[str]:
 
 
 async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
-    """Assert function comparing alert rules from relation data and provided aler rules.
+    """Assert function to check alert rules in relation data bag.
 
-    This function compare alert rules defined in METRICS_ENDPOINT_RELATION relation data bag and
+    This function compare alert rules defined in APP_METRICS_ENDPOINT relation data bag and
     provided aler rules. e.g. {"my-alert1", "my-alert2"}
+
+    Args:
+        app (Application): Juju Applicatition object.
+        alert_rules (set[str]): Set of alert rules.
     """
-    relation_data = await _get_app_relation_data(app, METRICS_ENDPOINT_RELATION)
+    relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT)
     assert "alert_rules" in relation_data, "relation is missing alert_rules"
 
     relation_alert_rules = _get_alert_rules(relation_data["alert_rules"])
@@ -209,14 +234,18 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
     assert relation_alert_rules == alert_rules
 
 
-async def assert_metrics_endpoint(app: Application, metrics_endpoints: Set[str]) -> None:
-    """Assert function to check defined metrics endpoints in relation data.
+async def assert_metrics_endpoints(app: Application, metrics_endpoints: Set[str]) -> None:
+    """Assert function to check defined metrics endpoints in relation data bag.
 
-    This function compare metrics endpoints defined in METRICS_ENDPOINT_RELATION relation data bag
+    This function compare metrics endpoints defined in APP_METRICS_ENDPOINT relation data bag
     and provided metrics endpoint. e.g. {"*:5000/metrics", "*:8000/metrics"}
-    This function will also check the accessibility of such endpoint.
+    At the same time it will check the accessibility of such endpoint from grafana-agent-k8s pod.
+
+    Args:
+        app (Application): Juju Applicatition object.
+        metrics_endpoints (set[str]): Set of metrics endpoints.
     """
-    relation_data = await _get_app_relation_data(app, METRICS_ENDPOINT_RELATION)
+    relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT)
     assert "scrape_jobs" in relation_data, "relation is missing scrape_jobs"
 
     relation_metrics_endpoints = _get_metrics_endpoint(relation_data["scrape_jobs"])

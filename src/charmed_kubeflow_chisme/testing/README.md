@@ -4,41 +4,41 @@
 
 ## `deploy_and_assert_grafana_agent`
 
-Helper function to deploy [grafana-agent-k8s](https://charmhub.io/grafana-agent-k8s) to test the model and add a relation to the charm being tested.
-Relation can be disabled by flags:
-- dashboard=False, to disable `<app>:grafana-dashboard grafana-agent-k8s:grafana-dashboards-consumer` relation
+Helper function to deploy [grafana-agent-k8s](https://charmhub.io/grafana-agent-k8s) to the test model and add cos relations to the charm being tested. This function also checks if the grafana-agent has reached the desired state, which is blocked with the "send-remote-write: off, grafana-cloud-config: off" message.
+
+Relation can be enable/disabled by flags:
 - metrics=False, to disable `<app>:metrics-endpoint grafana-agent-k8s:metrics-endpoint` relation
+- dashboard=True, to enable `<app>:grafana-dashboard grafana-agent-k8s:grafana-dashboards-consumer` relation
 
 Example usage:
 ```python
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test):
     my_charm = await ops_test.build_charm(".")
-    my_charm_name = ops_test._charm_name(my_charm)
     await ops_test.model.deploy(my_charm)
     await ops_test.model.wait_for_idle()
 
-    await deploy_and_assert_grafana_agent(ops_test.model, my_charm_name)
+    await deploy_and_assert_grafana_agent(ops_test.model, "my-charm", dashboard=True)
 ```
 
 ## `assert_alert_rules`
 
-Helper function to test alert rules define in relation data bag.
+Helper function to test alert rules are defined in relation data bag.
 
 Example usage:
 ```python
 async def test_alert_rules(ops_test):
-    """Test alert_rules defione in relation data bag."""
+    """Test alert_rules are defined in relation data bag."""
     app = ops_test.model.applications["my-charm"]
     await assert_alert_rules(app, {"MyAler1", "MyAler2"})
 ```
 
-This tool also provides helper function to collect all alert rules from charm source code.
+This tool also provides helper function `get_alert_rules` to collect all alert rules from charm source code.
 
 Example usage:
 ```python
 async def test_alert_rules(ops_test):
-    """Test alert_rules defione in relation data bag."""
+    """Test alert_rules are defined in relation data bag."""
     app = ops_test.model.applications["my-charm"]
     alert_rules = get_alert_rules()
     await assert_alert_rules(app, alert_rules)
@@ -46,12 +46,12 @@ async def test_alert_rules(ops_test):
 
 ## `assert_metrics_endpoint`
 
-Helper function to test metrics endpoints define in relation data bag.
+Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint is accessible from grafana-agent-k8s pod.
 
 Example usage:
 ```python
-async def test_metrics_enpoint(ops_test):
-    """Test metrics_endpoint defione in relation data bag."""
+async def test_metrics_enpoints(ops_test):
+    """Test metrics_endpoints are defined in relation data bag."""
     app = ops_test.model.applications["my-charm"]
-    await assert_metrics_endpoint(app, {"*:5000/metrics", "*:8000/metrics"})
+    await assert_metrics_endpoints(app, {"*:5000/metrics", "*:8000/metrics"})
 ```
