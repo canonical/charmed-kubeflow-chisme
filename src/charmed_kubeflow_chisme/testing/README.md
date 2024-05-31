@@ -55,3 +55,15 @@ async def test_metrics_enpoints(ops_test):
     app = ops_test.model.applications["my-charm"]
     await assert_metrics_endpoints(app, {"*:5000/metrics", "*:8000/metrics"})
 ```
+
+## `assert_logging`
+
+Helper function to test logging is defined in relation data bag. As the 'endpoint' key is defined in the grafana-agent-k8s data bag, this function requires the grafana-agent-k8s application instead of tested charm.
+
+Example usage:
+```python
+async def test_metrics_enpoints(ops_test):
+    """Test logging is defined in relation data bag."""
+    app = ops_test.model.applications[GRAFANA_AGENT_APP]
+    await assert_logging(app)
+```
