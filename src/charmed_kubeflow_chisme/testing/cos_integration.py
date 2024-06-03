@@ -19,6 +19,10 @@ GRAFANA_AGENT_APP = "grafana-agent-k8s"
 GRAFANA_AGENT_METRICS_ENDPOINT = "metrics-endpoint"
 GRAFANA_AGENT_GRAFANA_DASHBOARD = "grafana-dashboards-consumer"
 GRAFANA_AGENT_LOGGING_PROVIDER = "logging-provider"
+# Note(rgildein): The status message comes from the helper function `_update_status` in
+# grafana-agent-k8s, which is used to set the status based on the health of the relation.
+# https://github.com/canonical/grafana-agent-operator/blob/
+# 71b092445d47252f07a5e6c70ee730235eba18ba/src/grafana_agent.py#L471-L483
 GRAFANA_AGENT_MESSAGE = {
     "send-remote-write: off",
     "grafana-cloud-config: off",
@@ -267,7 +271,7 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
     """Assert function to check alert rules in relation data bag.
 
     This function compare alert rules defined in APP_METRICS_ENDPOINT relation data bag and
-    provided aler rules. e.g. {"my-alert1", "my-alert2"}
+    provided alert rules. e.g. {"my-alert1", "my-alert2"}
 
     Args:
         app (Application): Juju Applicatition object.
