@@ -3,6 +3,7 @@
 
 """Utilities for testing COS integration with charms."""
 import logging
+import re
 from pathlib import Path
 from typing import Any, Dict, Set
 
@@ -22,12 +23,13 @@ GRAFANA_AGENT_LOGGING_PROVIDER = "logging-provider"
 # Note(rgildein): The status message comes from the helper function `_update_status` in
 # grafana-agent-k8s, which is used to set the status based on the health of the relation.
 # https://github.com/canonical/grafana-agent-operator/blob/
-# 71b092445d47252f07a5e6c70ee730235eba18ba/src/grafana_agent.py#L471-L483
-GRAFANA_AGENT_MESSAGE = {
-    "send-remote-write: off",
-    "grafana-cloud-config: off",
-    "grafana-dashboards-provider: off",
-}
+# 1f2443dedc325f31b2cb02eefe0705afa6ac50e1/src/grafana_agent.py#L464
+GRAFANA_AGENT_MESSAGE = re.compile(
+    r"Missing "
+    r"(?=.*\['grafana-cloud-config'\]|\['grafana-dashboards-provider'\] for grafana-dashboards-consumer)"
+    r"(?=.*\['grafana-cloud-config'\]|\['logging-consumer'\] for logging-provider)"
+    r"(?=.*\['grafana-cloud-config'\]|\['send-remote-write'\] for metrics-endpoint)"
+)
 
 APP_METRICS_ENDPOINT = "metrics-endpoint"
 APP_GRAFANA_DASHBOARD = "grafana-dashboard"
@@ -40,8 +42,8 @@ async def deploy_and_assert_grafana_agent(
     model: Model,
     app: str,
     channel: str = "latest/stable",
-    metrics: bool = True,
-    logging: bool = True,
+    metrics: bool = False,
+    logging: bool = False,
     dashboard: bool = False,
 ) -> None:
     """Deploy grafana-agent-k8s and add relate it with app.
@@ -53,9 +55,9 @@ async def deploy_and_assert_grafana_agent(
         app (str): Name of application with which the Grafana agent should be related.
         channel (str): Channel name for grafana-agent-k8s. Defaults to latest/stable.
         metrics (bool): Boolean that defines if the <app>:metrics-endpoint
-            grafana-agent-k8s:metrics-endpoint relation is created. Defaults to True.
+            grafana-agent-k8s:metrics-endpoint relation is created. Defaults to False.
         logging (bool): Boolean that defines if the <app>:logging
-            grafana-agent-k8s:logging-provider relation is created. Defaults to True.
+            grafana-agent-k8s:logging-provider relation is created. Defaults to False.
         dashboard (bool): Boolean that defines if the <app>:grafana-dashboard
             grafana-agent-k8s:grafana-dashboards-consumer relation is created. Defaults to False.
     """
@@ -107,12 +109,12 @@ async def deploy_and_assert_grafana_agent(
     # missing relations.
     await model.wait_for_idle(apps=[GRAFANA_AGENT_APP], status="blocked", timeout=5 * 60)
     for unit in model.applications[GRAFANA_AGENT_APP].units:
-        # create set from string like `grafana-cloud-config: off, grafana-dashboards-provider: off`
-        msg = {pmsg.strip() for pmsg in unit.workload_status_message.split(",")}
-        # if msg is empty or contains something else than GRAFANA_AGENT_MESSAGE it will fail
-        assert (
-            GRAFANA_AGENT_MESSAGE & msg
-        ), f"{GRAFANA_AGENT_APP} did not reach expected state. '{msg}' != '{GRAFANA_AGENT_MESSAGE}'"
+        msg = unit.workload_status_message
+        error_msg = (
+            f"{GRAFANA_AGENT_APP} did not reach expected state. '{msg}' != "
+            f"'{GRAFANA_AGENT_MESSAGE.pattern}'"
+        )
+        assert GRAFANA_AGENT_MESSAGE.match(msg), error_msg
 
 
 async def _check_metrics_endpoint(app: Application, metrics_endpoint: str) -> None:
@@ -268,7 +270,7 @@ def get_alert_rules(path: Path = ALERT_RULES_DIRECTORY) -> Set[str]:
 
 
 async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
-    """Assert function to check alert rules in relation data bag.
+    """Check alert rules in relation data bag.
 
     This function compare alert rules defined in APP_METRICS_ENDPOINT relation data bag and
     provided alert rules. e.g. {"my-alert1", "my-alert2"}
@@ -287,16 +289,20 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
     assert relation_alert_rules == alert_rules, f"{relation_alert_rules}\n!=\n{alert_rules}"
 
 
-async def assert_metrics_endpoints(app: Application, metrics_endpoints: Set[str]) -> None:
-    """Assert function to check defined metrics endpoints in relation data bag.
+async def assert_metrics_endpoint(
+    app: Application, metrics_port: int, metrics_path: str, metrics_target: str = "*"
+) -> None:
+    """Check the endpoint in the relation data bag and verify its accessibility.
 
     This function compare metrics endpoints defined in APP_METRICS_ENDPOINT relation data bag
-    and provided metrics endpoint. e.g. {"*:5000/metrics", "*:8000/metrics"}
+    and provided metrics endpoint. e.g. `metrics_port=5000, metrics_path="/metrics"
     At the same time it will check the accessibility of such endpoint from grafana-agent-k8s pod.
 
     Args:
         app (Application): Juju Applicatition object.
-        metrics_endpoints (set[str]): Set of metrics endpoints.
+        metrics_port (int): Metrics port to verify.
+        metrics_path (str): Metrics path to verify.
+        metrics_target (str): Metrics target to verify. Defaults to '*'.
     """
     relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT)
     assert (
@@ -305,17 +311,18 @@ async def assert_metrics_endpoints(app: Application, metrics_endpoints: Set[str]
 
     relation_metrics_endpoints = _get_metrics_endpoint(relation_data["scrape_jobs"])
 
+    metrics_endpoint = f"{metrics_target}:{metrics_port}{metrics_path}"
+
     assert (
-        relation_metrics_endpoints == metrics_endpoints
-    ), f"{relation_metrics_endpoints}\n!=\n{metrics_endpoints}"
-    for metrics_endpoint in relation_metrics_endpoints:
-        await _check_metrics_endpoint(app, metrics_endpoint)
+        metrics_endpoint in relation_metrics_endpoints
+    ), f"{metrics_endpoint} not in {relation_metrics_endpoints}"
+    await _check_metrics_endpoint(app, metrics_endpoint)
 
 
 async def assert_logging(app: Application) -> None:
-    """Assert function to check defined logging settings in relation data bag.
+    """Check defined logging settings in relation data bag.
 
-    This function check if endpoint is defined in logging relation data bag, the unit
+    This function checks if endpoint is defined in logging relation data bag, the unit
     relation data bag and not application.. e.g.
     ```yaml
     related-units:

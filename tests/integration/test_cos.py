@@ -8,7 +8,7 @@ from charmed_kubeflow_chisme.testing import (
     GRAFANA_AGENT_APP,
     assert_alert_rules,
     assert_logging,
-    assert_metrics_endpoints,
+    assert_metrics_endpoint,
     deploy_and_assert_grafana_agent,
 )
 
@@ -24,7 +24,9 @@ async def test_build_and_deploy(ops_test):
     await ops_test.model.deploy("blackbox-exporter-k8s", channel="latest/stable", trust=True)
     await ops_test.model.wait_for_idle(raise_on_blocked=True)
 
-    await deploy_and_assert_grafana_agent(ops_test.model, "blackbox-exporter-k8s", dashboard=True)
+    await deploy_and_assert_grafana_agent(
+        ops_test.model, "blackbox-exporter-k8s", metrics=True, dashboard=True, logging=True
+    )
 
 
 async def test_alert_rules(ops_test):
@@ -44,16 +46,16 @@ async def test_alert_rules(ops_test):
 async def test_metrics_endpoints(ops_test):
     """Test metrics_endpoints are defined in relation data bag."""
     app = ops_test.model.applications["blackbox-exporter-k8s"]
-    await assert_metrics_endpoints(
+    await assert_metrics_endpoint(
         app,
-        {
-            f"blackbox-exporter-k8s-0.blackbox-exporter-k8s-endpoints.{ops_test.model.name}"
-            ".svc.cluster.local:9115/metrics"
-        },
+        metrics_port=9115,
+        metrics_path="/metrics",
+        metrics_target="blackbox-exporter-k8s-0.blackbox-exporter-k8s-endpoints."
+        f"{ops_test.model.name}.svc.cluster.local",
     )
 
 
-async def test_logging_endpoints(ops_test):
+async def test_logging(ops_test):
     """Test logging is defined in relation data bag."""
     app = ops_test.model.applications[GRAFANA_AGENT_APP]
     await assert_logging(app)

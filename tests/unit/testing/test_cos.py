@@ -21,9 +21,16 @@ from charmed_kubeflow_chisme.testing.cos_integration import (
     _run_on_unit,
     assert_alert_rules,
     assert_logging,
-    assert_metrics_endpoints,
+    assert_metrics_endpoint,
     deploy_and_assert_grafana_agent,
     get_alert_rules,
+)
+
+EXP_GRAFANA_AGENT_MSG = (
+    "Missing ['grafana-cloud-config']|['grafana-dashboards-provider'] for "
+    "grafana-dashboards-consumer; ['grafana-cloud-config']|['logging-consumer'] for "
+    "logging-provider; ['grafana-cloud-config']|['send-remote-write'] for "
+    "metrics-endpoint"
 )
 
 
@@ -81,7 +88,7 @@ async def test_deploy_and_assert_grafana_agent(kwargs, exp_awaits):
     grafana_aget_app = Mock(spec_set=Application)()
     grafana_aget_app.name = "grafana-agent-k8s"
     grafana_aget_unit = Mock(spec_set=Unit)()
-    grafana_aget_unit.workload_status_message = "send-remote-write: off, grafana-cloud-config: off"
+    grafana_aget_unit.workload_status_message = EXP_GRAFANA_AGENT_MSG
     grafana_aget_app.units = [grafana_aget_unit]
 
     model = AsyncMock(spec_set=Model)
@@ -113,7 +120,7 @@ async def test_deploy_and_assert_grafana_agent_failed():
 
     with pytest.raises(
         AssertionError,
-        match="grafana-agent-k8s did not reach expected state. '{'different message'}' != .*",
+        match="grafana-agent-k8s did not reach expected state. 'different message' != .*",
     ):
         await deploy_and_assert_grafana_agent(model, app.name)
 
@@ -363,7 +370,7 @@ async def test_assert_alert_rules_fail(mock_get_alert_rules, mock_get_app_relati
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoints(
+async def test_assert_metrics_endpoint(
     mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint with empty data bag."""
@@ -371,7 +378,7 @@ async def test_assert_metrics_endpoints(
     mock_get_app_relation_data.return_value = {}
 
     with pytest.raises(AssertionError, match="relation is missing scrape_jobs"):
-        await assert_metrics_endpoints(app, {})
+        await assert_metrics_endpoint(app, metrics_port=8000, metrics_path="/metrics")
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_not_called()
@@ -382,26 +389,26 @@ async def test_assert_metrics_endpoints(
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoints(
+async def test_assert_metrics_endpoint(
     mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint."""
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {"scrape_jobs": "..."}
-    mock_get_metrics_endpoint.return_value = exp_metrics_endpoint = {"*:5000/metrics"}
+    mock_get_metrics_endpoint.return_value = {"*:5000/metrics"}
 
-    await assert_metrics_endpoints(app, exp_metrics_endpoint)
+    await assert_metrics_endpoint(app, metrics_port=5000, metrics_path="/metrics")
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_called_once_with("...")
-    mock_check_metrics_endpoint.assert_awaited_once_with(app, exp_metrics_endpoint.pop())
+    mock_check_metrics_endpoint.assert_awaited_once_with(app, "*:5000/metrics")
 
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoints_fail(
+async def test_assert_metrics_endpoint_fail(
     mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint failing."""
@@ -410,7 +417,7 @@ async def test_assert_metrics_endpoints_fail(
     mock_get_metrics_endpoint.return_value = {"*:5000/metrics"}
 
     with pytest.raises(AssertionError):
-        await assert_metrics_endpoints(app, {"*:8000/metrics"})
+        await assert_metrics_endpoint(app, metrics_port=8000, metrics_path="/metrics")
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_called_once_with("...")
