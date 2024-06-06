@@ -195,7 +195,7 @@ async def test_get_app_relation_data_no_units():
 async def test_get_app_relation_data(mock_yaml, mock_run_on_unit, mock_get_relation):
     """Test getting application data from relation data bag."""
     relation = Mock(spec_set=Relation)()
-    relation.entity_id = 7
+    relation.entity_id = relation_id = 7
     mock_get_relation.return_value = relation
     app = Mock(spec_set=Application)()
     unit = Mock(spec_set=Unit)()
@@ -207,7 +207,7 @@ async def test_get_app_relation_data(mock_yaml, mock_run_on_unit, mock_get_relat
     data = await _get_app_relation_data(app, "metrics-endpoint")
 
     mock_run_on_unit.assert_awaited_once_with(
-        unit, "relation-get --format=yaml -r 7 --app - my-app"
+        unit, f"relation-get --format=yaml -r {relation_id} --app - {app.name}"
     )
     mock_yaml.safe_load.assert_called_once_with("test")
     assert data == mock_yaml.safe_load.return_value
@@ -220,7 +220,7 @@ async def test_get_app_relation_data(mock_yaml, mock_run_on_unit, mock_get_relat
 async def test_get_unit_relation_data(mock_yaml, mock_run_on_unit, mock_get_relation):
     """Test getting unit data from relation data bag."""
     relation = Mock(spec_set=Relation)()
-    relation.entity_id = 7
+    relation.entity_id = relation_id = 7
     mock_get_relation.return_value = relation
     app = Mock(spec_set=Application)()
     unit = Mock(spec_set=Unit)()
@@ -232,7 +232,9 @@ async def test_get_unit_relation_data(mock_yaml, mock_run_on_unit, mock_get_rela
 
     data = await _get_unit_relation_data(app, "metrics-endpoint")
 
-    mock_run_on_unit.assert_awaited_once_with(unit, "relation-get --format=yaml -r 7 - my-app/0")
+    mock_run_on_unit.assert_awaited_once_with(
+        unit, f"relation-get --format=yaml -r {relation_id} - {unit.name}"
+    )
     mock_yaml.safe_load.assert_called_once_with("test")
     assert data == {unit.name: mock_yaml.safe_load.return_value}
 

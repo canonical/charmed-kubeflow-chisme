@@ -22,8 +22,7 @@ GRAFANA_AGENT_GRAFANA_DASHBOARD = "grafana-dashboards-consumer"
 GRAFANA_AGENT_LOGGING_PROVIDER = "logging-provider"
 # Note(rgildein): The status message comes from the helper function `_update_status` in
 # grafana-agent-k8s, which is used to set the status based on the health of the relation.
-# https://github.com/canonical/grafana-agent-operator/blob/
-# 1f2443dedc325f31b2cb02eefe0705afa6ac50e1/src/grafana_agent.py#L464
+# https://github.com/canonical/grafana-agent-operator/blob/1f2443dedc325f31b2cb02eefe0705afa6ac50e1/src/grafana_agent.py#L464  # noqa E503
 GRAFANA_AGENT_MESSAGE = re.compile(
     r"Missing "
     r"(?=.*\['grafana-cloud-config'\]|\['grafana-dashboards-provider'\] for grafana-dashboards-consumer)"
