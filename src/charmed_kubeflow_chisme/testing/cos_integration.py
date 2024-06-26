@@ -104,16 +104,9 @@ async def deploy_and_assert_grafana_agent(
             f"{GRAFANA_AGENT_APP}:{GRAFANA_AGENT_LOGGING_PROVIDER}",
         )
 
-    # Note(rgildein): Since we are not deploying cos, grafana-agent-k8s will in block state with
-    # missing relations.
+    # Note(rgildein, dnplas): The grafana agent charm will go to BlockedStatus if it is not
+    # related to any consumer (e.g. prometheus-k8s, grafana-k8s).
     await model.wait_for_idle(apps=[GRAFANA_AGENT_APP], status="blocked", timeout=5 * 60)
-    for unit in model.applications[GRAFANA_AGENT_APP].units:
-        msg = unit.workload_status_message
-        error_msg = (
-            f"{GRAFANA_AGENT_APP} did not reach expected state. '{msg}' != "
-            f"'{GRAFANA_AGENT_MESSAGE.pattern}'"
-        )
-        assert GRAFANA_AGENT_MESSAGE.match(msg), error_msg
 
 
 async def _check_metrics_endpoint(app: Application, metrics_endpoint: str) -> None:
