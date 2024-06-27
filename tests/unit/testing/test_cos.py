@@ -26,13 +26,6 @@ from charmed_kubeflow_chisme.testing.cos_integration import (
     get_alert_rules,
 )
 
-EXP_GRAFANA_AGENT_MSG = (
-    "Missing ['grafana-cloud-config']|['grafana-dashboards-provider'] for "
-    "grafana-dashboards-consumer; ['grafana-cloud-config']|['logging-consumer'] for "
-    "logging-provider; ['grafana-cloud-config']|['send-remote-write'] for "
-    "metrics-endpoint"
-)
-
 
 @pytest.mark.asyncio
 async def test_deploy_and_assert_grafana_agent_invalid_app():
@@ -88,7 +81,6 @@ async def test_deploy_and_assert_grafana_agent(kwargs, exp_awaits):
     grafana_aget_app = Mock(spec_set=Application)()
     grafana_aget_app.name = "grafana-agent-k8s"
     grafana_aget_unit = Mock(spec_set=Unit)()
-    grafana_aget_unit.workload_status_message = EXP_GRAFANA_AGENT_MSG
     grafana_aget_app.units = [grafana_aget_unit]
 
     model = AsyncMock(spec_set=Model)
@@ -101,30 +93,6 @@ async def test_deploy_and_assert_grafana_agent(kwargs, exp_awaits):
     model.wait_for_idle.assert_awaited_once_with(
         apps=["grafana-agent-k8s"], status="blocked", timeout=300
     )
-
-
-@pytest.mark.asyncio
-async def test_deploy_and_assert_grafana_agent_failed():
-    """Test deploy grafana-agent-k8s failed reached expected state."""
-    app = Mock(spec_set=Application)()
-    app.name = "my-app"
-
-    grafana_aget_app = Mock(spec_set=Application)()
-    grafana_aget_app.name = "grafana-agent-k8s"
-    grafana_aget_unit = Mock(spec_set=Unit)()
-    grafana_aget_unit.workload_status_message = "different message"
-    grafana_aget_app.units = [grafana_aget_unit]
-
-    model = AsyncMock(spec_set=Model)
-    model.applications = {app.name: app, grafana_aget_app.name: grafana_aget_app}
-
-    with pytest.raises(
-        AssertionError,
-        match="grafana-agent-k8s did not reach expected state. 'different message' != .*",
-    ):
-        await deploy_and_assert_grafana_agent(model, app.name)
-
-    model.deploy.assert_awaited_once_with("grafana-agent-k8s", channel="latest/stable")
 
 
 @pytest.mark.asyncio
