@@ -36,6 +36,9 @@ APP_LOGGING = "logging"
 
 ALERT_RULES_DIRECTORY = Path("./src/prometheus_alert_rules")
 
+PROVIDES = "provides"
+REQUIRES = "requires"
+
 
 async def deploy_and_assert_grafana_agent(
     model: Model,
@@ -129,7 +132,6 @@ async def _check_metrics_endpoint(app: Application, metrics_endpoint: str) -> No
 
 async def _get_relation(app: Application, endpoint_name: str) -> Relation:
     """Get relation for endpoint."""
-    assert len(app.units) > 0, f"application {app.name} has no units"
     relations = [
         relation
         for relation in app.relations
@@ -142,23 +144,39 @@ async def _get_relation(app: Application, endpoint_name: str) -> Relation:
     return relations[0]
 
 
-async def _get_app_relation_data(app: Application, endpoint_name: str) -> Dict[str, Any]:
+def _get_app_from_relation(relation: Relation, side: str) -> Application:
+    """Get application from relation."""
+    if side == PROVIDES:
+        return relation.provides.application
+    elif side == REQUIRES:
+        return relation.requires.application
+
+    raise ValueError(f"{side} is invalid side of relation.")
+
+
+async def _get_app_relation_data(
+    app: Application, endpoint_name: str, side: str
+) -> Dict[str, Any]:
     """Get application relation data from endpoint name."""
     relation = await _get_relation(app, endpoint_name)
-    unit = app.units[0]  # Note(rgildein) use first unit, since we are getting application data
-    cmd = f"relation-get --format=yaml -r {relation.entity_id} --app - {app.name}"
+    relation_app = _get_app_from_relation(relation, side)
+    # Note(rgildein) use first unit, since we are getting application data
+    assert len(relation_app.units) > 0, f"application {relation_app.name} has no units"
+    unit = relation_app.units[0]
+    cmd = f"relation-get --format=yaml -r {relation.entity_id} --app - {relation_app.name}"
     result = await _run_on_unit(unit, cmd)
 
     return yaml.safe_load(result.results["stdout"])
 
 
 async def _get_unit_relation_data(
-    app: Application, endpoint_name: str
+    app: Application, endpoint_name: str, side: str
 ) -> Dict[str, Dict[str, Any]]:
     """Get units relation data from endpoint name."""
     relation = await _get_relation(app, endpoint_name)
+    relation_app = _get_app_from_relation(relation, side)
     data = {}
-    for unit in app.units:
+    for unit in relation_app.units:
         cmd = f"relation-get --format=yaml -r {relation.entity_id} - {unit.name}"
         result = await _run_on_unit(unit, cmd)
         data[unit.name] = yaml.safe_load(result.results["stdout"])
@@ -264,14 +282,14 @@ def get_alert_rules(path: Path = ALERT_RULES_DIRECTORY) -> Set[str]:
 async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
     """Check alert rules in relation data bag.
 
-    This function compare alert rules defined in APP_METRICS_ENDPOINT relation data bag and
-    provided alert rules. e.g. {"my-alert1", "my-alert2"}
+    This function compare alert rules defined in provides side of APP_METRICS_ENDPOINT relation
+    data bag and provided alert rules. e.g. {"my-alert1", "my-alert2"}
 
     Args:
         app (Application): Juju Applicatition object.
         alert_rules (set[str]): Set of alert rules.
     """
-    relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT)
+    relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT, side=PROVIDES)
     assert (
         "alert_rules" in relation_data
     ), f"{APP_METRICS_ENDPOINT} relation is missing 'alert_rules'"
@@ -286,8 +304,9 @@ async def assert_metrics_endpoint(
 ) -> None:
     """Check the endpoint in the relation data bag and verify its accessibility.
 
-    This function compare metrics endpoints defined in APP_METRICS_ENDPOINT relation data bag
-    and provided metrics endpoint. e.g. `metrics_port=5000, metrics_path="/metrics"
+    This function compare metrics endpoints defined in provides side of APP_METRICS_ENDPOINT
+    relation data bag and provided metrics endpoint.
+    e.g. `metrics_port=5000, metrics_path="/metrics"
     At the same time it will check the accessibility of such endpoint from grafana-agent-k8s pod.
 
     Args:
@@ -296,7 +315,7 @@ async def assert_metrics_endpoint(
         metrics_path (str): Metrics path to verify.
         metrics_target (str): Metrics target to verify. Defaults to '*'.
     """
-    relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT)
+    relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT, side=PROVIDES)
     assert (
         "scrape_jobs" in relation_data
     ), f"{APP_METRICS_ENDPOINT} relation is missing 'scrape_jobs'"
@@ -314,8 +333,8 @@ async def assert_metrics_endpoint(
 async def assert_logging(app: Application) -> None:
     """Check defined logging settings in relation data bag.
 
-    This function checks if endpoint is defined in logging relation data bag, the unit
-    relation data bag and not application.. e.g.
+    This function checks if endpoint is defined in provides side oflogging relation data bag,
+    the unit relation data bag and not application. e.g.
     ```yaml
     related-units:
       grafana-agent-k8s/0:
@@ -330,7 +349,7 @@ async def assert_logging(app: Application) -> None:
     Args:
         app (Application): Juju Applicatition object.
     """
-    unit_relation_data = await _get_unit_relation_data(app, APP_LOGGING)
+    unit_relation_data = await _get_unit_relation_data(app, APP_LOGGING, side=PROVIDES)
     for unit_name, unit_data in unit_relation_data.items():
         assert (
             "endpoint" in unit_data

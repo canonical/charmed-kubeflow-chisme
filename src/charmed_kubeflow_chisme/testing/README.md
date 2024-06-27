@@ -4,7 +4,7 @@
 
 ## `deploy_and_assert_grafana_agent`
 
-Helper function to deploy [grafana-agent-k8s](https://charmhub.io/grafana-agent-k8s) to the test model and add cos relations to the charm being tested. This function also checks if the grafana-agent-k8s has reached the desired state, which is blocked with a message composed of two of the following phrases "send-remote-write: off", "grafana-cloud-config: off" or "grafana-dashboards-provider: off".
+Helper function to deploy [grafana-agent-k8s](https://charmhub.io/grafana-agent-k8s) to the test model and add cos relations to the charm being tested. This function also checks if the grafana-agent-k8s has reached the desired state, which is blocked.
 
 Relation can be enabled/disabled by flags:
 - metrics=True, to enable `<app>:metrics-endpoint grafana-agent-k8s:metrics-endpoint` relation
@@ -26,7 +26,7 @@ async def test_build_and_deploy(ops_test):
 
 ## `assert_alert_rules`
 
-Helper function to test alert rules are defined in relation data bag.
+Helper function to test alert rules are defined in relation data bag. This function is using provides side of relation to get such data.
 
 Example usage:
 ```python
@@ -49,7 +49,7 @@ async def test_alert_rules(ops_test):
 
 ## `assert_metrics_endpoint`
 
-Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint is accessible from grafana-agent-k8s pod.
+Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint is accessible from grafana-agent-k8s pod. This function is using provides side of relation to get such data.
 
 Example usage:
 ```python
@@ -67,12 +67,12 @@ async def test_metrics_enpoint(ops_test):
 
 ## `assert_logging`
 
-Helper function to test logging is defined in relation data bag. As the 'endpoint' key is defined in the grafana-agent-k8s data bag, this function requires the grafana-agent-k8s application instead of tested charm.
+Helper function to test logging is defined in relation data bag. As the 'endpoint' key is defined in the grafana-agent-k8s data bag, this function is using provides side of relation to get such data.
 
 Example usage:
 ```python
 async def test_logging(ops_test):
     """Test logging is defined in relation data bag."""
-    app = ops_test.model.applications[GRAFANA_AGENT_APP]
+    app = ops_test.model.applications["my-charm"]
     await assert_logging(app)
 ```

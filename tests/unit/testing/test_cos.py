@@ -14,6 +14,7 @@ from juju.unit import Unit
 from charmed_kubeflow_chisme.testing.cos_integration import (
     _check_metrics_endpoint,
     _get_alert_rules,
+    _get_app_from_relation,
     _get_app_relation_data,
     _get_metrics_endpoint,
     _get_relation,
@@ -145,22 +146,49 @@ async def test_get_relation():
     assert await _get_relation(app, "metrics-endpoint") == relation
 
 
-@pytest.mark.asyncio
-async def test_get_app_relation_data_no_units():
-    """Test getting application data from relation data bag without units."""
-    app = Mock(spec_set=Application)()
-    app.name = "my-app"
-    app.units = []
+def test_get_app_from_relation_provides():
+    """Test get application from provide side of relation."""
+    relation = Mock(spec_set=Relation)()
+    app = _get_app_from_relation(relation, "provides")
+    assert app == relation.provides.application
 
-    with pytest.raises(AssertionError, match="application my-app has no units"):
-        await _get_app_relation_data(app, "metrics-endpoint")
+
+def test_get_app_from_relation_requires():
+    """Test get application from provide side of relation."""
+    relation = Mock(spec_set=Relation)()
+    app = _get_app_from_relation(relation, "requires")
+    assert app == relation.requires.application
+
+
+def test_get_app_from_relation_fail():
+    """Test get application from unknown side of relation and fail."""
+    relation = Mock(spec_set=Relation)()
+    with pytest.raises(ValueError, match="unknown is invalid side of relation."):
+        _get_app_from_relation(relation, "unknown")
 
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_relation")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_from_relation")
+async def test_get_app_relation_data_no_units(mock_get_app_from_relation, mock_get_relation):
+    """Test getting application data from relation data bag without units."""
+    app = Mock(spec_set=Application)()
+    app.name = "my-app"
+    app.units = []
+    mock_get_app_from_relation.return_value = app
+
+    with pytest.raises(AssertionError, match="application my-app has no units"):
+        await _get_app_relation_data(app, "metrics-endpoint", "provides")
+
+
+@pytest.mark.asyncio
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_relation")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_from_relation")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._run_on_unit")
 @patch("charmed_kubeflow_chisme.testing.cos_integration.yaml")
-async def test_get_app_relation_data(mock_yaml, mock_run_on_unit, mock_get_relation):
+async def test_get_app_relation_data(
+    mock_yaml, mock_run_on_unit, mock_get_app_from_relation, mock_get_relation
+):
     """Test getting application data from relation data bag."""
     relation = Mock(spec_set=Relation)()
     relation.entity_id = relation_id = 7
@@ -169,11 +197,14 @@ async def test_get_app_relation_data(mock_yaml, mock_run_on_unit, mock_get_relat
     unit = Mock(spec_set=Unit)()
     app.name = "my-app"
     app.units = [unit]
+    mock_get_app_from_relation.return_value = app
     mock_run_on_unit.return_value = result = Mock(spec_set=Action)()
     result.results = {"stdout": "test"}
 
-    data = await _get_app_relation_data(app, "metrics-endpoint")
+    data = await _get_app_relation_data(app, "metrics-endpoint", "provides")
 
+    mock_get_relation.assert_awaited_once_with(app, "metrics-endpoint")
+    mock_get_app_from_relation.assert_called_once_with(relation, "provides")
     mock_run_on_unit.assert_awaited_once_with(
         unit, f"relation-get --format=yaml -r {relation_id} --app - {app.name}"
     )
@@ -183,9 +214,12 @@ async def test_get_app_relation_data(mock_yaml, mock_run_on_unit, mock_get_relat
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_relation")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_from_relation")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._run_on_unit")
 @patch("charmed_kubeflow_chisme.testing.cos_integration.yaml")
-async def test_get_unit_relation_data(mock_yaml, mock_run_on_unit, mock_get_relation):
+async def test_get_unit_relation_data(
+    mock_yaml, mock_run_on_unit, mock_get_app_from_relation, mock_get_relation
+):
     """Test getting unit data from relation data bag."""
     relation = Mock(spec_set=Relation)()
     relation.entity_id = relation_id = 7
@@ -195,11 +229,14 @@ async def test_get_unit_relation_data(mock_yaml, mock_run_on_unit, mock_get_rela
     unit.name = "my-app/0"
     app.name = "my-app"
     app.units = [unit]
+    mock_get_app_from_relation.return_value = app
     mock_run_on_unit.return_value = result = Mock(spec_set=Action)()
     result.results = {"stdout": "test"}
 
-    data = await _get_unit_relation_data(app, "metrics-endpoint")
+    data = await _get_unit_relation_data(app, "metrics-endpoint", "provides")
 
+    mock_get_relation.assert_awaited_once_with(app, "metrics-endpoint")
+    mock_get_app_from_relation.assert_called_once_with(relation, "provides")
     mock_run_on_unit.assert_awaited_once_with(
         unit, f"relation-get --format=yaml -r {relation_id} - {unit.name}"
     )
@@ -301,7 +338,7 @@ async def test_assert_alert_rules_no_data(mock_get_alert_rules, mock_get_app_rel
     with pytest.raises(AssertionError, match="metrics-endpoint relation is missing 'alert_rules'"):
         await assert_alert_rules(app, {})
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint", side="provides")
     mock_get_alert_rules.assert_not_called()
 
 
@@ -316,7 +353,7 @@ async def test_assert_alert_rules(mock_get_alert_rules, mock_get_app_relation_da
 
     await assert_alert_rules(app, exp_alert_rules)
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint", side="provides")
     mock_get_alert_rules.assert_called_once_with("...")
 
 
@@ -332,7 +369,7 @@ async def test_assert_alert_rules_fail(mock_get_alert_rules, mock_get_app_relati
     with pytest.raises(AssertionError):
         await assert_alert_rules(app, {"different-alert"})
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint", side="provides")
     mock_get_alert_rules.assert_called_once_with("...")
 
 
@@ -350,7 +387,7 @@ async def test_assert_metrics_endpoint(
     with pytest.raises(AssertionError, match="relation is missing scrape_jobs"):
         await assert_metrics_endpoint(app, metrics_port=8000, metrics_path="/metrics")
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint", side="provides")
     mock_get_metrics_endpoint.assert_not_called()
     mock_check_metrics_endpoint.assert_not_awaited()
 
@@ -369,7 +406,7 @@ async def test_assert_metrics_endpoint(
 
     await assert_metrics_endpoint(app, metrics_port=5000, metrics_path="/metrics")
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint", side="provides")
     mock_get_metrics_endpoint.assert_called_once_with("...")
     mock_check_metrics_endpoint.assert_awaited_once_with(app, "*:5000/metrics")
 
@@ -389,7 +426,7 @@ async def test_assert_metrics_endpoint_fail(
     with pytest.raises(AssertionError):
         await assert_metrics_endpoint(app, metrics_port=8000, metrics_path="/metrics")
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint", side="provides")
     mock_get_metrics_endpoint.assert_called_once_with("...")
     mock_check_metrics_endpoint.assert_not_awaited()
 
@@ -403,7 +440,7 @@ async def test_assert_logging(mock_get_unit_relation_data):
 
     await assert_logging(app)
 
-    mock_get_unit_relation_data.assert_awaited_once_with(app, "logging")
+    mock_get_unit_relation_data.assert_awaited_once_with(app, "logging", side="provides")
 
 
 @pytest.mark.asyncio
@@ -416,7 +453,7 @@ async def test_assert_logging_fail(mock_get_unit_relation_data):
     with pytest.raises(AssertionError):
         await assert_logging(app)
 
-    mock_get_unit_relation_data.assert_awaited_once_with(app, "logging")
+    mock_get_unit_relation_data.assert_awaited_once_with(app, "logging", side="provides")
 
 
 def test_get_alert_rules():
