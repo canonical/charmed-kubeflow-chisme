@@ -3,9 +3,9 @@
 
 """Utilities for testing COS integration with charms."""
 import logging
-import re
 from pathlib import Path
 from typing import Any, Dict, Set
+from urllib.parse import urlparse
 
 import yaml
 from juju.action import Action
@@ -20,15 +20,8 @@ GRAFANA_AGENT_APP = "grafana-agent-k8s"
 GRAFANA_AGENT_METRICS_ENDPOINT = "metrics-endpoint"
 GRAFANA_AGENT_GRAFANA_DASHBOARD = "grafana-dashboards-consumer"
 GRAFANA_AGENT_LOGGING_PROVIDER = "logging-provider"
-# Note(rgildein): The status message comes from the helper function `_update_status` in
-# grafana-agent-k8s, which is used to set the status based on the health of the relation.
-# https://github.com/canonical/grafana-agent-operator/blob/1f2443dedc325f31b2cb02eefe0705afa6ac50e1/src/grafana_agent.py#L464  # noqa E503
-GRAFANA_AGENT_MESSAGE = re.compile(
-    r"Missing "
-    r"(?=.*\['grafana-cloud-config'\]|\['grafana-dashboards-provider'\] for grafana-dashboards-consumer)"
-    r"(?=.*\['grafana-cloud-config'\]|\['logging-consumer'\] for logging-provider)"
-    r"(?=.*\['grafana-cloud-config'\]|\['send-remote-write'\] for metrics-endpoint)"
-)
+GRAFANA_AGENT_API = "localhost:12345/agent/api/v1"
+GRAFANA_AGENT_API_TARGETS = f"{GRAFANA_AGENT_API}/metrics/targets"
 
 APP_METRICS_ENDPOINT = "metrics-endpoint"
 APP_GRAFANA_DASHBOARD = "grafana-dashboard"
@@ -109,22 +102,30 @@ async def deploy_and_assert_grafana_agent(
     await model.wait_for_idle(apps=[GRAFANA_AGENT_APP], status="blocked", timeout=5 * 60)
 
 
-async def _check_metrics_endpoint(app: Application, metrics_endpoint: str) -> None:
-    """Check metrics endpoint accessibility.
+def _check_url(url: str, port: int, path: str) -> bool:
+    """Check port and path in url."""
+    output = urlparse(url)
+    return output.port == port and output.path == path
 
-    Checking accessibility of metrics endpoint from grafana-agent-k8s. If metrics endpoint is
-    defined as `*:5000/metrics` it will be changed to `<app-name>.<namespace>.svc:5000/metrics`.
+
+async def _check_metrics_endpoint(app: Application, port: int, path: str) -> None:
+    """Check metrics targets accessibility.
+
+    Checking if metrics port and metrics path are dedine in any targes of Grafana agent.
+    E.g. curl localhost:12345/agent/api/v1/metrics/targets return with success status and it's
+    configured as expected.
     """
-    if metrics_endpoint.startswith("*"):
-        url = f"http://{app.name}.{app.model.name}.svc{metrics_endpoint[1:]}"
-    else:
-        url = f"http://{metrics_endpoint}"
+    cmd = f"curl -m 5 -sS {GRAFANA_AGENT_API_TARGETS}"
+    grafana_agent_unit = app.model.applications[GRAFANA_AGENT_APP].units[0]
+    log.debug("testing metrics endpoint with cmd: `%s`", cmd)
+    output = await _run_on_unit(grafana_agent_unit, cmd)
+    targets = yaml.safe_load(output.results["stdout"])
+    log.info("metrics targets definened at %s:\n%s", grafana_agent_unit.name, targets)
 
-    cmd = f"curl -m 5 -sS {url}"
-    grafana_agent_app = app.model.applications[GRAFANA_AGENT_APP]
-    log.info("testing metrics endpoint with cmd: `%s`", cmd)
-    for unit in grafana_agent_app.units:
-        await _run_on_unit(unit, cmd)
+    assert targets["status"] == "success"
+    assert any(
+        _check_url(data["endpoint"], port, path) for data in targets["data"]
+    ), f":{port}{path} was not found in any Grafana agent targets"
 
 
 async def _get_relation(app: Application, endpoint_name: str) -> Relation:
@@ -281,9 +282,7 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
     assert relation_alert_rules == alert_rules, f"{relation_alert_rules}\n!=\n{alert_rules}"
 
 
-async def assert_metrics_endpoint(
-    app: Application, metrics_port: int, metrics_path: str, metrics_target: str = "*"
-) -> None:
+async def assert_metrics_endpoint(app: Application, metrics_port: int, metrics_path: str) -> None:
     """Check the endpoint in the relation data bag and verify its accessibility.
 
     This function compare metrics endpoints defined in APP_METRICS_ENDPOINT relation data bag
@@ -294,7 +293,6 @@ async def assert_metrics_endpoint(
         app (Application): Juju Applicatition object.
         metrics_port (int): Metrics port to verify.
         metrics_path (str): Metrics path to verify.
-        metrics_target (str): Metrics target to verify. Defaults to '*'.
     """
     relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT)
     assert (
@@ -303,12 +301,13 @@ async def assert_metrics_endpoint(
 
     relation_metrics_endpoints = _get_metrics_endpoint(relation_data["scrape_jobs"])
 
-    metrics_endpoint = f"{metrics_target}:{metrics_port}{metrics_path}"
-
-    assert (
-        metrics_endpoint in relation_metrics_endpoints
-    ), f"{metrics_endpoint} not in {relation_metrics_endpoints}"
-    await _check_metrics_endpoint(app, metrics_endpoint)
+    # Note(rgildein): adding // to endpoint so urlparser can parse it properly
+    assert any(
+        _check_url(f"//{endpoint}", metrics_port, metrics_path)
+        for endpoint in relation_metrics_endpoints
+    ), f":{metrics_port}{metrics_path} was not found in any {relation_metrics_endpoints}"
+    # check that port and path is also defined in Grafana agent targets
+    await _check_metrics_endpoint(app, metrics_port, metrics_path)
 
 
 async def assert_logging(app: Application) -> None:

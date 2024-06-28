@@ -4,7 +4,7 @@
 
 ## `deploy_and_assert_grafana_agent`
 
-Helper function to deploy [grafana-agent-k8s](https://charmhub.io/grafana-agent-k8s) to the test model and add cos relations to the charm being tested. This function also checks if the grafana-agent-k8s has reached the desired state, which is blocked with a message composed of two of the following phrases "send-remote-write: off", "grafana-cloud-config: off" or "grafana-dashboards-provider: off".
+Helper function to deploy [grafana-agent-k8s](https://charmhub.io/grafana-agent-k8s) to the test model and add cos relations to the charm being tested. This function also checks if the grafana-agent-k8s has reached the desired blocked state.
 
 Relation can be enabled/disabled by flags:
 - metrics=True, to enable `<app>:metrics-endpoint grafana-agent-k8s:metrics-endpoint` relation
@@ -21,7 +21,7 @@ async def test_build_and_deploy(ops_test):
 
     await deploy_and_assert_grafana_agent(
         ops_test.model, "my-charm", metrics=True, dashboard=True, logging=True
-        )
+    )
 ```
 
 ## `assert_alert_rules`
@@ -49,7 +49,7 @@ async def test_alert_rules(ops_test):
 
 ## `assert_metrics_endpoint`
 
-Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint is accessible from grafana-agent-k8s pod.
+Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint are defined in current defined targets, via Grafana agent API [1].
 
 Example usage:
 ```python
@@ -57,8 +57,7 @@ async def test_metrics_enpoint(ops_test):
     """Test metrics_endpoints are defined in relation data bag and their accessibility.
 
     This function gets all the metrics_endpoints from the relation data bag, checks if
-    they are available from the grafana-agent-k8s charm and finally compares them with the
-    ones provided to the function.
+    they are available in current defined targets in Grafana agent.
     """
     app = ops_test.model.applications["my-charm"]
     await assert_metrics_endpoint(app, metrics_port=5000, metrics_path="/metrics")
@@ -76,3 +75,7 @@ async def test_logging(ops_test):
     app = ops_test.model.applications[GRAFANA_AGENT_APP]
     await assert_logging(app)
 ```
+
+
+---
+[1]: https://grafana.com/docs/agent/latest/static/api/#list-current-scrape-targets-of-metrics-subsystem
