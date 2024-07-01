@@ -15,9 +15,9 @@ from charmed_kubeflow_chisme.testing.cos_integration import (
     _check_metrics_endpoint,
     _get_alert_rules,
     _get_app_relation_data,
+    _get_dashboard_template,
     _get_metrics_endpoint,
     _get_relation,
-    _get_templates,
     _get_unit_relation_data,
     _run_on_unit,
     assert_alert_rules,
@@ -259,7 +259,7 @@ def test__get_alert_rules(data, exp_alert_rules):
 
 
 @pytest.mark.parametrize(
-    "data, exp_alert_rules",
+    "data, exp_templates",
     [
         (
             '{"templates": {"file:blackbox.json": {"charm": "blackbox-exporter-k8s", "content": "abc", "juju_topology":'
@@ -287,9 +287,9 @@ def test__get_alert_rules(data, exp_alert_rules):
         ),
     ],
 )
-def test__get_templates(data, exp_alert_rules):
+def test__get_dashboard_template(data, exp_templates):
     """Test helper function to get Grafana dashboards from string."""
-    assert _get_templates(data) == exp_alert_rules
+    assert _get_dashboard_template(data) == exp_templates
 
 
 @pytest.mark.parametrize(
@@ -463,27 +463,30 @@ async def test_assert_logging_fail(mock_get_unit_relation_data):
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
-@patch("charmed_kubeflow_chisme.testing.cos_integration._get_templates")
-async def test_assert_grafana_dashboards_no_data(mock_get_templates, mock_get_app_relation_data):
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
+async def test_assert_grafana_dashboards_no_data(
+    mock_get_dashboard_template, mock_get_app_relation_data
+):
     """Test assert function for Grafana dashboards with empty data bag."""
+    exp_error = "grafana-dashboard relation data is missing 'dashboards'"
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {}
 
-    with pytest.raises(AssertionError, match="grafana-dashboard relation is missing 'dashboards'"):
+    with pytest.raises(AssertionError, match=exp_error):
         await assert_grafana_dashboards(app, {})
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
-    mock_get_templates.assert_not_called()
+    mock_get_dashboard_template.assert_not_called()
 
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
-@patch("charmed_kubeflow_chisme.testing.cos_integration._get_templates")
-async def test_assert_grafana_dashboard(mock_get_templates, mock_get_app_relation_data):
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
+async def test_assert_grafana_dashboard(mock_get_dashboard_template, mock_get_app_relation_data):
     """Test assert function for Grafana dashboards."""
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {"dashboards": "..."}
-    mock_get_templates.return_value = {
+    mock_get_dashboard_template.return_value = {
         "my-dashboard-1": {
             "charm": app.charm_name,
             "juju_topology": {"model": app.model.name, "application": app.name},
@@ -498,23 +501,25 @@ async def test_assert_grafana_dashboard(mock_get_templates, mock_get_app_relatio
     await assert_grafana_dashboards(app, exp_dashboards)
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
-    mock_get_templates.assert_called_once_with("...")
+    mock_get_dashboard_template.assert_called_once_with("...")
 
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
-@patch("charmed_kubeflow_chisme.testing.cos_integration._get_templates")
-async def test_assert_grafana_dashboards_fail(mock_get_templates, mock_get_app_relation_data):
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
+async def test_assert_grafana_dashboards_fail(
+    mock_get_dashboard_template, mock_get_app_relation_data
+):
     """Test assert function for Grafana dashboards failing."""
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {"dashboards": "..."}
-    mock_get_templates.return_value = {"my-dashboard-1": {}, "my-dashboard-2": {}}
+    mock_get_dashboard_template.return_value = {"my-dashboard-1": {}, "my-dashboard-2": {}}
 
     with pytest.raises(AssertionError):
         await assert_grafana_dashboards(app, {"different-dashboards"})
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
-    mock_get_templates.assert_called_once_with("...")
+    mock_get_dashboard_template.assert_called_once_with("...")
 
 
 def test_get_alert_rules():

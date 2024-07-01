@@ -192,8 +192,12 @@ def _get_alert_rules(data: str) -> Set[str]:
     return {alert_rules["alert"]}
 
 
-def _get_templates(data: str) -> Set[Dict[str, dict]]:
+def _get_dashboard_template(data: str) -> Set[Dict[str, dict]]:
     """Get all templates from relation data, where it's defined as string.
+
+    This function is parsing the templates define as yaml string and returns only relevant part
+    from it, which is filename as key and dictionary as value. Such a dictionary includes charm
+    and Juju topology.
 
     Example of relations data of grafana-dashboard would be:
 
@@ -361,7 +365,7 @@ async def assert_logging(app: Application) -> None:
 async def assert_grafana_dashboards(app: Application, dashboards: Set[str]) -> None:
     """Check Grafana dashboards in relation data bag.
 
-    This function compare dashboards defined in APP_GRAFANA_DASHBOARD relation data bag and
+    This function compares the dashboards defined in APP_GRAFANA_DASHBOARD relation data bag and
     provided dashboards. e.g. {"my-dashboard-1.json", "my-dashboard-2.json"}
 
     Args:
@@ -371,9 +375,9 @@ async def assert_grafana_dashboards(app: Application, dashboards: Set[str]) -> N
     relation_data = await _get_app_relation_data(app, APP_GRAFANA_DASHBOARD)
     assert (
         "dashboards" in relation_data
-    ), f"{APP_GRAFANA_DASHBOARD} relation is missing 'dashboards'"
+    ), f"{APP_GRAFANA_DASHBOARD} relation data is missing 'dashboards'"
 
-    relation_templates = _get_templates(relation_data["dashboards"])
+    relation_templates = _get_dashboard_template(relation_data["dashboards"])
 
     # check dashboards
     relation_dasboards = set(relation_templates.keys())  # template key is defined as file name
