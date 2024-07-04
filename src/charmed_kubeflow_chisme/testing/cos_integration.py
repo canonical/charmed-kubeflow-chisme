@@ -118,6 +118,18 @@ async def _check_metrics_endpoint(app: Application, metrics_endpoint: str) -> No
         await _run_on_unit(unit, cmd)
 
 
+async def _get_charm_name(app: Application) -> str:
+    """Get charm name for application from metadata.
+
+    We are getting from metadata, since locally built charmas will return
+    `<charm_name>-<revision>` from `app.charm_name`. e.g. seldon-controller-manager-0
+    """
+    unit = app.units[0]
+    result = await _run_on_unit(unit, "cat metadata.yaml")
+    meta = yaml.safe_load(result.results["stdout"])
+    return meta["name"]
+
+
 async def _get_relation(app: Application, endpoint_name: str) -> Relation:
     """Get relation for endpoint."""
     assert len(app.units) > 0, f"application {app.name} has no units"
@@ -384,7 +396,12 @@ async def assert_grafana_dashboards(app: Application, dashboards: Set[str]) -> N
     assert relation_dasboards == dashboards, f"\n{relation_dasboards}\n!=\n{dashboards}"
 
     # check juju topology for each template
+    charm_name = await _get_charm_name(app)
     for template in relation_templates.values():
-        assert template["charm"] == app.charm_name
-        assert template["juju_topology"]["model"] == app.model.name
-        assert template["juju_topology"]["application"] == app.name
+        assert template["charm"] == charm_name, f"{template['charm']} != {charm_name}"
+        assert (
+            template["juju_topology"]["model"] == app.model.name
+        ), f"{template['juju_topology']['model']} != {app.model.name}"
+        assert (
+            template["juju_topology"]["application"] == app.name
+        ), f"{template['juju_topology']['application']} != {app.name}"

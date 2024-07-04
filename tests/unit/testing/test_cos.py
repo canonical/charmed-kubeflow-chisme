@@ -15,6 +15,7 @@ from charmed_kubeflow_chisme.testing.cos_integration import (
     _check_metrics_endpoint,
     _get_alert_rules,
     _get_app_relation_data,
+    _get_charm_name,
     _get_dashboard_template,
     _get_metrics_endpoint,
     _get_relation,
@@ -236,6 +237,22 @@ async def test_check_metrics_endpoint(mock_run_on_unit, metrics_endpoint, exp_cm
     mock_run_on_unit.assert_awaited_once_with(unit, exp_cmd)
 
 
+@pytest.mark.asyncio
+@patch("charmed_kubeflow_chisme.testing.cos_integration._run_on_unit")
+async def test_get_charm_name(mock_run_on_unit):
+    """Test get charm name from metadata."""
+    app = Mock(spec_set=Application)()
+    unit = Mock(spec_set=Unit)()
+    app.units = [unit]
+
+    action = Mock(spec_set=Action)()
+    action.results = {"stdout": "name: my-charm"}
+    mock_run_on_unit.return_value = action
+
+    charm_name = await _get_charm_name(app)
+    assert charm_name == "my-charm"
+
+
 @pytest.mark.parametrize(
     "data, exp_alert_rules",
     [
@@ -251,11 +268,6 @@ async def test_check_metrics_endpoint(mock_run_on_unit, metrics_endpoint, exp_cm
 def test__get_alert_rules(data, exp_alert_rules):
     """Test helper function to get alert rules from string."""
     assert _get_alert_rules(data) == exp_alert_rules
-
-
-"""
-
-"""
 
 
 @pytest.mark.parametrize(
@@ -464,8 +476,9 @@ async def test_assert_logging_fail(mock_get_unit_relation_data):
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_charm_name")
 async def test_assert_grafana_dashboards_no_data(
-    mock_get_dashboard_template, mock_get_app_relation_data
+    mock_get_charm_name, mock_get_dashboard_template, mock_get_app_relation_data
 ):
     """Test assert function for Grafana dashboards with empty data bag."""
     exp_error = "grafana-dashboard relation data is missing 'dashboards'"
@@ -477,14 +490,19 @@ async def test_assert_grafana_dashboards_no_data(
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
     mock_get_dashboard_template.assert_not_called()
+    mock_get_charm_name.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
-async def test_assert_grafana_dashboard(mock_get_dashboard_template, mock_get_app_relation_data):
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_charm_name")
+async def test_assert_grafana_dashboard(
+    mock_get_charm_name, mock_get_dashboard_template, mock_get_app_relation_data
+):
     """Test assert function for Grafana dashboards."""
     app = Mock(spec_set=Application)()
+    mock_get_charm_name.return_value = app.charm_name = "my-charm"
     mock_get_app_relation_data.return_value = {"dashboards": "..."}
     mock_get_dashboard_template.return_value = {
         "my-dashboard-1": {
@@ -502,13 +520,15 @@ async def test_assert_grafana_dashboard(mock_get_dashboard_template, mock_get_ap
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
     mock_get_dashboard_template.assert_called_once_with("...")
+    mock_get_charm_name.assert_awaited_once_with(app)
 
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_charm_name")
 async def test_assert_grafana_dashboards_fail(
-    mock_get_dashboard_template, mock_get_app_relation_data
+    mock_get_charm_name, mock_get_dashboard_template, mock_get_app_relation_data
 ):
     """Test assert function for Grafana dashboards failing."""
     app = Mock(spec_set=Application)()
@@ -520,6 +540,7 @@ async def test_assert_grafana_dashboards_fail(
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
     mock_get_dashboard_template.assert_called_once_with("...")
+    mock_get_charm_name.assert_not_awaited()
 
 
 def test_get_alert_rules():
