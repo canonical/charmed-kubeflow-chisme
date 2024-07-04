@@ -76,6 +76,28 @@ async def test_logging(ops_test):
     await assert_logging(app)
 ```
 
+## `assert_grafana_dashboards`
+
+Helper function to test dashboards are defined in relation data bag. This function is using provides side of relation to get such data.
+
+Example usage:
+```python
+async def test_grafana_dashboards(ops_test):
+    """Test Grafana dashboards are defined in relation data bag."""
+    app = ops_test.model.applications["my-charm"]
+    await assert_grafana_dashboards(app, {"my-dashboard.json"})
+```
+
+This tool also provides helper function `get_grafana_dashboards` to collect all Grafana dashboards from charm source code, by default from './src/grafana_dashboards' path.
+
+Example usage:
+```python
+async def test_grafana_dashboards(ops_test):
+    """Test Grafana dashboards are defined in relation data bag."""
+    app = ops_test.model.applications["my-charm"]
+    dashboards = get_grafana_dashboards()
+    await assert_grafana_dashboards(app, dashboards)
+```
 
 ---
 [1]: https://grafana.com/docs/agent/latest/static/api/#list-current-scrape-targets-of-metrics-subsystem

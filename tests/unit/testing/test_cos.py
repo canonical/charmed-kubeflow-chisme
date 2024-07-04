@@ -15,16 +15,19 @@ from charmed_kubeflow_chisme.testing.cos_integration import (
     _check_url,
     _get_alert_rules,
     _get_app_relation_data,
+    _get_dashboard_template,
     _get_metrics_endpoint,
     _get_relation,
     _get_targets_from_grafana_agent,
     _get_unit_relation_data,
     _run_on_unit,
     assert_alert_rules,
+    assert_grafana_dashboards,
     assert_logging,
     assert_metrics_endpoint,
     deploy_and_assert_grafana_agent,
     get_alert_rules,
+    get_grafana_dashboards,
 )
 
 GRAFANA_AGENT_METRICS_TARGETS = """
@@ -358,9 +361,48 @@ async def test_get_targets_from_grafana_agent_no_target(mock_run_on_unit):
         ),
     ],
 )
-def test_get_alert_rules(data, exp_alert_rules):
+def test__get_alert_rules(data, exp_alert_rules):
     """Test helper function to get alert rules from string."""
     assert _get_alert_rules(data) == exp_alert_rules
+
+
+"""
+
+"""
+
+
+@pytest.mark.parametrize(
+    "data, exp_templates",
+    [
+        (
+            '{"templates": {"file:blackbox.json": {"charm": "blackbox-exporter-k8s", "content": "abc", "juju_topology":'
+            '{"model": "test", "model_uuid": "1234", "application": "blackbox-exporter-k8s", "unit": '
+            '"blackbox-exporter-k8s/0"}, "inject_dropdowns": true, "dashboard_alt_uid": "ee8f"}}, "uuid": "5f6"}',
+            {
+                "blackbox.json": {
+                    "charm": "blackbox-exporter-k8s",
+                    "juju_topology": {
+                        "model": "test",
+                        "model_uuid": "1234",
+                        "application": "blackbox-exporter-k8s",
+                        "unit": "blackbox-exporter-k8s/0",
+                    },
+                }
+            },
+        ),
+        (
+            '{"templates": {"file:a.json": {"charm": "a", "juju_topology": {}}, '
+            '"file:b.json": {"charm": "b", "juju_topology": {}}}}',
+            {
+                "a.json": {"charm": "a", "juju_topology": {}},
+                "b.json": {"charm": "b", "juju_topology": {}},
+            },
+        ),
+    ],
+)
+def test__get_dashboard_template(data, exp_templates):
+    """Test helper function to get Grafana dashboards from string."""
+    assert _get_dashboard_template(data) == exp_templates
 
 
 @pytest.mark.parametrize(
@@ -549,9 +591,79 @@ async def test_assert_logging_fail(mock_get_unit_relation_data):
     mock_get_unit_relation_data.assert_awaited_once_with(app, "logging")
 
 
+@pytest.mark.asyncio
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
+async def test_assert_grafana_dashboards_no_data(
+    mock_get_dashboard_template, mock_get_app_relation_data
+):
+    """Test assert function for Grafana dashboards with empty data bag."""
+    exp_error = "grafana-dashboard relation data is missing 'dashboards'"
+    app = Mock(spec_set=Application)()
+    mock_get_app_relation_data.return_value = {}
+
+    with pytest.raises(AssertionError, match=exp_error):
+        await assert_grafana_dashboards(app, {})
+
+    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
+    mock_get_dashboard_template.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
+async def test_assert_grafana_dashboard(mock_get_dashboard_template, mock_get_app_relation_data):
+    """Test assert function for Grafana dashboards."""
+    app = Mock(spec_set=Application)()
+    mock_get_app_relation_data.return_value = {"dashboards": "..."}
+    mock_get_dashboard_template.return_value = {
+        "my-dashboard-1": {
+            "charm": app.charm_name,
+            "juju_topology": {"model": app.model.name, "application": app.name},
+        },
+        "my-dashboard-2": {
+            "charm": app.charm_name,
+            "juju_topology": {"model": app.model.name, "application": app.name},
+        },
+    }
+    exp_dashboards = {"my-dashboard-1", "my-dashboard-2"}
+
+    await assert_grafana_dashboards(app, exp_dashboards)
+
+    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
+    mock_get_dashboard_template.assert_called_once_with("...")
+
+
+@pytest.mark.asyncio
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_dashboard_template")
+async def test_assert_grafana_dashboards_fail(
+    mock_get_dashboard_template, mock_get_app_relation_data
+):
+    """Test assert function for Grafana dashboards failing."""
+    app = Mock(spec_set=Application)()
+    mock_get_app_relation_data.return_value = {"dashboards": "..."}
+    mock_get_dashboard_template.return_value = {"my-dashboard-1": {}, "my-dashboard-2": {}}
+
+    with pytest.raises(AssertionError):
+        await assert_grafana_dashboards(app, {"different-dashboards"})
+
+    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
+    mock_get_dashboard_template.assert_called_once_with("...")
+
+
 def test_get_alert_rules():
     """Test load alert rules from directory."""
     exp_alert_rules = {"MyAlert1", "MyAlert2"}
     path = Path(__file__).parent / "../data"
 
     assert get_alert_rules(path) == exp_alert_rules
+
+
+def test_get_grafana_dashboards(tmp_path):
+    """Test load Grafana dashboards from directory."""
+    exp_alert_rules = {"my-dashboard-1.json", "my-dashboard-2.json"}
+    (tmp_path / "my-dashboard-1.json.tmpl").touch()
+    (tmp_path / "my-dashboard-2.json.tmpl").touch()
+
+    assert get_grafana_dashboards(tmp_path) == exp_alert_rules
