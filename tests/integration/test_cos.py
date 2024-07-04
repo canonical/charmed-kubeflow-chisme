@@ -6,6 +6,7 @@ import pytest
 import charmed_kubeflow_chisme.testing
 from charmed_kubeflow_chisme.testing import (
     assert_alert_rules,
+    assert_grafana_dashboards,
     assert_logging,
     assert_metrics_endpoint,
     deploy_and_assert_grafana_agent,
@@ -60,3 +61,9 @@ async def test_logging(ops_test):
     """Test logging is defined in relation data bag."""
     app = ops_test.model.applications[TESTED_APP]
     await assert_logging(app)
+
+
+async def test_grafana_dashboards(ops_test):
+    """Test Grafana dashboards are defined in relation data bag."""
+    app = ops_test.model.applications[TESTED_APP]
+    await assert_grafana_dashboards(app, {"blackbox.json"})

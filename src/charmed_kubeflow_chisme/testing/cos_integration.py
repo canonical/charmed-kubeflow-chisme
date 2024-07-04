@@ -3,7 +3,6 @@
 
 """Utilities for testing COS integration with charms."""
 import logging
-import re
 from pathlib import Path
 from typing import Any, Dict, Set
 
@@ -20,21 +19,13 @@ GRAFANA_AGENT_APP = "grafana-agent-k8s"
 GRAFANA_AGENT_METRICS_ENDPOINT = "metrics-endpoint"
 GRAFANA_AGENT_GRAFANA_DASHBOARD = "grafana-dashboards-consumer"
 GRAFANA_AGENT_LOGGING_PROVIDER = "logging-provider"
-# Note(rgildein): The status message comes from the helper function `_update_status` in
-# grafana-agent-k8s, which is used to set the status based on the health of the relation.
-# https://github.com/canonical/grafana-agent-operator/blob/1f2443dedc325f31b2cb02eefe0705afa6ac50e1/src/grafana_agent.py#L464  # noqa E503
-GRAFANA_AGENT_MESSAGE = re.compile(
-    r"Missing "
-    r"(?=.*\['grafana-cloud-config'\]|\['grafana-dashboards-provider'\] for grafana-dashboards-consumer)"
-    r"(?=.*\['grafana-cloud-config'\]|\['logging-consumer'\] for logging-provider)"
-    r"(?=.*\['grafana-cloud-config'\]|\['send-remote-write'\] for metrics-endpoint)"
-)
 
 APP_METRICS_ENDPOINT = "metrics-endpoint"
 APP_GRAFANA_DASHBOARD = "grafana-dashboard"
 APP_LOGGING = "logging"
 
 ALERT_RULES_DIRECTORY = Path("./src/prometheus_alert_rules")
+GRAFANA_DASHBOARDS_DIRECTORY = Path("./src/grafana_dashboards")
 
 PROVIDES = "provides"
 REQUIRES = "requires"
@@ -219,6 +210,28 @@ def _get_alert_rules(data: str) -> Set[str]:
     return {alert_rules["alert"]}
 
 
+def _get_dashboard_template(data: str) -> Set[Dict[str, dict]]:
+    """Get all templates from relation data, where it's defined as string.
+
+    This function is parsing the templates define as yaml string and returns only relevant part
+    from it, which is filename as key and dictionary as value. Such a dictionary includes charm
+    and Juju topology.
+
+    Example of relations data of grafana-dashboard would be:
+
+    ```Python
+    'dashboards': '{"templates": {"file:jupyter-notebook-controller.json": {"content": ...
+    ```
+    """
+    templates_raw = yaml.safe_load(data).get("templates", {})
+    templates = {}
+    for key, value in templates_raw.items():
+        file_name = key.replace("file:", "")  # template key is defined as 'file:<file_name>'
+        templates[file_name] = {"charm": value["charm"], "juju_topology": value["juju_topology"]}
+
+    return templates
+
+
 def _get_metrics_endpoint(data: str) -> Set[str]:
     """Get set of metrics endpoints from string.
 
@@ -277,6 +290,18 @@ def get_alert_rules(path: Path = ALERT_RULES_DIRECTORY) -> Set[str]:
             alert_rules |= _get_alert_rules(file.read_text())
 
     return alert_rules
+
+
+def get_grafana_dashboards(path: Path = GRAFANA_DASHBOARDS_DIRECTORY) -> Set[str]:
+    """Get all Grafana dashboards from files.
+
+    Args:
+        path (Path): Path of Grafana dashboards directory. Defaults to "./src/grafana_dashboards".
+
+    Returns:
+        set[str]: Set with all Grafana dashboards.
+    """
+    return {file.name.replace(".tmpl", "") for file in path.glob("*.json.tmpl")}
 
 
 async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
@@ -354,3 +379,31 @@ async def assert_logging(app: Application) -> None:
         assert (
             "endpoint" in unit_data
         ), f"{APP_LOGGING} unit '{unit_name}' relation data are missing 'endpoint'"
+
+
+async def assert_grafana_dashboards(app: Application, dashboards: Set[str]) -> None:
+    """Check Grafana dashboards in relation data bag.
+
+    This function compares the dashboards defined in APP_GRAFANA_DASHBOARD relation data bag and
+    provided dashboards. e.g. {"my-dashboard-1.json", "my-dashboard-2.json"}
+
+    Args:
+        app (Application): Juju Applicatition object.
+        dashboards (set[str]): Set of dashboard files.
+    """
+    relation_data = await _get_app_relation_data(app, APP_GRAFANA_DASHBOARD)
+    assert (
+        "dashboards" in relation_data
+    ), f"{APP_GRAFANA_DASHBOARD} relation data is missing 'dashboards'"
+
+    relation_templates = _get_dashboard_template(relation_data["dashboards"])
+
+    # check dashboards
+    relation_dasboards = set(relation_templates.keys())  # template key is defined as file name
+    assert relation_dasboards == dashboards, f"\n{relation_dasboards}\n!=\n{dashboards}"
+
+    # check juju topology for each template
+    for template in relation_templates.values():
+        assert template["charm"] == app.charm_name
+        assert template["juju_topology"]["model"] == app.model.name
+        assert template["juju_topology"]["application"] == app.name
