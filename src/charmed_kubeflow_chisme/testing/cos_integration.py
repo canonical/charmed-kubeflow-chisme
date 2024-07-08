@@ -31,6 +31,15 @@ APP_METRICS_ENDPOINT = "metrics-endpoint"
 APP_GRAFANA_DASHBOARD = "grafana-dashboard"
 APP_LOGGING = "logging"
 
+# Note(rgildein): We use an idle_period of 60 so we can be sure that the targets have already
+# been scraped.
+WAIT_IDLE_PERIOD = 60
+WAIT_TIMEOUT = 5 * 60
+# Note(rgildein, dnplas): The grafana agent charm will go to BlockedStatus if it is not
+# related to any consumer (e.g. prometheus-k8s, grafana-k8s).
+WAIT_STATUS = "blocked"
+
+
 ALERT_RULES_DIRECTORY = Path("./src/prometheus_alert_rules")
 GRAFANA_DASHBOARDS_DIRECTORY = Path("./src/grafana_dashboards")
 
@@ -102,12 +111,11 @@ async def deploy_and_assert_grafana_agent(
             f"{GRAFANA_AGENT_APP}:{GRAFANA_AGENT_LOGGING_PROVIDER}",
         )
 
-    # Note(rgildein, dnplas): The grafana agent charm will go to BlockedStatus if it is not
-    # related to any consumer (e.g. prometheus-k8s, grafana-k8s).
-    # Note(rgildein): We use an idle_period of 60 so we can be sure that the targets have already
-    # been scraped.
     await model.wait_for_idle(
-        apps=[GRAFANA_AGENT_APP], status="blocked", timeout=5 * 60, idle_period=60
+        apps=[GRAFANA_AGENT_APP],
+        status=WAIT_STATUS,
+        timeout=WAIT_TIMEOUT,
+        idle_period=WAIT_IDLE_PERIOD,
     )
 
 
@@ -120,13 +128,13 @@ def _check_url(url: str, port: int, path: str) -> bool:
     return output.port == port and output.path == path
 
 
-async def _get_targets_from_grafana_agent(app: Application) -> None:
-    """Get defined metrics targets for application from grafana-agent-k8s API.
+async def _get_targets_from_grafana_agent(app: Application) -> Dict[str, Any]:
+    """Return a dict with data if the charm is listed in the targets; otherwise an empty dict.
 
-    This function returns data for targets that have
-    data["labels"]["juju_application"] == app.name.
+    This method makes a request to the grafana-agent-k8s targets endpoint to retrieve the state
+    and data of the application under test and returns this data as a dictionary.
 
-    Example of output:
+    Example of Grafana agent API output:
 
     $ curl localhost:12345/agent/api/v1/metrics/targets
     {
@@ -404,13 +412,13 @@ async def assert_metrics_endpoint(app: Application, metrics_port: int, metrics_p
 
     # check that port and path is also defined in Grafana agent targets
     target_data = await _get_targets_from_grafana_agent(app)
-    assert target_data["state"] == "up", f"target for {app.name} are in {target_data['state']}"
+    assert target_data["state"] == "up", f"target for {app.name} is not in {target_data['state']}"
     assert _check_url(
         target_data["endpoint"], metrics_port, metrics_path
     ), f":{metrics_port}{metrics_path} was not found in any {target_data['endpoint']}"
     assert (
         target_data["labels"]["juju_model"] == app.model.name
-    ), f"label juju_model do not correspond with current model, {target_data['labels']['juju_model']} != {app.model.name}"
+    ), f"label juju_model does not correspond to current model, {target_data['labels']['juju_model']} != {app.model.name}"
     assert (
         target_data["labels"]["juju_application"] == app.name
     ), f"label juju_application do not correspond with app name, {target_data['labels']['juju_application']} != {app.name}"
