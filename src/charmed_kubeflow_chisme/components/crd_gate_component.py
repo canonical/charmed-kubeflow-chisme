@@ -4,11 +4,12 @@
 import logging
 from typing import List
 
-from charmed_kubeflow_chisme.components.component import Component
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
 from ops import ActiveStatus, BlockedStatus, StatusBase
+
+from charmed_kubeflow_chisme.components.component import Component
 
 logger = logging.getLogger(__name__)
 
