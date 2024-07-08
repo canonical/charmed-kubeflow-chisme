@@ -512,7 +512,7 @@ async def test_assert_grafana_dashboards_no_data(
     with pytest.raises(AssertionError, match=exp_error):
         await assert_grafana_dashboards(app, {})
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard", side="provides")
     mock_get_dashboard_template.assert_not_called()
 
 
@@ -537,7 +537,7 @@ async def test_assert_grafana_dashboard(mock_get_dashboard_template, mock_get_ap
 
     await assert_grafana_dashboards(app, exp_dashboards)
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard", side="provides")
     mock_get_dashboard_template.assert_called_once_with("...")
 
 
@@ -555,7 +555,7 @@ async def test_assert_grafana_dashboards_fail(
     with pytest.raises(AssertionError):
         await assert_grafana_dashboards(app, {"different-dashboards"})
 
-    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard")
+    mock_get_app_relation_data.assert_awaited_once_with(app, "grafana-dashboard", side="provides")
     mock_get_dashboard_template.assert_called_once_with("...")
 
 

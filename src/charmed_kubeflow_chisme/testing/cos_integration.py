@@ -391,7 +391,7 @@ async def assert_grafana_dashboards(app: Application, dashboards: Set[str]) -> N
         app (Application): Juju Applicatition object.
         dashboards (set[str]): Set of dashboard files.
     """
-    relation_data = await _get_app_relation_data(app, APP_GRAFANA_DASHBOARD)
+    relation_data = await _get_app_relation_data(app, APP_GRAFANA_DASHBOARD, side=PROVIDES)
     assert (
         "dashboards" in relation_data
     ), f"{APP_GRAFANA_DASHBOARD} relation data is missing 'dashboards'"
