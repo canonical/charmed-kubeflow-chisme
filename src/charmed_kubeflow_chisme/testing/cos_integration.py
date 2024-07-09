@@ -244,8 +244,12 @@ async def _get_app_relation_data(
 ) -> Dict[str, Any]:
     """Get application relation data from endpoint name."""
     relation = await _get_relation(app, endpoint_name)
+    # Note(rgildein): Getting the application from the relationship side so that we can get the
+    # relationship data from the requested relation side. Like this, we can use tested application
+    # instead of grafana-agent-k8s to get relation data from provides side of relation.
+    # For example, a logging endpoint is defined at provides side.
     relation_app = _get_app_from_relation(relation, side)
-    # Note(rgildein) use first unit, since we are getting application data
+    # Note(rgildein): use first unit, since we are getting application data
     assert len(relation_app.units) > 0, f"application {relation_app.name} has no units"
     unit = relation_app.units[0]
     cmd = f"relation-get --format=yaml -r {relation.entity_id} --app - {relation_app.name}"
@@ -259,6 +263,10 @@ async def _get_unit_relation_data(
 ) -> Dict[str, Dict[str, Any]]:
     """Get units relation data from endpoint name."""
     relation = await _get_relation(app, endpoint_name)
+    # Note(rgildein): Getting the application from the relationship side so that we can get the
+    # relationship data from the requested relation side. Like this, we can use tested application
+    # instead of grafana-agent-k8s to get relation data from provides side of relation.
+    # For example, a logging endpoint is defined at provides side.
     relation_app = _get_app_from_relation(relation, side)
     data = {}
     for unit in relation_app.units:

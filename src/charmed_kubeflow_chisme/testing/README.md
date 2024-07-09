@@ -66,7 +66,7 @@ async def test_metrics_enpoint(ops_test):
 
 ## `assert_logging`
 
-Helper function to test logging is defined in relation data bag. As the 'endpoint' key is defined in the grafana-agent-k8s data bag, this function is using provides side of relation to get such data.
+Helper function to test logging is defined in relation data bag. As the 'endpoint' key is defined in the grafana-agent-k8s data bag, this function is using provides side of relation to get such data. This means that the related app (grafana-agent-k8s) is used to get relation unit data.
 
 Example usage:
 ```python
