@@ -12,13 +12,14 @@ from juju.relation import Endpoint, Relation
 from juju.unit import Unit
 
 from charmed_kubeflow_chisme.testing.cos_integration import (
-    _check_metrics_endpoint,
+    _check_url,
     _get_alert_rules,
     _get_app_relation_data,
     _get_charm_name,
     _get_dashboard_template,
     _get_metrics_endpoint,
     _get_relation,
+    _get_targets_from_grafana_agent,
     _get_unit_relation_data,
     _run_on_unit,
     assert_alert_rules,
@@ -29,6 +30,73 @@ from charmed_kubeflow_chisme.testing.cos_integration import (
     get_alert_rules,
     get_grafana_dashboards,
 )
+
+GRAFANA_AGENT_METRICS_TARGETS = """
+{
+  "status": "success",
+  "data": [
+    {
+      "instance": "ad3e396dc08b0f42a6e4b57e90bed6e2",
+      "target_group": "integrations/agent",
+      "endpoint": "http://127.0.0.1:12345/integrations/agent/metrics",
+      "state": "up",
+      "labels": {
+        "agent_hostname": "grafana-agent-k8s-0",
+        "instance": "kubeflow_c8c8_grafana-agent-k8s_grafana-agent-k8s/0",
+        "job": "juju_kubeflow_c8c8_grafana-agent-k8s_self-monitoring",
+        "juju_application": "grafana-agent-k8s",
+        "juju_charm": "grafana-agent-k8s",
+        "juju_model": "kubeflow",
+        "juju_model_uuid": "c8c8",
+        "juju_unit": "grafana-agent-k8s/0"
+      },
+      "discovered_labels": {
+        "__address__": "127.0.0.1:12345",
+        "__metrics_path__": "/integrations/agent/metrics",
+        "__scheme__": "http",
+        "__scrape_interval__": "1m",
+        "__scrape_timeout__": "10s",
+        "agent_hostname": "grafana-agent-k8s-0",
+        "job": "integrations/agent"
+      },
+      "last_scrape": "2024-06-28T12:04:32.864964737Z",
+      "scrape_duration_ms": 3,
+      "scrape_error": ""
+    },
+    {
+      "instance": "ad3e396dc08b0f42a6e4b57e90bed6e2",
+      "target_group": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+      "endpoint": "http://10.1.23.239:5558/metrics",
+      "state": "up",
+      "labels": {
+        "instance": "kubeflow_c8c8_dex-auth_dex-auth/0",
+        "job": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+        "juju_application": "dex-auth",
+        "juju_charm": "dex-auth",
+        "juju_model": "kubeflow",
+        "juju_model_uuid": "c8c8",
+        "juju_unit": "dex-auth/0"
+      },
+      "discovered_labels": {
+        "__address__": "10.1.23.239:5558",
+        "__metrics_path__": "/metrics",
+        "__scheme__": "http",
+        "__scrape_interval__": "1m",
+        "__scrape_timeout__": "10s",
+        "job": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+        "juju_application": "dex-auth",
+        "juju_charm": "dex-auth",
+        "juju_model": "kubeflow",
+        "juju_model_uuid": "c8c8",
+        "juju_unit": "dex-auth/0"
+      },
+      "last_scrape": "2024-06-28T12:04:58.60872202Z",
+      "scrape_duration_ms": 1,
+      "scrape_error": ""
+    }
+  ]
+}
+"""
 
 
 @pytest.mark.asyncio
@@ -95,7 +163,7 @@ async def test_deploy_and_assert_grafana_agent(kwargs, exp_awaits):
     model.deploy.assert_awaited_once_with("grafana-agent-k8s", channel="latest/stable")
     model.integrate.assert_has_awaits(exp_awaits)
     model.wait_for_idle.assert_awaited_once_with(
-        apps=["grafana-agent-k8s"], status="blocked", timeout=300
+        apps=["grafana-agent-k8s"], status="blocked", timeout=300, idle_period=60
     )
 
 
@@ -211,29 +279,74 @@ async def test_get_unit_relation_data(mock_yaml, mock_run_on_unit, mock_get_rela
     assert data == {unit.name: mock_yaml.safe_load.return_value}
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "metrics_endpoint, exp_cmd",
+    "url, port, path, exp_result",
     [
-        ("*:5000/metrics", "curl -m 5 -sS http://my-app.my-model.svc:5000/metrics"),
-        ("1.2.3.4:5000/metrics", "curl -m 5 -sS http://1.2.3.4:5000/metrics"),
+        ("http://1.2.3.4:9090/metrics", 9090, "/metrics", True),
+        ("http://1.2.3.4:9090/metrics", 9091, "/metrics", False),
+        ("http://1.2.3.4:9090/metrics", 9090, "/my-metrics", False),
+        (
+            "*:9090/metrics",
+            9090,
+            "/metrics",
+            False,
+        ),  # urlparse could not parse with // or https://
+        ("//*:9090/metrics", 9090, "/metrics", True),
+        ("//*:9090/metrics", 9091, "/metrics", False),
+        ("//*:9090/metrics", 9090, "/my-metrics", False),
+        ("//blackbox-exporter-k8s-0.test.svc.cluster.local:9115/metrics", 9115, "/metrics", True),
     ],
 )
+def test_check_url(url, port, path, exp_result):
+    """Test helpet function to check port and path in url."""
+    assert _check_url(url, port, path) is exp_result
+
+
+@pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._run_on_unit")
-async def test_check_metrics_endpoint(mock_run_on_unit, metrics_endpoint, exp_cmd):
-    """Test check metrics endpoints."""
+async def test_get_targets_from_grafana_agent(mock_run_on_unit):
+    """Test get defined targets from grafana-agent-k8s."""
+    exp_cmd = "curl -m 5 -sS localhost:12345/agent/api/v1/metrics/targets"
+    mock_run_on_unit.return_value = Mock(spec_set=Action)()
+    mock_run_on_unit.return_value.results = {"stdout": GRAFANA_AGENT_METRICS_TARGETS}
+
     grafana_agent_k8s_app = Mock(spec_set=Application)()
     unit = Mock(spec_set=Unit)()
     grafana_agent_k8s_app.units = [unit]
 
     app = Mock(spec_set=Application)()
-    app.name = "my-app"
-    app.model = AsyncMock(spec_set=Model)
-    app.model.name = "my-model"
-    app.model.applications = {"grafana-agent-k8s": grafana_agent_k8s_app, "my-app": app}
+    app.name = "dex-auth"
+    app.model.applications = {"grafana-agent-k8s": grafana_agent_k8s_app, "dex-auth": app}
 
-    await _check_metrics_endpoint(app, metrics_endpoint)
+    target_data = await _get_targets_from_grafana_agent(app)
 
+    assert target_data != {}
+    assert target_data["state"] == "up"
+    assert target_data["endpoint"] == "http://10.1.23.239:5558/metrics"
+    assert target_data["labels"]["juju_application"] == "dex-auth"
+    assert target_data["labels"]["juju_model"] == "kubeflow"
+    mock_run_on_unit.assert_awaited_once_with(unit, exp_cmd)
+
+
+@pytest.mark.asyncio
+@patch("charmed_kubeflow_chisme.testing.cos_integration._run_on_unit")
+async def test_get_targets_from_grafana_agent_no_target(mock_run_on_unit):
+    """Test get defined targets from grafana-agent-k8s returns no data."""
+    exp_cmd = "curl -m 5 -sS localhost:12345/agent/api/v1/metrics/targets"
+    mock_run_on_unit.return_value = Mock(spec_set=Action)()
+    mock_run_on_unit.return_value.results = {"stdout": GRAFANA_AGENT_METRICS_TARGETS}
+
+    grafana_agent_k8s_app = Mock(spec_set=Application)()
+    unit = Mock(spec_set=Unit)()
+    grafana_agent_k8s_app.units = [unit]
+
+    app = Mock(spec_set=Application)()
+    app.name = "wrong-application"
+    app.model.applications = {"grafana-agent-k8s": grafana_agent_k8s_app, "wrong-application": app}
+
+    target_data = await _get_targets_from_grafana_agent(app)
+
+    assert target_data == {}
     mock_run_on_unit.assert_awaited_once_with(unit, exp_cmd)
 
 
@@ -393,47 +506,64 @@ async def test_assert_alert_rules_fail(mock_get_alert_rules, mock_get_app_relati
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
-@patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
-async def test_assert_metrics_endpoint(
-    mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_targets_from_grafana_agent")
+async def test_assert_metrics_endpoint_no_data(
+    mock_get_targets_from_grafana_agent, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint with empty data bag."""
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {}
 
-    with pytest.raises(AssertionError, match="relation is missing scrape_jobs"):
+    with pytest.raises(AssertionError, match="metrics-endpoint relation is missing 'scrape_jobs'"):
         await assert_metrics_endpoint(app, metrics_port=8000, metrics_path="/metrics")
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_not_called()
-    mock_check_metrics_endpoint.assert_not_awaited()
+    mock_get_targets_from_grafana_agent.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
-@patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_targets_from_grafana_agent")
 async def test_assert_metrics_endpoint(
-    mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
+    mock_get_targets_from_grafana_agent, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint."""
     app = Mock(spec_set=Application)()
+    app.name = "dex-auth"
+    app.model.name = "kubeflow"
     mock_get_app_relation_data.return_value = {"scrape_jobs": "..."}
-    mock_get_metrics_endpoint.return_value = {"*:5000/metrics"}
+    mock_get_metrics_endpoint.return_value = {"*:5558/metrics"}
+    mock_get_targets_from_grafana_agent.return_value = {
+        "instance": "ad3e396dc08b0f42a6e4b57e90bed6e2",
+        "target_group": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+        "endpoint": "http://10.1.23.239:5558/metrics",
+        "state": "up",
+        "labels": {
+            "instance": "kubeflow_c8c8_dex-auth_dex-auth/0",
+            "job": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+            "juju_application": "dex-auth",
+            "juju_charm": "dex-auth",
+            "juju_model": "kubeflow",
+            "juju_model_uuid": "c8c8",
+            "juju_unit": "dex-auth/0",
+        },
+    }
 
-    await assert_metrics_endpoint(app, metrics_port=5000, metrics_path="/metrics")
+    await assert_metrics_endpoint(app, metrics_port=5558, metrics_path="/metrics")
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_called_once_with("...")
-    mock_check_metrics_endpoint.assert_awaited_once_with(app, "*:5000/metrics")
+    mock_get_targets_from_grafana_agent.assert_awaited_once_with(app)
 
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_app_relation_data")
 @patch("charmed_kubeflow_chisme.testing.cos_integration._get_metrics_endpoint")
-@patch("charmed_kubeflow_chisme.testing.cos_integration._check_metrics_endpoint")
+@patch("charmed_kubeflow_chisme.testing.cos_integration._get_targets_from_grafana_agent")
 async def test_assert_metrics_endpoint_fail(
-    mock_check_metrics_endpoint, mock_get_metrics_endpoint, mock_get_app_relation_data
+    mock_get_targets_from_grafana_agent, mock_get_metrics_endpoint, mock_get_app_relation_data
 ):
     """Test assert function for metrics endpoint failing."""
     app = Mock(spec_set=Application)()
@@ -445,7 +575,7 @@ async def test_assert_metrics_endpoint_fail(
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint")
     mock_get_metrics_endpoint.assert_called_once_with("...")
-    mock_check_metrics_endpoint.assert_not_awaited()
+    mock_get_targets_from_grafana_agent.assert_not_awaited()
 
 
 @pytest.mark.asyncio
