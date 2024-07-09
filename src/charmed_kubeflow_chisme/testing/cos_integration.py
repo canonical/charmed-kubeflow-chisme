@@ -51,6 +51,7 @@ async def deploy_and_assert_grafana_agent(
     metrics: bool = False,
     logging: bool = False,
     dashboard: bool = False,
+    idle_period: int = WAIT_IDLE_PERIOD,
 ) -> None:
     """Deploy grafana-agent-k8s and add relate it with app.
 
@@ -66,6 +67,8 @@ async def deploy_and_assert_grafana_agent(
             grafana-agent-k8s:logging-provider relation is created. Defaults to False.
         dashboard (bool): Boolean that defines if the <app>:grafana-dashboard
             grafana-agent-k8s:grafana-dashboards-consumer relation is created. Defaults to False.
+        idle_period (int): How long, in seconds, the agent statuses of all units of all Grafana
+            agent need to be `idle`.
     """
     assert app in model.applications, f"application {app} was not found in model {model.name}"
 
@@ -115,7 +118,7 @@ async def deploy_and_assert_grafana_agent(
         apps=[GRAFANA_AGENT_APP],
         status=WAIT_STATUS,
         timeout=WAIT_TIMEOUT,
-        idle_period=WAIT_IDLE_PERIOD,
+        idle_period=idle_period,
     )
 
 
