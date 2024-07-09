@@ -21,7 +21,7 @@ async def test_build_and_deploy(ops_test):
 
     await deploy_and_assert_grafana_agent(
         ops_test.model, "my-charm", metrics=True, dashboard=True, logging=True
-        )
+    )
 ```
 
 ## `assert_alert_rules`
@@ -49,7 +49,7 @@ async def test_alert_rules(ops_test):
 
 ## `assert_metrics_endpoint`
 
-Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint is accessible from grafana-agent-k8s pod. This function is using provides side of relation to get such data.
+Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint are defined in current defined targets, via Grafana agent API [1]. This function is using provides side of relation to get such data.
 
 Example usage:
 ```python
@@ -57,8 +57,7 @@ async def test_metrics_enpoint(ops_test):
     """Test metrics_endpoints are defined in relation data bag and their accessibility.
 
     This function gets all the metrics_endpoints from the relation data bag, checks if
-    they are available from the grafana-agent-k8s charm and finally compares them with the
-    ones provided to the function.
+    they are available in current defined targets in Grafana agent.
     """
     app = ops_test.model.applications["my-charm"]
     await assert_metrics_endpoint(app, metrics_port=5000, metrics_path="/metrics")
@@ -76,7 +75,6 @@ async def test_logging(ops_test):
     app = ops_test.model.applications["my-charm"]
     await assert_logging(app)
 ```
-
 
 ## `assert_grafana_dashboards`
 
@@ -100,3 +98,6 @@ async def test_grafana_dashboards(ops_test):
     dashboards = get_grafana_dashboards()
     await assert_grafana_dashboards(app, dashboards)
 ```
+
+---
+[1]: https://grafana.com/docs/agent/latest/static/api/#list-current-scrape-targets-of-metrics-subsystem
