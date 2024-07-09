@@ -5,6 +5,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Dict, Set
+from urllib.parse import urlparse
 
 import yaml
 from juju.action import Action
@@ -19,10 +20,25 @@ GRAFANA_AGENT_APP = "grafana-agent-k8s"
 GRAFANA_AGENT_METRICS_ENDPOINT = "metrics-endpoint"
 GRAFANA_AGENT_GRAFANA_DASHBOARD = "grafana-dashboards-consumer"
 GRAFANA_AGENT_LOGGING_PROVIDER = "logging-provider"
+# Note(rgildein): Grafana-agent-k8s does not currently configure this and it comes as a
+# default value from upstream.
+# Upstream documentation https://grafana.com/docs/agent/latest/static/configuration/flags/#server
+# Related bug https://github.com/canonical/grafana-agent-k8s-operator/issues/308
+GRAFANA_AGENT_API = "localhost:12345/agent/api/v1"
+GRAFANA_AGENT_API_TARGETS = f"{GRAFANA_AGENT_API}/metrics/targets"
 
 APP_METRICS_ENDPOINT = "metrics-endpoint"
 APP_GRAFANA_DASHBOARD = "grafana-dashboard"
 APP_LOGGING = "logging"
+
+# Note(rgildein): We use an idle_period of 60 so we can be sure that the targets have already
+# been scraped.
+WAIT_IDLE_PERIOD = 60
+WAIT_TIMEOUT = 5 * 60
+# Note(rgildein, dnplas): The grafana agent charm will go to BlockedStatus if it is not
+# related to any consumer (e.g. prometheus-k8s, grafana-k8s).
+WAIT_STATUS = "blocked"
+
 
 ALERT_RULES_DIRECTORY = Path("./src/prometheus_alert_rules")
 GRAFANA_DASHBOARDS_DIRECTORY = Path("./src/grafana_dashboards")
@@ -35,6 +51,7 @@ async def deploy_and_assert_grafana_agent(
     metrics: bool = False,
     logging: bool = False,
     dashboard: bool = False,
+    idle_period: int = WAIT_IDLE_PERIOD,
 ) -> None:
     """Deploy grafana-agent-k8s and add relate it with app.
 
@@ -50,6 +67,8 @@ async def deploy_and_assert_grafana_agent(
             grafana-agent-k8s:logging-provider relation is created. Defaults to False.
         dashboard (bool): Boolean that defines if the <app>:grafana-dashboard
             grafana-agent-k8s:grafana-dashboards-consumer relation is created. Defaults to False.
+        idle_period (int): How long, in seconds, the agent statuses of all units of all Grafana
+            agent need to be `idle`.
     """
     assert app in model.applications, f"application {app} was not found in model {model.name}"
 
@@ -95,27 +114,90 @@ async def deploy_and_assert_grafana_agent(
             f"{GRAFANA_AGENT_APP}:{GRAFANA_AGENT_LOGGING_PROVIDER}",
         )
 
-    # Note(rgildein, dnplas): The grafana agent charm will go to BlockedStatus if it is not
-    # related to any consumer (e.g. prometheus-k8s, grafana-k8s).
-    await model.wait_for_idle(apps=[GRAFANA_AGENT_APP], status="blocked", timeout=5 * 60)
+    await model.wait_for_idle(
+        apps=[GRAFANA_AGENT_APP],
+        status=WAIT_STATUS,
+        timeout=WAIT_TIMEOUT,
+        idle_period=idle_period,
+    )
 
 
-async def _check_metrics_endpoint(app: Application, metrics_endpoint: str) -> None:
-    """Check metrics endpoint accessibility.
+def _check_url(url: str, port: int, path: str) -> bool:
+    """Return False if port and path are not defined in url, True otherwise.
 
-    Checking accessibility of metrics endpoint from grafana-agent-k8s. If metrics endpoint is
-    defined as `*:5000/metrics` it will be changed to `<app-name>.<namespace>.svc:5000/metrics`.
+    Check that the expected port and path are in the url after parsing it.
     """
-    if metrics_endpoint.startswith("*"):
-        url = f"http://{app.name}.{app.model.name}.svc{metrics_endpoint[1:]}"
-    else:
-        url = f"http://{metrics_endpoint}"
+    output = urlparse(url)
+    return output.port == port and output.path == path
 
-    cmd = f"curl -m 5 -sS {url}"
-    grafana_agent_app = app.model.applications[GRAFANA_AGENT_APP]
-    log.info("testing metrics endpoint with cmd: `%s`", cmd)
-    for unit in grafana_agent_app.units:
-        await _run_on_unit(unit, cmd)
+
+async def _get_targets_from_grafana_agent(app: Application) -> Dict[str, Any]:
+    """Return a dict with data if the charm is listed in the targets; otherwise an empty dict.
+
+    This method makes a request to the grafana-agent-k8s targets endpoint to retrieve the state
+    and data of the application under test and returns this data as a dictionary.
+
+    Example of Grafana agent API output:
+
+    $ curl localhost:12345/agent/api/v1/metrics/targets
+    {
+      "status": "success",
+      "data": [
+        {
+          "target_group": "integrations/agent",
+          ...
+        },
+        {
+          "target_group": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+          "endpoint": "http://10.1.23.239:5558/metrics",
+          "state": "up",
+          "labels": {
+            "instance": "kubeflow_c8c8_dex-auth_dex-auth/0",
+            "job": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+            "juju_application": "dex-auth",
+            "juju_charm": "dex-auth",
+            "juju_model": "kubeflow",
+            "juju_model_uuid": "c8c8",
+            "juju_unit": "dex-auth/0"
+          },
+          "discovered_labels": {
+            "__address__": "10.1.23.239:5558",
+            "__metrics_path__": "/metrics",
+            "__scheme__": "http",
+            "__scrape_interval__": "1m",
+            "__scrape_timeout__": "10s",
+            "job": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+            "juju_application": "dex-auth",
+            "juju_charm": "dex-auth",
+            "juju_model": "kubeflow",
+            "juju_model_uuid": "c8c8",
+            "juju_unit": "dex-auth/0"
+          },
+          "last_scrape": "2024-06-28T12:04:58.60872202Z",
+          "scrape_duration_ms": 1,
+          "scrape_error": ""
+        }
+      ]
+    }
+    """
+    cmd = f"curl -m 5 -sS {GRAFANA_AGENT_API_TARGETS}"
+    grafana_agent_unit = app.model.applications[GRAFANA_AGENT_APP].units[0]
+    log.debug("testing metrics endpoint with cmd: `%s`", cmd)
+    output = await _run_on_unit(grafana_agent_unit, cmd)
+    targets = yaml.safe_load(output.results["stdout"])
+    log.debug("metrics targets definened at %s:\n%s", grafana_agent_unit.name, targets)
+
+    for data in targets["data"]:
+        if data["labels"]["juju_application"] == app.name:
+            log.debug(
+                "metrics targets definened at %s for %s:\n%s",
+                grafana_agent_unit.name,
+                app.name,
+                targets,
+            )
+            return data
+
+    return {}
 
 
 async def _get_relation(app: Application, endpoint_name: str) -> Relation:
@@ -306,9 +388,7 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
     assert relation_alert_rules == alert_rules, f"{relation_alert_rules}\n!=\n{alert_rules}"
 
 
-async def assert_metrics_endpoint(
-    app: Application, metrics_port: int, metrics_path: str, metrics_target: str = "*"
-) -> None:
+async def assert_metrics_endpoint(app: Application, metrics_port: int, metrics_path: str) -> None:
     """Check the endpoint in the relation data bag and verify its accessibility.
 
     This function compare metrics endpoints defined in APP_METRICS_ENDPOINT relation data bag
@@ -319,7 +399,6 @@ async def assert_metrics_endpoint(
         app (Application): Juju Applicatition object.
         metrics_port (int): Metrics port to verify.
         metrics_path (str): Metrics path to verify.
-        metrics_target (str): Metrics target to verify. Defaults to '*'.
     """
     relation_data = await _get_app_relation_data(app, APP_METRICS_ENDPOINT)
     assert (
@@ -328,12 +407,24 @@ async def assert_metrics_endpoint(
 
     relation_metrics_endpoints = _get_metrics_endpoint(relation_data["scrape_jobs"])
 
-    metrics_endpoint = f"{metrics_target}:{metrics_port}{metrics_path}"
+    # Note(rgildein): adding // to endpoint so urlparser can parse it properly
+    assert any(
+        _check_url(f"//{endpoint}", metrics_port, metrics_path)
+        for endpoint in relation_metrics_endpoints
+    ), f":{metrics_port}{metrics_path} was not found in any {relation_metrics_endpoints}"
 
+    # check that port and path is also defined in Grafana agent targets
+    target_data = await _get_targets_from_grafana_agent(app)
+    assert target_data["state"] == "up", f"target for {app.name} is not in {target_data['state']}"
+    assert _check_url(
+        target_data["endpoint"], metrics_port, metrics_path
+    ), f":{metrics_port}{metrics_path} was not found in any {target_data['endpoint']}"
     assert (
-        metrics_endpoint in relation_metrics_endpoints
-    ), f"{metrics_endpoint} not in {relation_metrics_endpoints}"
-    await _check_metrics_endpoint(app, metrics_endpoint)
+        target_data["labels"]["juju_model"] == app.model.name
+    ), f"label juju_model does not correspond to current model, {target_data['labels']['juju_model']} != {app.model.name}"
+    assert (
+        target_data["labels"]["juju_application"] == app.name
+    ), f"label juju_application do not correspond with app name, {target_data['labels']['juju_application']} != {app.name}"
 
 
 async def assert_logging(app: Application) -> None:
