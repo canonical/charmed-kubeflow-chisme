@@ -121,7 +121,7 @@ async def _check_metrics_endpoint(app: Application, metrics_endpoint: str) -> No
 async def _get_charm_name(app: Application) -> str:
     """Get charm name for application from metadata.
 
-    We are getting from metadata, since locally built charmas will return
+    We are getting from metadata, since locally built charms will return
     `<charm_name>-<revision>` from `app.charm_name`. e.g. seldon-controller-manager-0
     """
     unit = app.units[0]
