@@ -5,7 +5,6 @@ import pytest
 
 import charmed_kubeflow_chisme.testing
 from charmed_kubeflow_chisme.testing import (
-    GRAFANA_AGENT_APP,
     assert_alert_rules,
     assert_grafana_dashboards,
     assert_logging,
@@ -48,19 +47,13 @@ async def test_alert_rules(ops_test):
 
 async def test_metrics_endpoints(ops_test):
     """Test metrics_endpoints are defined in relation data bag."""
-    app = ops_test.model.applications[TESTED_APP]
-    await assert_metrics_endpoint(
-        app,
-        metrics_port=9115,
-        metrics_path="/metrics",
-        metrics_target="blackbox-exporter-k8s-0.blackbox-exporter-k8s-endpoints."
-        f"{ops_test.model.name}.svc.cluster.local",
-    )
+    app = ops_test.model.applications["blackbox-exporter-k8s"]
+    await assert_metrics_endpoint(app, 9115, "/metrics")
 
 
 async def test_logging(ops_test):
     """Test logging is defined in relation data bag."""
-    app = ops_test.model.applications[GRAFANA_AGENT_APP]
+    app = ops_test.model.applications[TESTED_APP]
     await assert_logging(app)
 
 
