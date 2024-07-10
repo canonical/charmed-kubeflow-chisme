@@ -5,7 +5,6 @@ import pytest
 
 import charmed_kubeflow_chisme.testing
 from charmed_kubeflow_chisme.testing import (
-    GRAFANA_AGENT_APP,
     assert_alert_rules,
     assert_grafana_dashboards,
     assert_logging,
@@ -54,7 +53,7 @@ async def test_metrics_endpoints(ops_test):
 
 async def test_logging(ops_test):
     """Test logging is defined in relation data bag."""
-    app = ops_test.model.applications[GRAFANA_AGENT_APP]
+    app = ops_test.model.applications[TESTED_APP]
     await assert_logging(app)
 
 
