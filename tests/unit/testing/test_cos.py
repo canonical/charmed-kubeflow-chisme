@@ -94,6 +94,37 @@ GRAFANA_AGENT_METRICS_TARGETS = """
       "last_scrape": "2024-06-28T12:04:58.60872202Z",
       "scrape_duration_ms": 1,
       "scrape_error": ""
+    },
+    {
+      "instance": "ad3e396dc08b0f42a6e4b57e90bed6e2",
+      "target_group": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+      "endpoint": "http://10.1.23.239:8080/metrics",
+      "state": "up",
+      "labels": {
+        "instance": "kubeflow_c8c8_dex-auth_dex-auth/0",
+        "job": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+        "juju_application": "dex-auth",
+        "juju_charm": "dex-auth",
+        "juju_model": "kubeflow",
+        "juju_model_uuid": "c8c8",
+        "juju_unit": "dex-auth/0"
+      },
+      "discovered_labels": {
+        "__address__": "10.1.23.239:8080",
+        "__metrics_path__": "/metrics",
+        "__scheme__": "http",
+        "__scrape_interval__": "1m",
+        "__scrape_timeout__": "10s",
+        "job": "juju_kubeflow_34eea852_dex-auth_prometheus_scrape-0",
+        "juju_application": "dex-auth",
+        "juju_charm": "dex-auth",
+        "juju_model": "kubeflow",
+        "juju_model_uuid": "c8c8",
+        "juju_unit": "dex-auth/0"
+      },
+      "last_scrape": "2024-06-28T12:04:58.60872202Z",
+      "scrape_duration_ms": 1,
+      "scrape_error": ""
     }
   ]
 }
@@ -341,7 +372,8 @@ def test_check_url(url, port, path, exp_result):
 
 @pytest.mark.asyncio
 @patch("charmed_kubeflow_chisme.testing.cos_integration._run_on_unit")
-async def test_get_targets_from_grafana_agent(mock_run_on_unit):
+@pytest.mark.parametrize("port, path", [(5558, "/metrics"), (8080, "/metrics")])
+async def test_get_targets_from_grafana_agent(mock_run_on_unit, port, path):
     """Test get defined targets from grafana-agent-k8s."""
     exp_cmd = "curl -m 5 -sS localhost:12345/agent/api/v1/metrics/targets"
     mock_run_on_unit.return_value = Mock(spec_set=Action)()
@@ -355,11 +387,11 @@ async def test_get_targets_from_grafana_agent(mock_run_on_unit):
     app.name = "dex-auth"
     app.model.applications = {"grafana-agent-k8s": grafana_agent_k8s_app, "dex-auth": app}
 
-    target_data = await _get_targets_from_grafana_agent(app)
+    target_data = await _get_targets_from_grafana_agent(app, port, path)
 
     assert target_data != {}
     assert target_data["state"] == "up"
-    assert target_data["endpoint"] == "http://10.1.23.239:5558/metrics"
+    assert target_data["endpoint"] == f"http://10.1.23.239:{port}{path}"
     assert target_data["labels"]["juju_application"] == "dex-auth"
     assert target_data["labels"]["juju_model"] == "kubeflow"
     mock_run_on_unit.assert_awaited_once_with(unit, exp_cmd)
@@ -378,10 +410,11 @@ async def test_get_targets_from_grafana_agent_no_target(mock_run_on_unit):
     grafana_agent_k8s_app.units = [unit]
 
     app = Mock(spec_set=Application)()
-    app.name = "wrong-application"
-    app.model.applications = {"grafana-agent-k8s": grafana_agent_k8s_app, "wrong-application": app}
+    app.name = "dex-auth"
+    app.model.applications = {"grafana-agent-k8s": grafana_agent_k8s_app, "dex-auth": app}
 
-    target_data = await _get_targets_from_grafana_agent(app)
+    # using a port not defined in the example above
+    target_data = await _get_targets_from_grafana_agent(app, 9090, "/metrics")
 
     assert target_data == {}
     mock_run_on_unit.assert_awaited_once_with(unit, exp_cmd)
@@ -460,6 +493,11 @@ def test__get_dashboard_template(data, exp_templates):
         (
             '[{"metrics_path": "/metrics", "static_configs": [{"targets": ["*:5000","*:8000"]}]}]',
             {"*:5000/metrics", "*:8000/metrics"},
+        ),
+        (
+            '[{"metrics_path": "/metrics", "static_configs": [{"targets": ["10.152.183.18:8889", '
+            '"*:9090"]}]}]',
+            {"10.152.183.18:8889/metrics", "*:9090/metrics"},
         ),
     ],
 )
@@ -592,7 +630,7 @@ async def test_assert_metrics_endpoint(
 
     mock_get_app_relation_data.assert_awaited_once_with(app, "metrics-endpoint", side="provides")
     mock_get_metrics_endpoint.assert_called_once_with("...")
-    mock_get_targets_from_grafana_agent.assert_awaited_once_with(app)
+    mock_get_targets_from_grafana_agent.assert_awaited_once_with(app, 5558, "/metrics")
 
 
 @pytest.mark.asyncio
