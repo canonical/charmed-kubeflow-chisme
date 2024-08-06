@@ -134,7 +134,9 @@ def _check_url(url: str, port: int, path: str) -> bool:
     return output.port == port and output.path == path
 
 
-async def _get_targets_from_grafana_agent(app: Application) -> Dict[str, Any]:
+async def _get_targets_from_grafana_agent(
+    app: Application, port: int, path: str
+) -> Dict[str, Any]:
     """Return a dict with data if the charm is listed in the targets; otherwise an empty dict.
 
     This method makes a request to the grafana-agent-k8s targets endpoint to retrieve the state
@@ -198,8 +200,10 @@ async def _get_targets_from_grafana_agent(app: Application) -> Dict[str, Any]:
                 app.name,
                 targets,
             )
-            return data
+            if _check_url(data["endpoint"], port, path):
+                return data
 
+    log.warning("no target data found for %s and %s:%s", app.name, port, path)
     return {}
 
 
@@ -445,6 +449,7 @@ async def assert_metrics_endpoint(app: Application, metrics_port: int, metrics_p
     ), f"{APP_METRICS_ENDPOINT} relation is missing 'scrape_jobs'"
 
     relation_metrics_endpoints = _get_metrics_endpoint(relation_data["scrape_jobs"])
+    log.info("found endpoints: %s", relation_metrics_endpoints)
 
     # Note(rgildein): adding // to endpoint so urlparser can parse it properly
     assert any(
@@ -453,11 +458,9 @@ async def assert_metrics_endpoint(app: Application, metrics_port: int, metrics_p
     ), f":{metrics_port}{metrics_path} was not found in any {relation_metrics_endpoints}"
 
     # check that port and path is also defined in Grafana agent targets
-    target_data = await _get_targets_from_grafana_agent(app)
+    target_data = await _get_targets_from_grafana_agent(app, metrics_port, metrics_path)
+    assert bool(target_data), f"no target found for {app.name} and :{metrics_port}/{metrics_path}"
     assert target_data["state"] == "up", f"target for {app.name} is not in {target_data['state']}"
-    assert _check_url(
-        target_data["endpoint"], metrics_port, metrics_path
-    ), f":{metrics_port}{metrics_path} was not found in any {target_data['endpoint']}"
     assert (
         target_data["labels"]["juju_model"] == app.model.name
     ), f"label juju_model does not correspond to current model, {target_data['labels']['juju_model']} != {app.model.name}"
