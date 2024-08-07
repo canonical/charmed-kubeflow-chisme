@@ -460,7 +460,7 @@ async def assert_metrics_endpoint(app: Application, metrics_port: int, metrics_p
     # check that port and path is also defined in Grafana agent targets
     target_data = await _get_targets_from_grafana_agent(app, metrics_port, metrics_path)
     assert bool(target_data), f"no target found for {app.name} and :{metrics_port}/{metrics_path}"
-    assert target_data["state"] == "up", f"target for {app.name} is not in {target_data['state']}"
+    assert target_data["state"] == "up", f"target for {app.name} is not up, currently it is {target_data['state']}"
     assert (
         target_data["labels"]["juju_model"] == app.model.name
     ), f"label juju_model does not correspond to current model, {target_data['labels']['juju_model']} != {app.model.name}"
