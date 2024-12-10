@@ -49,7 +49,7 @@ async def test_alert_rules(ops_test):
 
 ## `assert_metrics_endpoint`
 
-Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint are defined in current defined targets, via Grafana agent API [1]. This function is using provides side of relation to get such data.
+Helper function to test metrics endpoints are defined in relation data bag and to verify that endpoint are defined in current defined targets, via Grafana agent API [1]. This function is using provides side of relation to get such data. Note that this function is retried 10 times by default.
 
 Example usage:
 ```python
