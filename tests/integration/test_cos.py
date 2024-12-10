@@ -45,6 +45,7 @@ async def test_alert_rules(ops_test):
         },
     )
 
+
 async def test_metrics_endpoints(ops_test):
     """Test metrics_endpoints are defined in relation data bag."""
     app = ops_test.model.applications["blackbox-exporter-k8s"]
