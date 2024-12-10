@@ -38,12 +38,12 @@ async def test_alert_rules(ops_test):
         app,
         {
             "BlackboxJobMissing",
-            "BlackboxExporterSSLCertExpiringSoon",
+            "BlackboxExporterSSLCertExpiringSoon15Days",
+            "BlackboxExporterSSLCertExpiringSoon30Days",
             "BlackboxExporterUnitIsUnavailable",
             "BlackboxExporterUnitIsDown",
         },
     )
-
 
 async def test_metrics_endpoints(ops_test):
     """Test metrics_endpoints are defined in relation data bag."""
