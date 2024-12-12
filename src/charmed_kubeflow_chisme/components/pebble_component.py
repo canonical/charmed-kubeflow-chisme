@@ -342,6 +342,7 @@ class PebbleServiceComponent(PebbleComponent):
             )
         return ActiveStatus()
 
+
 def get_event_from_charm(charm: CharmBase, container_name: str, event_name: str) -> str:
     """Returns an event with a specified name for a given container_name."""
     prefix = container_name.replace("-", "_")
