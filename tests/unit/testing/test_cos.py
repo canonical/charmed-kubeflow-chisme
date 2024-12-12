@@ -10,6 +10,7 @@ from juju.application import Application
 from juju.model import Model
 from juju.relation import Endpoint, Relation
 from juju.unit import Unit
+from tenacity import stop_after_attempt
 
 from charmed_kubeflow_chisme.testing.cos_integration import (
     _check_url,
@@ -588,6 +589,9 @@ async def test_assert_metrics_endpoint_no_data(
     """Test assert function for metrics endpoint with empty data bag."""
     app = Mock(spec_set=Application)()
     mock_get_app_relation_data.return_value = {}
+    # Wait once instead of 10 times to speed up tests
+    # as per https://github.com/jd/tenacity/issues/106
+    assert_metrics_endpoint.retry.stop = stop_after_attempt(1)
 
     with pytest.raises(AssertionError, match="metrics-endpoint relation is missing 'scrape_jobs'"):
         await assert_metrics_endpoint(app, metrics_port=8000, metrics_path="/metrics")
@@ -625,6 +629,9 @@ async def test_assert_metrics_endpoint(
             "juju_unit": "dex-auth/0",
         },
     }
+    # Wait once instead of 10 times to speed up tests
+    # as per https://github.com/jd/tenacity/issues/106
+    assert_metrics_endpoint.retry.stop = stop_after_attempt(1)
 
     await assert_metrics_endpoint(app, metrics_port=5558, metrics_path="/metrics")
 

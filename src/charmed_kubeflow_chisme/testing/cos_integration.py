@@ -13,6 +13,7 @@ from juju.application import Application
 from juju.model import Model
 from juju.relation import Relation
 from juju.unit import Unit
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 log = logging.getLogger(__name__)
 
@@ -430,6 +431,11 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
     assert relation_alert_rules == alert_rules, f"{relation_alert_rules}\n!=\n{alert_rules}"
 
 
+@retry(
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    stop=stop_after_attempt(10),
+    reraise=True,
+)
 async def assert_metrics_endpoint(app: Application, metrics_port: int, metrics_path: str) -> None:
     """Check the endpoint in the relation data bag and verify its accessibility.
 
