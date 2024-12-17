@@ -221,7 +221,6 @@ class PebbleComponent(Component):
             get_event_from_charm(self._charm, self.container_name, "pebble_ready"),
             get_event_from_charm(self._charm, self.container_name, "pebble_check_failed"),
             get_event_from_charm(self._charm, self.container_name, "pebble_check_recovered"),
-            get_event_from_charm(self._charm, self.container_name, "pebble_custom_notice"),
         ]
         self._files_to_push = files_to_push or []
 
