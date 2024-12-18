@@ -463,7 +463,7 @@ class TestContainerStringWrapper:
         user = "user"
         group = "group"
         permissions = "permissions"
-        
+
         cft = ContainerStringWrapper(
             destination_path,
             source_string,
