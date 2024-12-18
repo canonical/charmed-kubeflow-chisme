@@ -26,7 +26,7 @@ class LazyContainerFileTemplate:
         context: Optional[Union[dict, Callable[[], dict]]] = None,
         user: Optional[str] = None,
         group: Optional[str] = None,
-        permissions: Optional[str] = None,
+        permissions: Optional[int] = None,
     ):
         """A lazy file template renderer for use in pushing files to a Pebble container.
 
@@ -124,7 +124,7 @@ class ContainerFileTemplate(LazyContainerFileTemplate):
         context_function: Optional[Union[dict, Callable[[], dict]]] = None,
         user: Optional[str] = None,
         group: Optional[str] = None,
-        permissions: Optional[str] = None,
+        permissions: Optional[int] = None,
     ):
         """Defines a file template that should be rendered and pushed into a Pebble container.
 
@@ -197,7 +197,7 @@ class ContainerStringWrapper:
         source_string: str,
         user: Optional[str] = None,
         group: Optional[str] = None,
-        permissions: Optional[str] = None,
+        permissions: Optional[int] = None,
     ):
         """A simple wrapper for use in pushing files to a Pebble container.
 
