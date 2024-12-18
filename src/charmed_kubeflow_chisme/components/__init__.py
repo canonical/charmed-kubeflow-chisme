@@ -11,6 +11,7 @@ from .leadership_gate_component import LeadershipGateComponent
 from .model_name_gate_component import ModelNameGateComponent
 from .pebble_component import (
     ContainerFileTemplate,
+    ContainerStringWrapper,
     LazyContainerFileTemplate,
     PebbleComponent,
     PebbleServiceComponent,
@@ -29,6 +30,7 @@ __all__ = [
     LeadershipGateComponent,
     ModelNameGateComponent,
     ContainerFileTemplate,
+    ContainerStringWrapper,
     LazyContainerFileTemplate,
     PebbleComponent,
     PebbleServiceComponent,
