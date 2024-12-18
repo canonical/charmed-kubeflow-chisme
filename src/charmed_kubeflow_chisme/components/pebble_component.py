@@ -188,6 +188,44 @@ class ContainerFileTemplate(LazyContainerFileTemplate):
         return self._context
 
 
+class ContainerStringWrapper:
+    """Wraps a string that will be pushed to a container."""
+
+    def __init__(
+        self,
+        destination_path: Union[Path, str],
+        source_string: str,
+        user: Optional[str] = None,
+        group: Optional[str] = None,
+        permissions: Optional[str] = None,
+    ):
+        """A simple wrapper for use in pushing files to a Pebble container.
+
+        Args:
+            destination_path: The path to the file in the container.
+            source_string: The string to push.
+            user: The user to own the file in the container.
+            group: The group to own the file in the container.
+            permissions: The permissions to set on the file in the container.
+        """
+        self.destination_path = Path(destination_path)
+        self.source_string = source_string
+        self.user = user
+        self.group = group
+        self.permissions = permissions
+
+    def get_inputs_for_push(self):
+        """Returns a dict of the inputs expected by ops.model.Container.push()."""
+        return dict(
+            path=self.destination_path,
+            source=self.source_string,
+            user=self.user,
+            group=self.group,
+            permissions=self.permissions,
+            make_dirs=True,
+        )
+
+
 class PebbleComponent(Component):
     """Wraps a non-service Pebble container."""
 
@@ -200,6 +238,7 @@ class PebbleComponent(Component):
         files_to_push: Optional[
             List[Union[ContainerFileTemplate, LazyContainerFileTemplate]]
         ] = None,
+        strings_to_push: Optional[List[ContainerStringWrapper]] = None,
         **kwargs,
     ):
         """Instantiate the PebbleComponent.
@@ -212,6 +251,8 @@ class PebbleComponent(Component):
             files_to_push: Optional List of LazyContainerFileTemplate or ContainerFileTemplate
                            objects that define templates to be rendered and pushed into the
                            container as files
+            strings_to_push: Optional List of ContainerStringWrapper objects that define
+                             strings to be pushed into the container as files
         """
         super().__init__(charm, name, *args, **kwargs)
         self.container_name = container_name
@@ -221,6 +262,7 @@ class PebbleComponent(Component):
             get_pebble_ready_event_from_charm(self._charm, self.container_name)
         ]
         self._files_to_push = files_to_push or []
+        self._strings_to_push = strings_to_push or []
 
     @property
     def ready_for_execution(self) -> bool:
@@ -237,10 +279,16 @@ class PebbleComponent(Component):
         raise NotImplementedError()
 
     def _push_files_to_container(self):
-        """Renders and pushes the files defined in self._files_to_push into the container."""
+        """Pushes all files passed to the component into the container.
+
+        Renders and pushes the files defined in self._files_to_push and self._strings_to_push
+        into the container.
+        """
         container = self._charm.unit.get_container(self.container_name)
         for container_file_template in self._files_to_push:
             container.push(**container_file_template.get_inputs_for_push())
+        for container_string_wrapper in self._strings_to_push:
+            container.push(**container_string_wrapper.get_inputs_for_push())
 
     def get_status(self) -> StatusBase:
         """Returns the status of this Component."""

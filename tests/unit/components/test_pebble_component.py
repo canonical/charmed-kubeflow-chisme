@@ -13,7 +13,11 @@ from fixtures import (  # noqa: F401
 from ops import ActiveStatus, WaitingStatus
 
 import charmed_kubeflow_chisme.components.pebble_component
-from charmed_kubeflow_chisme.components import ContainerFileTemplate, LazyContainerFileTemplate
+from charmed_kubeflow_chisme.components import (
+    ContainerFileTemplate,
+    ContainerStringWrapper,
+    LazyContainerFileTemplate,
+)
 
 
 class TestPebbleComponent:
@@ -419,6 +423,57 @@ class TestLazyContainerFileTemplate:
         expected = {
             "path": Path("destination_path"),
             "source": expected_rendered,
+            "user": user,
+            "group": group,
+            "permissions": permissions,
+            "make_dirs": True,
+        }
+
+        assert cft.get_inputs_for_push() == expected
+
+
+class TestContainerStringWrapper:
+    def test_static_inputs(self):
+        """Tests that the ContainerStringWrapper class can accept static inputs."""
+        destination_path = "destination_path"
+        source_string = "source_string"
+        user = "user"
+        group = "group"
+        permissions = "permissions"
+
+        # Test these without using kwargs to ensure they API doesn't change
+        cft = ContainerStringWrapper(
+            destination_path,
+            source_string,
+            user=user,
+            group=group,
+            permissions=permissions,
+        )
+
+        assert cft.destination_path == Path(destination_path)
+        assert cft.source_string == source_string
+        assert cft.user == user
+        assert cft.group == group
+        assert cft.permissions == permissions
+
+    def test_get_inputs_for_push(self):
+        """Tests get_inputs_for_push returns the expected inputs."""
+        destination_path = "destination_path"
+        source_string = "source_string"
+        user = "user"
+        group = "group"
+        permissions = "permissions"
+        
+        cft = ContainerStringWrapper(
+            destination_path,
+            source_string,
+            user=user,
+            group=group,
+            permissions=permissions,
+        )
+        expected = {
+            "path": Path("destination_path"),
+            "source": source_string,
             "user": user,
             "group": group,
             "permissions": permissions,
