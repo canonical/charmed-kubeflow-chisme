@@ -1,5 +1,6 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import logging
 import tempfile
 from pathlib import Path
 from unittest import mock
@@ -13,13 +14,29 @@ from fixtures import (  # noqa: F401
 from ops import ActiveStatus, WaitingStatus
 
 import charmed_kubeflow_chisme.components.pebble_component
-from charmed_kubeflow_chisme.components import ContainerFileTemplate, LazyContainerFileTemplate
+from charmed_kubeflow_chisme.components import (
+    ContainerFileTemplate,
+    LazyContainerFileTemplate,
+    get_event_from_charm
+)
 
+logger = logging.getLogger(__name__)
 
 class TestPebbleComponent:
     name = "test-component"
     container_name = "test-container"
 
+    def test_get_event_from_charm(self, harness_with_container):
+        """Test that get_event_from_charm returns the events that we want"""
+        event_type = "mock_event"
+        expected_event_name = "test_container_mock_event"
+        mock_event_value = "MockEvent"
+        
+        setattr(harness_with_container.charm.on, expected_event_name, mock_event_value)
+        
+        result = get_event_from_charm(harness_with_container.charm, self.container_name, event_type)
+        assert result == mock_event_value
+    
     def test_ready_for_execution_if_service_up(self, harness_with_container):
         """Test that ready_for_execution returns True if the service is up."""
         harness_with_container.set_can_connect(self.container_name, True)
@@ -53,7 +70,6 @@ class TestPebbleComponent:
         )
 
         assert isinstance(pc.status, WaitingStatus)
-
 
 class TestPebbleServiceComponent:
     name = "test-component"
@@ -425,4 +441,4 @@ class TestLazyContainerFileTemplate:
             "make_dirs": True,
         }
 
-        assert cft.get_inputs_for_push() == expected
+        assert cft.get_inputs_for_push() == expected    
