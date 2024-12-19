@@ -14,6 +14,7 @@ from .pebble_component import (
     LazyContainerFileTemplate,
     PebbleComponent,
     PebbleServiceComponent,
+    get_event_from_charm,
 )
 from .serialised_data_interface_components import (
     SdiRelationBroadcasterComponent,
@@ -34,4 +35,5 @@ __all__ = [
     PebbleServiceComponent,
     SdiRelationBroadcasterComponent,
     SdiRelationDataReceiverComponent,
+    get_event_from_charm,
 ]
