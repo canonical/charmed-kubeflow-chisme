@@ -10,7 +10,7 @@ from fixtures import (  # noqa: F401
     MinimalPebbleServiceComponent,
     harness_with_container,
 )
-from ops import ActiveStatus, WaitingStatus
+from ops import ActiveStatus, BoundEvent, WaitingStatus
 
 import charmed_kubeflow_chisme.components.pebble_component
 from charmed_kubeflow_chisme.components import (
@@ -36,6 +36,21 @@ class TestPebbleComponent:
             harness_with_container.charm, self.container_name, event_type
         )
         assert result == mock_event_value
+
+    def test_get_pebble_events(self, harness_with_container):
+        """Test that all pebble events do exist in the container."""
+        pebble_ready_event = get_event_from_charm(
+            harness_with_container.charm, self.container_name, "pebble_ready"
+        )
+        pebble_check_recovered_event = get_event_from_charm(
+            harness_with_container.charm, self.container_name, "pebble_check_failed"
+        )
+        pebble_check_failed_event = get_event_from_charm(
+            harness_with_container.charm, self.container_name, "pebble_check_recovered"
+        )
+        assert isinstance(pebble_ready_event, BoundEvent)
+        assert isinstance(pebble_check_recovered_event, BoundEvent)
+        assert isinstance(pebble_check_failed_event, BoundEvent)
 
     def test_ready_for_execution_if_service_up(self, harness_with_container):
         """Test that ready_for_execution returns True if the service is up."""
