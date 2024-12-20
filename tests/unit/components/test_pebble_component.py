@@ -10,15 +10,47 @@ from fixtures import (  # noqa: F401
     MinimalPebbleServiceComponent,
     harness_with_container,
 )
-from ops import ActiveStatus, WaitingStatus
+from ops import ActiveStatus, BoundEvent, WaitingStatus
 
 import charmed_kubeflow_chisme.components.pebble_component
-from charmed_kubeflow_chisme.components import ContainerFileTemplate, LazyContainerFileTemplate
+from charmed_kubeflow_chisme.components import (
+    ContainerFileTemplate,
+    LazyContainerFileTemplate,
+    get_event_from_charm,
+)
 
 
 class TestPebbleComponent:
     name = "test-component"
     container_name = "test-container"
+
+    def test_get_event_from_charm(self, harness_with_container):
+        """Test that get_event_from_charm returns the events requested."""
+        event_type = "mock_event"
+        expected_event_name = "test_container_mock_event"
+        mock_event_value = "MockEvent"
+
+        setattr(harness_with_container.charm.on, expected_event_name, mock_event_value)
+
+        result = get_event_from_charm(
+            harness_with_container.charm, self.container_name, event_type
+        )
+        assert result == mock_event_value
+
+    def test_get_pebble_events(self, harness_with_container):
+        """Test that all pebble events do exist in the container."""
+        pebble_ready_event = get_event_from_charm(
+            harness_with_container.charm, self.container_name, "pebble_ready"
+        )
+        pebble_check_recovered_event = get_event_from_charm(
+            harness_with_container.charm, self.container_name, "pebble_check_failed"
+        )
+        pebble_check_failed_event = get_event_from_charm(
+            harness_with_container.charm, self.container_name, "pebble_check_recovered"
+        )
+        assert isinstance(pebble_ready_event, BoundEvent)
+        assert isinstance(pebble_check_recovered_event, BoundEvent)
+        assert isinstance(pebble_check_failed_event, BoundEvent)
 
     def test_ready_for_execution_if_service_up(self, harness_with_container):
         """Test that ready_for_execution returns True if the service is up."""
