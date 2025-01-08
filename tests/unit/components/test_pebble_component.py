@@ -239,7 +239,7 @@ class TestContainerFileTemplate:
         context = {"key": "value"}
         user = "user"
         group = "group"
-        permissions = "permissions"
+        permissions = 0o777
 
         # Test these without using kwargs to ensure they API doesn't change
         cft = ContainerFileTemplate(
@@ -265,7 +265,7 @@ class TestContainerFileTemplate:
         context = {"key": "value"}
         user = "user"
         group = "group"
-        permissions = "permissions"
+        permissions = 0o777
 
         # Test these without using kwargs to ensure the API doesn't change
         cft = ContainerFileTemplate(
@@ -293,7 +293,7 @@ class TestLazyContainerFileTemplate:
         context = {"key": "value"}
         user = "user"
         group = "group"
-        permissions = "permissions"
+        permissions = 0o777
 
         # Test these without using kwargs to ensure they API doesn't change
         cft = LazyContainerFileTemplate(
@@ -319,7 +319,7 @@ class TestLazyContainerFileTemplate:
         context = {"key": "value"}
         user = "user"
         group = "group"
-        permissions = "permissions"
+        permissions = 0o777
 
         # Test these without using kwargs to ensure they API doesn't change
         cft = LazyContainerFileTemplate(
@@ -345,7 +345,7 @@ class TestLazyContainerFileTemplate:
         context = {"key": "value"}
         user = "user"
         group = "group"
-        permissions = "permissions"
+        permissions = 0o777
 
         # Test these without using kwargs to ensure they API doesn't change
         cft = LazyContainerFileTemplate(
@@ -439,7 +439,7 @@ class TestLazyContainerFileTemplate:
         expected_rendered = "unrendered value template"
         user = "user"
         group = "group"
-        permissions = "permissions"
+        permissions = 0o777
         cft = LazyContainerFileTemplate(
             "destination_path",
             source_template=source_template,
