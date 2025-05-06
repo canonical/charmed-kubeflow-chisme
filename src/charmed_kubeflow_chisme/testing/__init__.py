@@ -2,10 +2,7 @@
 # See LICENSE file for licensing details.
 """Utilities for testing charms."""
 
-from .charm_spec import (
-    CharmSpec,
-    generate_context_from_charm_spec_dict,
-)
+from .charm_spec import CharmSpec, generate_context_from_charm_spec_dict
 from .cos_integration import (
     ALERT_RULES_DIRECTORY,
     APP_GRAFANA_DASHBOARD,
