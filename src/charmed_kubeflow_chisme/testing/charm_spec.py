@@ -13,7 +13,7 @@ class CharmSpec:
     charm: str
     channel: str
     trust: bool
-    config: Optional[Dict]
+    config: Optional[Dict] = None
 
 
 def generate_context_from_charm_spec_dict(charms_dict: dict) -> dict:
