@@ -14,9 +14,13 @@ from ._sort_objects import _sort_objects as sort_objects
 
 LOGGER = logging.getLogger(__name__)
 
-GlobalResourceTypeVar = TypeVar("GlobalResource", bound=resource.GlobalResource)
-GlobalSubResourceTypeVar = TypeVar("GlobalSubResource", bound=resource.GlobalSubResource)
-NamespacedResourceTypeVar = TypeVar("NamespacedSubResource", bound=resource.NamespacedResource)
+GlobalResourceTypeVar = TypeVar("GlobalResource", bound=resource.GlobalResource)  # noqa: N808
+GlobalSubResourceTypeVar = TypeVar(  # noqa: N808
+    "GlobalSubResource", bound=resource.GlobalSubResource
+)
+NamespacedResourceTypeVar = TypeVar(  # noqa: N808
+    "NamespacedSubResource", bound=resource.NamespacedResource
+)
 
 
 def apply_many(
