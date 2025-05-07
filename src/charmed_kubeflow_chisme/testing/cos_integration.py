@@ -415,7 +415,8 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
     """Check alert rules in relation data bag.
 
     This function compare alert rules defined in provides side of APP_METRICS_ENDPOINT relation
-    data bag and provided alert rules. e.g. {"my-alert1", "my-alert2"}
+    data bag and provided alert rules. e.g. {"my-alert1", "my-alert2"}. Returns True if the
+    provided alert rules are a subset of the ones in the data bag.
 
     Args:
         app (Application): Juju Applicatition object.
@@ -428,7 +429,9 @@ async def assert_alert_rules(app: Application, alert_rules: Set[str]) -> None:
 
     relation_alert_rules = _get_alert_rules(relation_data["alert_rules"])
 
-    assert relation_alert_rules == alert_rules, f"{relation_alert_rules}\n!=\n{alert_rules}"
+    assert alert_rules.issubset(
+        relation_alert_rules
+    ), f"Provided alert rules: {alert_rules}\n are not included in the relation alert rules: \n{relation_alert_rules}"
 
 
 @retry(
