@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 """Utilities for testing charms."""
 
-from .charm_spec import CharmSpec, generate_context_from_charm_spec_dict
+from .charm_spec import CharmSpec, generate_context_from_charm_spec_list
 from .cos_integration import (
     ALERT_RULES_DIRECTORY,
     APP_GRAFANA_DASHBOARD,
@@ -36,7 +36,7 @@ __all__ = [
     assert_logging,
     assert_metrics_endpoint,
     deploy_and_assert_grafana_agent,
-    generate_context_from_charm_spec_dict,
+    generate_context_from_charm_spec_list,
     get_alert_rules,
     get_grafana_dashboards,
     GRAFANA_AGENT_APP,
