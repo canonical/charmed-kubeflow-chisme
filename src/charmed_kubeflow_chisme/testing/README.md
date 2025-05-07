@@ -3,7 +3,7 @@
 # Charm Spec
 
 ## CharmSpec
-Dataclass used for defining charms that need to be deployed during tests. This enables modifying those programmatically across all repos, according to each release's values. You can define charms like this:
+Dataclass used for defining dependency charms that need to be deployed during tests. This enables modifying those programmatically across all repos, according to each release's values. You can define charms like this:
 ```
 charms = {
     "minio": CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"access-key": "minio", "secret-key": "minio-secret-key"}),
