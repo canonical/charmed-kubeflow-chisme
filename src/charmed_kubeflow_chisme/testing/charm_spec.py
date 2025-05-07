@@ -3,19 +3,20 @@
 """CharmSpec used for defining charms-dependencies during tests."""
 
 from dataclasses import dataclass
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 
 @dataclass
 class CharmSpec:
     """Dataclass used for defining charms that need to be deployed during tests."""
+
     charm: str
     channel: str
     trust: bool
     config: Optional[Dict] = None
 
     def __post_init__(self):
-        """Simple type validation for class attributes"""
+        """Simple type validation for class attributes."""
         if not isinstance(self.charm, str) or not self.charm:
             raise ValueError("Charm name must be a non-empty string")
 
@@ -28,6 +29,7 @@ class CharmSpec:
         if self.config is not None:
             if not isinstance(self.config, dict):
                 raise ValueError("Config must be a dictionary")
+
 
 def generate_context_from_charm_spec_list(charms: List[CharmSpec]) -> dict:
     """Generate context for rendering a yaml template from a list of CharmSpec objects.
