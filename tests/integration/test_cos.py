@@ -85,7 +85,8 @@ def fetch_alert_rules_from_downloaded_charm(charm: str):
             charm_file.extractall(temp_dir)
         charm_file.close()
 
-        # Get alert rules using `get_alert_rules()`
+        # Get alert rules using `get_alert_rules()`. This assumes that alert rules are stored in
+        # the default `src/prometheus_alert_rules` directory.
         alert_rules_path = Path(f"{temp_dir}/src/prometheus_alert_rules")
         return get_alert_rules(alert_rules_path)
 
