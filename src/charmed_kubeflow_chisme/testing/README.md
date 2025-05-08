@@ -5,18 +5,14 @@
 ## CharmSpec
 Dataclass used for defining dependency charms that need to be deployed during tests. This enables modifying those programmatically across all repos, according to each release's values. You can define charms like this:
 ```
-charms = {
-    "minio": CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"access-key": "minio", "secret-key": "minio-secret-key"}),
-    "mysql-k8s": CharmSpec(charm="mysql-k8s", channel="8.0/stable", trust=True, config={"profile": "testing"})
-}
+MINIO = CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"access-key": "minio", "secret-key": "minio-secret-key"})
+MYSQL_K8s = CharmSpec(charm="mysql-k8s", channel="8.0/stable", trust=True, config={"profile": "testing"})
 ```
 
 ## `generate_context_from_charm_spec_dict`
-Function to generate context for rendering a yaml template from dict with CharmSpec objects. This can be used for cases where a bundle.yaml is deployed during tests (e.g. kfp). For example, if Minio is a depending charm:
+Function to generate context for rendering a yaml template from a list of CharmSpec objects. This can be used for cases where a bundle.yaml is deployed during tests (e.g. kfp bundle integration tests). For example, if Minio is a dependency charm:
 ```
-charms = {
-    "minio": CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"access-key": "minio", "secret-key": "minio-secret-key"})
-}
+MINIO = CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"access-key": "minio", "secret-key": "minio-secret-key"})
 ```
 and there is this entry `bundle.yaml.j2` file:
 ```
