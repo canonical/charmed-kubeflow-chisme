@@ -9,7 +9,7 @@ MINIO = CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"acc
 MYSQL_K8s = CharmSpec(charm="mysql-k8s", channel="8.0/stable", trust=True, config={"profile": "testing"})
 ```
 
-## `generate_context_from_charm_spec_dict`
+## `generate_context_from_charm_spec_list`
 Function to generate context for rendering a yaml template from a list of CharmSpec objects. This can be used for cases where a bundle.yaml is deployed during tests (e.g. kfp bundle integration tests). For example, if Minio is a dependency charm:
 ```
 MINIO = CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"access-key": "minio", "secret-key": "minio-secret-key"})
@@ -23,7 +23,7 @@ and there is this entry `bundle.yaml.j2` file:
     scale: 1
     trust: {{ minio_trust }}
 ```
-the `generate_context_from_charm_spec_dict(charms)` will generate all the necessary context.
+the `generate_context_from_charm_spec_list(charms)` will generate all the necessary context, where `charms` is the list of the imported CharmSpec objects.
 
 # COS integration
 
