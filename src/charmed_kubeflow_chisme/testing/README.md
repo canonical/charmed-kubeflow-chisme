@@ -1,5 +1,30 @@
 # Chisme testing abstraction
 
+# Charm Spec
+
+## CharmSpec
+Dataclass used for defining dependency charms that need to be deployed during tests. This enables modifying those programmatically across all repos, according to each release's values. You can define charms like this:
+```
+MINIO = CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"access-key": "minio", "secret-key": "minio-secret-key"})
+MYSQL_K8s = CharmSpec(charm="mysql-k8s", channel="8.0/stable", trust=True, config={"profile": "testing"})
+```
+
+## `generate_context_from_charm_spec_list`
+Function to generate context for rendering a yaml template from a list of CharmSpec objects. This can be used for cases where a bundle.yaml is deployed during tests (e.g. kfp bundle integration tests). For example, if Minio is a dependency charm:
+```
+MINIO = CharmSpec(charm="minio", channel="latest/edge", trust=True, config={"access-key": "minio", "secret-key": "minio-secret-key"})
+```
+and there is this entry `bundle.yaml.j2` file:
+```
+  minio:
+    charm: {{ minio_charm }}
+    channel: {{ minio_channel }}
+    base: ubuntu@20.04/stable
+    scale: 1
+    trust: {{ minio_trust }}
+```
+the `generate_context_from_charm_spec_list(charms)` will generate all the necessary context, where `charms` is the list of the imported CharmSpec objects.
+
 # COS integration
 
 ## `deploy_and_assert_grafana_agent`
