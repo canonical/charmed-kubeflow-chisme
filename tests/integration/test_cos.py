@@ -1,7 +1,12 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import shutil
+from pathlib import Path
+from zipfile import ZipFile
+
 import pytest
+import sh
 
 import charmed_kubeflow_chisme.testing
 from charmed_kubeflow_chisme.testing import (
@@ -10,6 +15,7 @@ from charmed_kubeflow_chisme.testing import (
     assert_logging,
     assert_metrics_endpoint,
     deploy_and_assert_grafana_agent,
+    get_alert_rules,
 )
 
 # Note(rgildein): Change app metrics endpoint, since blackbox-exporter-k8s is not using
@@ -34,16 +40,8 @@ async def test_build_and_deploy(ops_test):
 async def test_alert_rules(ops_test):
     """Test alert_rules are defined in relation data bag."""
     app = ops_test.model.applications[TESTED_APP]
-    await assert_alert_rules(
-        app,
-        {
-            "BlackboxJobMissing",
-            "BlackboxExporterSSLCertExpiringSoon15Days",
-            "BlackboxExporterSSLCertExpiringSoon30Days",
-            "BlackboxExporterUnitIsUnavailable",
-            "BlackboxExporterUnitIsDown",
-        },
-    )
+    charm_alert_rules = fetch_alert_rules_from_downloaded_charm("blackbox-exporter-k8s")
+    await assert_alert_rules(app, charm_alert_rules)
 
 
 async def test_metrics_endpoints(ops_test):
@@ -62,3 +60,36 @@ async def test_grafana_dashboards(ops_test):
     """Test Grafana dashboards are defined in relation data bag."""
     app = ops_test.model.applications[TESTED_APP]
     await assert_grafana_dashboards(app, {"blackbox.json"})
+
+
+def fetch_alert_rules_from_downloaded_charm(charm: str):
+    """Fetch alert rules from downloaded .charm file.
+
+    Fetch alert rules dynamically to ensure tests do not break
+    whenever the alert rules are updated on the charm.
+    """
+    temp_dir = Path("tests/tmp")
+    try:
+        temp_dir.mkdir()
+
+        # Download charm under temp_dir
+        try:
+            # With `--channel latest/stable`, Juju CLI returns error even when the channel exists.
+            sh.juju.download(charm, _err_to_out=True, _out=print, _cwd=temp_dir)
+        except sh.ErrorReturnCode as e:
+            pytest.fail(f"Charm download failed: {e}")
+
+        # Extract content into temp_dir
+        charm_file_path = next(Path(temp_dir).glob("*.charm"), None)
+        with ZipFile(charm_file_path) as charm_file:
+            charm_file.extractall(temp_dir)
+        charm_file.close()
+
+        # Get alert rules using `get_alert_rules()`. This assumes that alert rules are stored in
+        # the default `src/prometheus_alert_rules` directory.
+        alert_rules_path = Path(f"{temp_dir}/src/prometheus_alert_rules")
+        return get_alert_rules(alert_rules_path)
+
+    finally:
+        # Ensure cleanup even if test fails
+        shutil.rmtree(temp_dir)
