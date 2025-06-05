@@ -75,7 +75,16 @@ def fetch_alert_rules_from_downloaded_charm(charm: str):
         # Download charm under temp_dir
         try:
             # With `--channel latest/stable`, Juju CLI returns error even when the channel exists.
-            sh.juju.download(charm, _err_to_out=True, _out=print, _cwd=temp_dir)
+            sh.juju.download(
+                charm,
+                "--channel",
+                "1/stable",
+                "--base",
+                "ubuntu@20.04",
+                _err_to_out=True,
+                _out=print,
+                _cwd=temp_dir,
+            )
         except sh.ErrorReturnCode as e:
             pytest.fail(f"Charm download failed: {e}")
 
