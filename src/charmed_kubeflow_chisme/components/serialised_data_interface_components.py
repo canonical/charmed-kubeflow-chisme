@@ -1,7 +1,9 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Reusable Components for handling SerializedDataInterface-backed relations."""
+
 import logging
+import traceback
 from typing import Any, Callable, List, Optional, Union
 
 from jsonschema import ValidationError
@@ -241,9 +243,6 @@ class SdiRelationBroadcasterComponent(Component):
                 * we have one or more relations, and we have sent data to all of them
         """
         required_attributes = self._data_to_send.keys()
-        unknown_error_message = (
-            f"Caught unknown exception while checking readiness of {self._relation_name}: "
-        )
 
         try:
             interface = self.get_interface()
@@ -259,7 +258,7 @@ class SdiRelationBroadcasterComponent(Component):
             # attributes
             interface_data_dict = interface.get_data()
             this_apps_interface_data = interface_data_dict[
-                (self.model.get_relation(self._relation_name), self._charm.app)
+                (self.model.relations[self._relation_name][0], self._charm.app)
             ]
 
             missing_attributes = []
@@ -284,8 +283,10 @@ class SdiRelationBroadcasterComponent(Component):
 
             return ActiveStatus()
         except Exception as err:
-            logging.info(unknown_error_message)
-            return BlockedStatus(str(unknown_error_message + str(err)))
+            msg = f"Caught unknown exception while checking readiness of {self._relation_name}: {err}"
+            logger.warning(msg)
+            traceback.print_exc()
+            return BlockedStatus(msg)
 
 
 def get_sdi_interface(charm: CharmBase, relation_name: str):
