@@ -193,7 +193,7 @@ async def test_deploy_and_assert_grafana_agent(kwargs, exp_awaits):
 
     await deploy_and_assert_grafana_agent(model, app.name, **kwargs)
 
-    model.deploy.assert_awaited_once_with("grafana-agent-k8s", channel="latest/stable")
+    model.deploy.assert_awaited_once_with("grafana-agent-k8s", channel="1/stable")
     model.integrate.assert_has_awaits(exp_awaits)
     model.wait_for_idle.assert_awaited_once_with(
         apps=["grafana-agent-k8s"], status="blocked", timeout=300, idle_period=60
