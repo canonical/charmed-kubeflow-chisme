@@ -22,7 +22,7 @@ from charmed_kubeflow_chisme.testing import (
 # 'metrics-endpoint'.
 charmed_kubeflow_chisme.testing.cos_integration.APP_METRICS_ENDPOINT = "self-metrics-endpoint"
 TESTED_APP = "blackbox-exporter-k8s"
-TESTED_APP_CHANNEL = "latest/stable"
+TESTED_APP_CHANNEL = "1/stable"
 
 
 @pytest.mark.abort_on_fail
@@ -74,7 +74,7 @@ def fetch_alert_rules_from_downloaded_charm(charm: str):
 
         # Download charm under temp_dir
         try:
-            # With `--channel latest/stable`, Juju CLI returns error even when the channel exists.
+            # With `--channel 1/stable`, Juju CLI returns error even when the channel exists.
             sh.juju.download(
                 charm,
                 "--channel",
