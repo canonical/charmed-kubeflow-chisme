@@ -51,7 +51,7 @@ REQUIRES = "requires"
 async def deploy_and_assert_grafana_agent(
     model: Model,
     app: str,
-    channel: str = "latest/stable",
+    channel: str = "1/stable",
     metrics: bool = False,
     logging: bool = False,
     dashboard: bool = False,
@@ -64,7 +64,7 @@ async def deploy_and_assert_grafana_agent(
     Args:
         model (juju.model.Model): Juju model object.
         app (str): Name of application with which the Grafana agent should be related.
-        channel (str): Channel name for grafana-agent-k8s. Defaults to latest/stable.
+        channel (str): Channel name for grafana-agent-k8s. Defaults to 1/stable.
         metrics (bool): Boolean that defines if the <app>:metrics-endpoint
             grafana-agent-k8s:metrics-endpoint relation is created. Defaults to False.
         logging (bool): Boolean that defines if the <app>:logging
