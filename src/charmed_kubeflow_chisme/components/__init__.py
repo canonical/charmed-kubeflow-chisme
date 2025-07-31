@@ -16,7 +16,7 @@ from .pebble_component import (
     PebbleServiceComponent,
     get_event_from_charm,
 )
-from .sa_token_component import SaTokenComponent
+from .sa_token_component import SATokenComponent
 from .serialised_data_interface_components import (
     SdiRelationBroadcasterComponent,
     SdiRelationDataReceiverComponent,
@@ -34,7 +34,7 @@ __all__ = [
     LazyContainerFileTemplate,
     PebbleComponent,
     PebbleServiceComponent,
-    SaTokenComponent,
+    SATokenComponent,
     SdiRelationBroadcasterComponent,
     SdiRelationDataReceiverComponent,
     get_event_from_charm,
