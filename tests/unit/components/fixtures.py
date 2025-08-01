@@ -1,6 +1,9 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+from pathlib import Path
+from os import listdir, remove
+
 import pytest
 from ops import ActiveStatus, BlockedStatus, CharmBase, StatusBase, WaitingStatus
 from ops.pebble import Layer
@@ -14,6 +17,9 @@ from charmed_kubeflow_chisme.components.pebble_component import (
 )
 
 COMPONENT_NAME = "component"
+SERVICE_ACCOUNT_TOKEN_SIDE_EFFECT_DIR = (
+    Path(__file__).parent.parent.joinpath("data") / "service-account-token-side-effects"
+)
 
 
 class MinimallyExtendedComponent(Component):
@@ -173,3 +179,20 @@ def harness_with_container():
     harness = Harness(DummyCharm, meta=METADATA_WITH_CONTAINER)
     harness.begin()
     return harness
+
+
+@pytest.fixture()
+def clean_service_account_token_side_effects():
+    """Yield the directory where token files can be temporarily persisted and eventually clean any
+    ServiceAccount token files that were generated as a side effect of testing the token
+    management logic.
+    """
+    service_account_token_side_effect_dir = SERVICE_ACCOUNT_TOKEN_SIDE_EFFECT_DIR
+
+    # actual fixture logic, simply returning the directory path:
+    yield service_account_token_side_effect_dir
+
+    # tear-down logic, cleaning any generated token file(s):
+    for filename in listdir(service_account_token_side_effect_dir):
+        if filename != ".gitkeep":
+            remove(service_account_token_side_effect_dir / filename)

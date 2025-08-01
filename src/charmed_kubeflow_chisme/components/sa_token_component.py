@@ -8,12 +8,15 @@ import logging
 from pathlib import Path
 from typing import List
 
-import kubernetes
 from charmed_kubeflow_chisme.components.component import Component
 from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
-from kubernetes.client import AuthenticationV1TokenRequest, CoreV1Api, V1TokenRequestSpec
-from kubernetes.client.rest import ApiException
-from kubernetes.config import ConfigException
+from kubernetes.client import (
+    ApiClient,
+    AuthenticationV1TokenRequest,
+    CoreV1Api,
+    V1TokenRequestSpec
+)
+from kubernetes.config import ConfigException, load_incluster_config, load_kube_config
 from ops import ActiveStatus, StatusBase
 
 logger = logging.getLogger(__name__)
@@ -55,25 +58,24 @@ class SATokenComponent(Component):
     def kubernetes_client(self) -> CoreV1Api:
         """Load the cluster configurations and return a CoreV1 Kubernetes client."""
         try:
-            kubernetes.config.load_incluster_config()
+            load_incluster_config()
         except ConfigException:
-            kubernetes.config.load_kube_config()
+            load_kube_config()
 
-        api_client = kubernetes.client.ApiClient()
-        core_v1_api = kubernetes.client.CoreV1Api(api_client)
-        return core_v1_api
+        core_v1_api_client = CoreV1Api(ApiClient())
+        return core_v1_api_client
 
     def _create_sa_token(self) -> AuthenticationV1TokenRequest:
         """Return a TokenRequest response."""
         spec = V1TokenRequestSpec(audiences=self._audiences, expiration_seconds=self._expiration)
-        body = kubernetes.client.AuthenticationV1TokenRequest(spec=spec)
+        body = AuthenticationV1TokenRequest(spec=spec)
         try:
             api_response = self.kubernetes_client.create_namespaced_service_account_token(
                 name=self._sa_name, namespace=self._sa_namespace, body=body
             )
-        except ApiException as e:
+        except Exception as exc:
             logger.error("Error creating the ServiceAccount token.")
-            raise e
+            raise exc
         return api_response
 
     def _generate_and_save_token(self, path: str, filename: str) -> None:
@@ -86,7 +88,7 @@ class SATokenComponent(Component):
         """
         if not Path(path).is_dir():
             failure_message = (
-                "The path does not exist, so the ServiceAccount token file cannot be saved."
+                "The path is not a directory, so the ServiceAccount token file cannot be saved."
             )
             logger.error(failure_message)
             raise RuntimeError(failure_message)
@@ -107,7 +109,7 @@ class SATokenComponent(Component):
         """
         try:
             self._generate_and_save_token(self._path, self._filename)
-        except (RuntimeError, ApiException) as exc:
+        except Exception as exc:
             raise GenericCharmRuntimeError(
                 "Failed to create and save a ServiceAccount token."
             ) from exc
