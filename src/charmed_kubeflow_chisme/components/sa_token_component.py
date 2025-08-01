@@ -8,16 +8,17 @@ import logging
 from pathlib import Path
 from typing import List
 
-from charmed_kubeflow_chisme.components.component import Component
-from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
 from kubernetes.client import (
     ApiClient,
     AuthenticationV1TokenRequest,
     CoreV1Api,
-    V1TokenRequestSpec
+    V1TokenRequestSpec,
 )
 from kubernetes.config import ConfigException, load_incluster_config, load_kube_config
 from ops import ActiveStatus, StatusBase
+
+from charmed_kubeflow_chisme.components.component import Component
+from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
 
 logger = logging.getLogger(__name__)
 

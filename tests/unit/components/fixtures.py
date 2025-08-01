@@ -1,8 +1,8 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from pathlib import Path
 from os import listdir, remove
+from pathlib import Path
 
 import pytest
 from ops import ActiveStatus, BlockedStatus, CharmBase, StatusBase, WaitingStatus
