@@ -122,6 +122,6 @@ class SATokenComponent(Component):
         """
         if not Path(self._path, self._filename).is_file():
             raise GenericCharmRuntimeError(
-                "The ServiceAccount token file is not present in charm."
+                "The ServiceAccount token file is not present in the charm."
             )
         return ActiveStatus()
