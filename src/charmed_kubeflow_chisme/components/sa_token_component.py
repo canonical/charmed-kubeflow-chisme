@@ -2,7 +2,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Component for generating and managing a given ServiceAccount token."""
+"""Component for generating and managing the token of the given ServiceAccount."""
 
 import logging
 from pathlib import Path
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class SATokenComponent(Component):
-    """Create and manage a given ServiceAccount token."""
+    """Create and manage the given ServiceAccount token."""
 
     def __init__(
         self,
@@ -42,7 +42,7 @@ class SATokenComponent(Component):
             audiences (List[str]): list of audiences for the ServiceAccount token
             expiration (int): ServiceAccount token expiration time in seconds
             filename (str): filename for the ServiceAccount token file
-            path (str): the path of the directory where to store the ServiceAccount token file
+            path (str): path of the directory where to store the ServiceAccount token file
             sa_name (str): ServiceAccount name
             sa_namespace (str): ServiceAccount namespace
         """
@@ -52,7 +52,7 @@ class SATokenComponent(Component):
         self._filename = filename
         self._sa_name = sa_name
         self._sa_namespace = sa_namespace
-        self._path = path
+        self._dir_path = path
 
     @property
     def kubernetes_client(self) -> CoreV1Api:
@@ -66,7 +66,7 @@ class SATokenComponent(Component):
         return core_v1_api_client
 
     def _create_sa_token(self) -> AuthenticationV1TokenRequest:
-        """Return a TokenRequest response."""
+        """Call the K8s API to generate the ServiceAccount token and return its response."""
         spec = V1TokenRequestSpec(audiences=self._audiences, expiration_seconds=self._expiration)
         body = AuthenticationV1TokenRequest(spec=spec)
         try:
@@ -74,32 +74,40 @@ class SATokenComponent(Component):
                 name=self._sa_name, namespace=self._sa_namespace, body=body
             )
         except Exception as exc:
-            logger.error("Error creating the ServiceAccount token.")
+            logger.error(f"Request to create token for {self._sa_name} ServiceAccount failed.")
             raise exc
         return api_response
 
-    def _generate_and_save_token(self, path: str, filename: str) -> None:
-        """Generate a ServiceAccount token and save it with the given filename to the given
-        folder path inside the charm container.
+    def _generate_and_save_token(self, dir_path: str, filename: str) -> None:
+        """Generate the ServiceAccount token and persist it to the given directory and filename.
 
         Args:
-            path (str): the path of the directory where to store the ServiceAccount token file
+            dir_path (str): the path of the directory where to store the ServiceAccount token file
             filename (str): the filename for the ServiceAccount token file
         """
-        if not Path(path).is_dir():
+        if not Path(dir_path).is_dir():
             failure_message = (
-                "The path is not a directory, so the ServiceAccount token file cannot be saved."
+                f"Token file for {self._sa_name} ServiceAccount cannot be created because path "
+                "is not a directory."
             )
             logger.error(failure_message)
             raise RuntimeError(failure_message)
-        if Path(path, filename).is_file():
-            logger.info(
-                "The ServiceAccount token file already exists, nothing else to do."
+
+        if Path(dir_path, filename).is_file():
+            logger.warning(
+                f"Token file for {self._sa_name} ServiceAccount already exists, will be "
+                "overridden."
             )
-        api_response = self._create_sa_token()
-        token = api_response.status.token
-        with open(Path(path, filename), "w") as token_file:
+
+        token_creation_response = self._create_sa_token()
+        token = token_creation_response.status.token
+
+        with open(Path(dir_path, filename), "w") as token_file:
             token_file.write(token)
+
+        logger.info(
+            f"Token for {self._sa_name} ServiceAccount created and persisted."
+        )
 
     def _configure_app_leader(self, event) -> None:
         """Generate and save a ServiceAccount token file.
@@ -108,20 +116,24 @@ class SATokenComponent(Component):
             GenericCharmRuntimeError if the file could not be created.
         """
         try:
-            self._generate_and_save_token(self._path, self._filename)
+            self._generate_and_save_token(dir_path=self._dir_path, filename=self._filename)
         except Exception as exc:
-            raise GenericCharmRuntimeError(
-                "Failed to create and save a ServiceAccount token."
-            ) from exc
+            failure_message = (
+                f"Token for {self._sa_name} ServiceAccount could not be created or persisted."
+            )
+            logger.error(failure_message)
+            raise GenericCharmRuntimeError(failure_message) from exc
 
     def get_status(self) -> StatusBase:
-        """Return ActiveStatus if the ServiceAccount token file is present.
+        """Return ActiveStatus if the ServiceAccount token file is present or raise an exception.
 
         Raises:
             GenericCharmRuntimeError if the ServiceAccount token file is not present in the charm.
         """
-        if not Path(self._path, self._filename).is_file():
-            raise GenericCharmRuntimeError(
-                "The ServiceAccount token file is not present in the charm."
+        if not Path(self._dir_path, self._filename).is_file():
+            failure_message = (
+                f"Token file for {self._sa_name} ServiceAccount not present in charm."
             )
+            logger.error(failure_message)
+            raise GenericCharmRuntimeError(failure_message)
         return ActiveStatus()
