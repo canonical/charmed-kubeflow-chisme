@@ -81,9 +81,7 @@ class TestSATokenComponent:
             assert_no_classic_logging_method_ever_called(mocked_logger)
 
     def test_sa_token_created_and_available_when_leader(
-        self,
-        harness_with_container,
-        clean_service_account_token_side_effects
+        self, harness_with_container, clean_service_account_token_side_effects
     ):
         """Test that the token is correctly generated and saved when the unit is leader."""
         sa_token_content = "abcdefgh"
@@ -109,15 +107,16 @@ class TestSATokenComponent:
         patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
         patch_path_for_logger = f"{base_patch_path}.logger"
 
-        with patch(patch_path_for_k8s_client) as mocked_k8s_client, \
-                patch(patch_path_for_logger) as mocked_logger:
+        with (
+            patch(patch_path_for_k8s_client) as mocked_k8s_client,
+            patch(patch_path_for_logger) as mocked_logger,
+        ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
-            (
-                mocked_k8s_client.create_namespaced_service_account_token.return_value.status
-                .token
-            ) = sa_token_content
+            mocked_k8s_client.create_namespaced_service_account_token.return_value.status.token = (
+                sa_token_content
+            )
 
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
@@ -137,14 +136,9 @@ class TestSATokenComponent:
                 assert sa_token_content == file.read()
 
             # logs:
-            assert_no_classic_logging_method_ever_called(
-                mocked_logger,
-                exclude_methods={"info"}
-            )
-            assert (
-                mocked_logger.info.call_args.args[0] == (
-                    f"Token for {self.service_account_name} ServiceAccount created and persisted."
-                )
+            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"info"})
+            assert mocked_logger.info.call_args.args[0] == (
+                f"Token for {self.service_account_name} ServiceAccount created and persisted."
             )
 
             # K8s API calls:
@@ -157,9 +151,7 @@ class TestSATokenComponent:
             assert spec.expiration_seconds == self.expiration
 
     def test_sa_token_neither_created_nor_available_when_not_leader(
-        self,
-        harness_with_container,
-        clean_service_account_token_side_effects
+        self, harness_with_container, clean_service_account_token_side_effects
     ):
         """Test that the token is not generated when the unit is not leader."""
         sa_token_content = "abcdefgh"
@@ -185,15 +177,16 @@ class TestSATokenComponent:
         patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
         patch_path_for_logger = f"{base_patch_path}.logger"
 
-        with patch(patch_path_for_k8s_client) as mocked_k8s_client, \
-                patch(patch_path_for_logger) as mocked_logger:
+        with (
+            patch(patch_path_for_k8s_client) as mocked_k8s_client,
+            patch(patch_path_for_logger) as mocked_logger,
+        ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
-            (
-                mocked_k8s_client.create_namespaced_service_account_token.return_value.status
-                .token
-            ) = sa_token_content
+            mocked_k8s_client.create_namespaced_service_account_token.return_value.status.token = (
+                sa_token_content
+            )
 
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
@@ -206,11 +199,8 @@ class TestSATokenComponent:
             # charm status:
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.status
-            assert (
-                error.value.msg == (
-                    f"Token file for {self.service_account_name} ServiceAccount not present in "
-                    "charm."
-                )
+            assert error.value.msg == (
+                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
             )
 
             # ServiceAccount token file:
@@ -218,15 +208,9 @@ class TestSATokenComponent:
             assert not expected_sa_token_file_path.exists()
 
             # logs:
-            assert_no_classic_logging_method_ever_called(
-                mocked_logger,
-                exclude_methods={"error"}
-            )
-            assert (
-                mocked_logger.error.call_args.args[0] == (
-                    f"Token file for {self.service_account_name} ServiceAccount not present in "
-                    "charm."
-                )
+            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"error"})
+            assert mocked_logger.error.call_args.args[0] == (
+                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
             )
 
             # K8s API calls:

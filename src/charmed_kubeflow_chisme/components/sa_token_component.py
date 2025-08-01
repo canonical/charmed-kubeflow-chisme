@@ -106,9 +106,7 @@ class SATokenComponent(Component):
         with open(Path(dir_path, filename), "w") as token_file:
             token_file.write(token)
 
-        logger.info(
-            f"Token for {self._sa_name} ServiceAccount created and persisted."
-        )
+        logger.info(f"Token for {self._sa_name} ServiceAccount created and persisted.")
 
     def _configure_app_leader(self, event) -> None:
         """Generate and save a ServiceAccount token file.
