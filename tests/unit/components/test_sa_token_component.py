@@ -228,7 +228,6 @@ class TestSATokenComponent:
                     "charm."
                 )
             )
-            
 
             # K8s API calls:
             mocked_k8s_client.create_namespaced_service_account_token.assert_not_called()
