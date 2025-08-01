@@ -79,7 +79,6 @@ class TestSATokenComponent:
 
             # logs:
             assert_no_classic_logging_method_ever_called(mocked_logger)
-            
 
     def test_sa_token_created_and_available_when_leader(
         self,
