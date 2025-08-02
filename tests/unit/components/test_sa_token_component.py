@@ -47,41 +47,6 @@ class TestSATokenComponent:
     token_filename = "sa-token-filename"
     token_k8s_name = "whatever-sa-token-name"
 
-    def test_previously_created_sa_token_available(self, harness_with_container):
-        """Check the previously created token file is recognized."""
-        harness_with_container.set_can_connect(self.container_name, True)
-
-        sa_token_component = SATokenComponent(
-            charm=harness_with_container.charm,
-            name=self.token_k8s_name,
-            audiences=self.audiences,
-            sa_name=self.service_account_name,
-            sa_namespace=self.namespace,
-            filename=PRECREATED_SA_TOKEN_FILENAME,
-            path=PRECREATED_SA_TOKEN_DIR,
-            expiration=self.expiration,
-        )
-
-        # defining mock paths:
-        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
-        patch_path_for_logger = f"{base_patch_path}.logger"
-
-        with patch(patch_path_for_k8s_client), patch(patch_path_for_logger) as mocked_logger:
-            # ------------------------------------------------------------------------------------
-            # executing the charm logic:
-
-            sa_token_component.configure_charm("mocked event")
-
-            # ------------------------------------------------------------------------------------
-            # asserting expectations meet reality:
-
-            # charm status:
-            assert isinstance(sa_token_component.status, ActiveStatus)
-
-            # logs:
-            assert_no_classic_logging_method_ever_called(mocked_logger)
-
     def test_sa_token_created_and_available_when_leader(
         self, harness_with_container, clean_service_account_token_side_effects
     ):
@@ -363,3 +328,38 @@ class TestSATokenComponent:
 
             # K8s API calls:
             mocked_k8s_client.create_namespaced_service_account_token.assert_not_called()
+
+    def test_previously_created_sa_token_available(self, harness_with_container):
+        """Check the previously created token file is recognized."""
+        harness_with_container.set_can_connect(self.container_name, True)
+
+        sa_token_component = SATokenComponent(
+            charm=harness_with_container.charm,
+            name=self.token_k8s_name,
+            audiences=self.audiences,
+            sa_name=self.service_account_name,
+            sa_namespace=self.namespace,
+            filename=PRECREATED_SA_TOKEN_FILENAME,
+            path=PRECREATED_SA_TOKEN_DIR,
+            expiration=self.expiration,
+        )
+
+        # defining mock paths:
+        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
+        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
+        patch_path_for_logger = f"{base_patch_path}.logger"
+
+        with patch(patch_path_for_k8s_client), patch(patch_path_for_logger) as mocked_logger:
+            # ------------------------------------------------------------------------------------
+            # executing the charm logic:
+
+            sa_token_component.configure_charm("mocked event")
+
+            # ------------------------------------------------------------------------------------
+            # asserting expectations meet reality:
+
+            # charm status:
+            assert isinstance(sa_token_component.status, ActiveStatus)
+
+            # logs:
+            assert_no_classic_logging_method_ever_called(mocked_logger)
