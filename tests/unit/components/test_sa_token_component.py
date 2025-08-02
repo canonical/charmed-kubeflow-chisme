@@ -44,7 +44,7 @@ class TestSATokenComponent:
     namespace = "whatever-namespace"
     service_account_name = "whatever-service-account"
     token_content = "abcdefgh"
-    token_filename = f"sa-token-filename"
+    token_filename = "sa-token-filename"
     token_k8s_name = "whatever-sa-token-name"
 
     def test_previously_created_sa_token_available(self, harness_with_container):
