@@ -10,6 +10,7 @@ from fixtures import (  # noqa F401
     harness_with_container,
 )
 from ops import ActiveStatus
+from pytest import mark
 from pytest import raises as pytest_raises
 
 from charmed_kubeflow_chisme.components import SATokenComponent
@@ -54,8 +55,8 @@ class TestSATokenComponent:
         sa_token_dir = clean_service_account_token_side_effects
 
         harness_with_container.set_leader(True)
-        harness_with_container.set_can_connect(self.container_name, True)
 
+        harness_with_container.set_can_connect(self.container_name, True)
         sa_token_component = SATokenComponent(
             charm=harness_with_container.charm,
             name=self.token_k8s_name,
@@ -122,8 +123,8 @@ class TestSATokenComponent:
         sa_token_dir = clean_service_account_token_side_effects
 
         harness_with_container.set_leader(False)
-        harness_with_container.set_can_connect(self.container_name, True)
 
+        harness_with_container.set_can_connect(self.container_name, True)
         sa_token_component = SATokenComponent(
             charm=harness_with_container.charm,
             name=self.token_k8s_name,
@@ -186,8 +187,8 @@ class TestSATokenComponent:
         sa_token_dir = clean_service_account_token_side_effects
 
         harness_with_container.set_leader(True)
-        harness_with_container.set_can_connect(self.container_name, True)
 
+        harness_with_container.set_can_connect(self.container_name, True)
         sa_token_component = SATokenComponent(
             charm=harness_with_container.charm,
             name=self.token_k8s_name,
@@ -272,8 +273,8 @@ class TestSATokenComponent:
         sa_token_dir = clean_service_account_token_side_effects
 
         harness_with_container.set_leader(False)
-        harness_with_container.set_can_connect(self.container_name, True)
 
+        harness_with_container.set_can_connect(self.container_name, True)
         sa_token_component = SATokenComponent(
             charm=harness_with_container.charm,
             name=self.token_k8s_name,
@@ -329,10 +330,12 @@ class TestSATokenComponent:
             # K8s API calls:
             mocked_k8s_client.create_namespaced_service_account_token.assert_not_called()
 
-    def test_previously_created_sa_token_available(self, harness_with_container):
+    @mark.parametrize("is_leader", (False, True))
+    def test_previously_created_sa_token_available(self, harness_with_container, is_leader):
         """Check the previously created token file is recognized."""
-        harness_with_container.set_can_connect(self.container_name, True)
+        harness_with_container.set_leader(is_leader)
 
+        harness_with_container.set_can_connect(self.container_name, True)
         sa_token_component = SATokenComponent(
             charm=harness_with_container.charm,
             name=self.token_k8s_name,
@@ -352,7 +355,7 @@ class TestSATokenComponent:
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
-            sa_token_component.configure_charm("mocked event")
+            # NOTE: purposely not triggering events to avoid recreating the token when leader
 
             # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
@@ -372,8 +375,8 @@ class TestSATokenComponent:
         )
 
         harness_with_container.set_leader(True)
-        harness_with_container.set_can_connect(self.container_name, True)
 
+        harness_with_container.set_can_connect(self.container_name, True)
         sa_token_component = SATokenComponent(
             charm=harness_with_container.charm,
             name=self.token_k8s_name,
