@@ -346,10 +346,9 @@ class TestSATokenComponent:
 
         # defining mock paths:
         base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
         patch_path_for_logger = f"{base_patch_path}.logger"
 
-        with patch(patch_path_for_k8s_client), patch(patch_path_for_logger) as mocked_logger:
+        with patch(patch_path_for_logger) as mocked_logger:
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
@@ -363,3 +362,79 @@ class TestSATokenComponent:
 
             # logs:
             assert_no_classic_logging_method_ever_called(mocked_logger)
+
+    def test_sa_token_not_created_when_leader_but_dir_path_does_not_exist(
+        self, harness_with_container, clean_service_account_token_side_effects
+    ):
+        """Check the previously created token file is recognized."""
+        sa_token_dir = (
+            clean_service_account_token_side_effects / "subdirectoty-that-does-not-exist"
+        )
+
+        harness_with_container.set_leader(True)
+        harness_with_container.set_can_connect(self.container_name, True)
+
+        sa_token_component = SATokenComponent(
+            charm=harness_with_container.charm,
+            name=self.token_k8s_name,
+            audiences=self.audiences,
+            sa_name=self.service_account_name,
+            sa_namespace=self.namespace,
+            filename=self.token_filename,
+            path=sa_token_dir,
+            expiration=self.expiration,
+        )
+
+        # defining mock paths:
+        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
+        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
+        patch_path_for_logger = f"{base_patch_path}.logger"
+
+        with (
+            patch(patch_path_for_k8s_client) as mocked_k8s_client,
+            patch(patch_path_for_logger) as mocked_logger,
+        ):
+            # ------------------------------------------------------------------------------------
+            # executing the charm logic:
+
+            with pytest_raises(GenericCharmRuntimeError) as error:
+                sa_token_component.configure_charm("mocked event")
+
+            # ------------------------------------------------------------------------------------
+            # asserting expectations meet reality:
+
+            # charm status:
+            assert error.value.msg == (
+                f"Token for {self.service_account_name} ServiceAccount could not be created or "
+                "persisted."
+            )
+            with pytest_raises(GenericCharmRuntimeError) as error:
+                sa_token_component.status
+            assert error.value.msg == (
+                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
+            )
+
+            # ServiceAccount token file:
+            expected_sa_token_file_path = Path(sa_token_dir, self.token_filename)
+            assert not expected_sa_token_file_path.exists()
+
+            # logs:
+            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"error"})
+            assert len(mocked_logger.error.call_args_list) == (
+                2 +  # for the charm event handling, 2 log calls are expected
+                1  # for the component status evaluation, 1 log call is expected
+            )
+            assert mocked_logger.error.call_args_list[0].args[0] == (
+                f"Token file for {self.service_account_name} ServiceAccount cannot be created "
+                "because path is not a directory."
+            )
+            assert mocked_logger.error.call_args_list[1].args[0] == (
+                f"Token for {self.service_account_name} ServiceAccount could not be created or "
+                "persisted."
+            )
+            assert mocked_logger.error.call_args_list[2].args[0] == (
+                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
+            )
+
+            # K8s API calls:
+            mocked_k8s_client.create_namespaced_service_account_token.assert_not_called()
