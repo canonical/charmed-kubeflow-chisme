@@ -243,8 +243,8 @@ class TestSATokenComponent:
             # logs:
             assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"error"})
             assert len(mocked_logger.error.call_args_list) == (
-                2 +  # for the charm event handling, 2 log calls are expected
-                1  # for the component status evaluation, 1 log call is expected
+                2  # for the charm event handling, 2 log calls are expected
+                + 1  # for the component status evaluation, 1 log call is expected
             )
             assert mocked_logger.error.call_args_list[0].args[0] == (
                 f"Request to create token for {self.service_account_name} ServiceAccount failed."
@@ -550,8 +550,8 @@ class TestSATokenComponent:
             # logs:
             assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"error"})
             assert len(mocked_logger.error.call_args_list) == (
-                2 +  # for the charm event handling, 2 log calls are expected
-                1  # for the component status evaluation, 1 log call is expected
+                2  # for the charm event handling, 2 log calls are expected
+                + 1  # for the component status evaluation, 1 log call is expected
             )
             assert mocked_logger.error.call_args_list[0].args[0] == (
                 f"Token file for {self.service_account_name} ServiceAccount cannot be created "
