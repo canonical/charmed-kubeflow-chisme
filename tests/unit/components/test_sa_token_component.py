@@ -470,8 +470,7 @@ class TestSATokenComponent:
 
             # logs:
             assert_no_classic_logging_method_ever_called(
-                mocked_logger,
-                exclude_methods={"info", "warning"}
+                mocked_logger, exclude_methods={"info", "warning"}
             )
             assert mocked_logger.warning.call_count == 1
             assert mocked_logger.warning.call_args_list[0].args[0] == (
