@@ -331,7 +331,7 @@ class TestSATokenComponent:
             mocked_k8s_client.create_namespaced_service_account_token.assert_not_called()
 
     @mark.parametrize("is_leader", (False, True))
-    def test_previously_created_sa_token_available(self, harness_with_container, is_leader):
+    def test_previously_created_sa_token_recognized(self, harness_with_container, is_leader):
         """Check the previously created token file is recognized."""
         harness_with_container.set_leader(is_leader)
 
