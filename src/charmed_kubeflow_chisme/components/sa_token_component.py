@@ -57,10 +57,13 @@ class SATokenComponent(Component):
 
     @property
     def kubernetes_client(self) -> CoreV1Api:
-        """Load the cluster configurations and return a CoreV1 Kubernetes client."""
+        """Load the Kubernetes cluster configurations and return a CoreV1 Kubernetes client."""
+        # accessing the K8s cluster configurations...
         try:
+            # ...as processes running inside the cluster would:
             load_incluster_config()
         except ConfigException:
+            # ...as processes external to the cluster would:
             load_kube_config()
 
         core_v1_api_client = CoreV1Api(ApiClient())
