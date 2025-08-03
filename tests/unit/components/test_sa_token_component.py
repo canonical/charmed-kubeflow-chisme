@@ -14,11 +14,14 @@ from pytest import mark
 from pytest import raises as pytest_raises
 
 from charmed_kubeflow_chisme.components import SATokenComponent
+from charmed_kubeflow_chisme.components.sa_token_component import CoreV1Api
 from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
 
+K8S_CLIENT_CREATE_TOKEN_API = "create_namespaced_service_account_token"
+MOCKED_LOGGER_PATH = "charmed_kubeflow_chisme.components.sa_token_component.logger"
+LOGGING_METHODS = Literal["debug", "info", "warning", "error", "critical"]
 PRECREATED_SA_TOKEN_DIR = Path(__file__).parent.parent.joinpath("data")
 PRECREATED_SA_TOKEN_FILENAME = PRECREATED_SA_TOKEN_DIR / "precreated-sa-token"
-LOGGING_METHODS = Literal["debug", "info", "warning", "error", "critical"]
 
 
 def assert_no_classic_logging_method_ever_called(
@@ -68,21 +71,14 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        # defining mock paths:
-        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
-        patch_path_for_logger = f"{base_patch_path}.logger"
-
         with (
-            patch(patch_path_for_k8s_client) as mocked_k8s_client,
-            patch(patch_path_for_logger) as mocked_logger,
+            patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
+            patch(MOCKED_LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
-            mocked_k8s_client.create_namespaced_service_account_token.return_value.status.token = (
-                self.token_content
-            )
+            mocked_k8s_client_create_token.return_value.status.token = self.token_content
 
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
@@ -108,8 +104,8 @@ class TestSATokenComponent:
             )
 
             # K8s API calls:
-            mocked_k8s_client.create_namespaced_service_account_token.assert_called_once()
-            kwargs = mocked_k8s_client.create_namespaced_service_account_token.call_args.kwargs
+            mocked_k8s_client_create_token.assert_called_once()
+            kwargs = mocked_k8s_client_create_token.call_args.kwargs
             assert kwargs["name"] == self.service_account_name
             assert kwargs["namespace"] == self.namespace
             spec = kwargs["body"].spec
@@ -136,21 +132,14 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        # defining mock paths:
-        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
-        patch_path_for_logger = f"{base_patch_path}.logger"
-
         with (
-            patch(patch_path_for_k8s_client) as mocked_k8s_client,
-            patch(patch_path_for_logger) as mocked_logger,
+            patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
+            patch(MOCKED_LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
-            mocked_k8s_client.create_namespaced_service_account_token.return_value.status.token = (
-                self.token_content
-            )
+            mocked_k8s_client_create_token.return_value.status.token = self.token_content
 
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
@@ -178,7 +167,7 @@ class TestSATokenComponent:
             )
 
             # K8s API calls:
-            mocked_k8s_client.create_namespaced_service_account_token.assert_not_called()
+            mocked_k8s_client_create_token.assert_not_called()
 
     def test_failing_k8s_api_handled_when_leader(
         self, harness_with_container, clean_service_account_token_side_effects
@@ -200,19 +189,14 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        # defining mock paths:
-        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
-        patch_path_for_logger = f"{base_patch_path}.logger"
-
         with (
-            patch(patch_path_for_k8s_client) as mocked_k8s_client,
-            patch(patch_path_for_logger) as mocked_logger,
+            patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
+            patch(MOCKED_LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
-            mocked_k8s_client.create_namespaced_service_account_token.side_effect = Exception(
+            mocked_k8s_client_create_token.side_effect = Exception(
                 "K8s API call to generate token failed."
             )
 
@@ -258,8 +242,8 @@ class TestSATokenComponent:
             )
 
             # K8s API calls:
-            mocked_k8s_client.create_namespaced_service_account_token.assert_called_once()
-            kwargs = mocked_k8s_client.create_namespaced_service_account_token.call_args.kwargs
+            mocked_k8s_client_create_token.assert_called_once()
+            kwargs = mocked_k8s_client_create_token.call_args.kwargs
             assert kwargs["name"] == self.service_account_name
             assert kwargs["namespace"] == self.namespace
             spec = kwargs["body"].spec
@@ -286,19 +270,14 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        # defining mock paths:
-        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
-        patch_path_for_logger = f"{base_patch_path}.logger"
-
         with (
-            patch(patch_path_for_k8s_client) as mocked_k8s_client,
-            patch(patch_path_for_logger) as mocked_logger,
+            patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
+            patch(MOCKED_LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
-            mocked_k8s_client.create_namespaced_service_account_token.side_effect = Exception(
+            mocked_k8s_client_create_token.side_effect = Exception(
                 "K8s API call to generate token failed."
             )
 
@@ -328,7 +307,7 @@ class TestSATokenComponent:
             )
 
             # K8s API calls:
-            mocked_k8s_client.create_namespaced_service_account_token.assert_not_called()
+            mocked_k8s_client_create_token.assert_not_called()
 
     @mark.parametrize("is_leader", (False, True))
     def test_previously_created_sa_token_recognized(self, harness_with_container, is_leader):
@@ -347,11 +326,7 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        # defining mock paths:
-        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_logger = f"{base_patch_path}.logger"
-
-        with patch(patch_path_for_logger) as mocked_logger:
+        with patch(MOCKED_LOGGER_PATH) as mocked_logger:
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
@@ -388,14 +363,9 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        # defining mock paths:
-        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
-        patch_path_for_logger = f"{base_patch_path}.logger"
-
         with (
-            patch(patch_path_for_k8s_client) as mocked_k8s_client,
-            patch(patch_path_for_logger) as mocked_logger,
+            patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
+            patch(MOCKED_LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # first-time token creation
@@ -404,9 +374,7 @@ class TestSATokenComponent:
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
-            mocked_k8s_client.create_namespaced_service_account_token.return_value.status.token = (
-                first_token_content
-            )
+            mocked_k8s_client_create_token.return_value.status.token = first_token_content
 
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
@@ -432,8 +400,8 @@ class TestSATokenComponent:
             )
 
             # K8s API calls:
-            mocked_k8s_client.create_namespaced_service_account_token.assert_called_once()
-            kwargs = mocked_k8s_client.create_namespaced_service_account_token.call_args.kwargs
+            mocked_k8s_client_create_token.assert_called_once()
+            kwargs = mocked_k8s_client_create_token.call_args.kwargs
             assert kwargs["name"] == self.service_account_name
             assert kwargs["namespace"] == self.namespace
             spec = kwargs["body"].spec
@@ -447,9 +415,7 @@ class TestSATokenComponent:
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
-            mocked_k8s_client.create_namespaced_service_account_token.return_value.status.token = (
-                second_token_content
-            )
+            mocked_k8s_client_create_token.return_value.status.token = second_token_content
 
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
@@ -483,8 +449,8 @@ class TestSATokenComponent:
             )
 
             # K8s API calls:
-            assert mocked_k8s_client.create_namespaced_service_account_token.call_count == 2
-            kwargs = mocked_k8s_client.create_namespaced_service_account_token.call_args.kwargs
+            assert mocked_k8s_client_create_token.call_count == 2
+            kwargs = mocked_k8s_client_create_token.call_args.kwargs
             assert kwargs["name"] == self.service_account_name
             assert kwargs["namespace"] == self.namespace
             spec = kwargs["body"].spec
@@ -513,14 +479,9 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        # defining mock paths:
-        base_patch_path = "charmed_kubeflow_chisme.components.sa_token_component"
-        patch_path_for_k8s_client = f"{base_patch_path}.SATokenComponent.kubernetes_client"
-        patch_path_for_logger = f"{base_patch_path}.logger"
-
         with (
-            patch(patch_path_for_k8s_client) as mocked_k8s_client,
-            patch(patch_path_for_logger) as mocked_logger,
+            patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
+            patch(MOCKED_LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
@@ -565,4 +526,4 @@ class TestSATokenComponent:
             )
 
             # K8s API calls:
-            mocked_k8s_client.create_namespaced_service_account_token.assert_not_called()
+            mocked_k8s_client_create_token.assert_not_called()
