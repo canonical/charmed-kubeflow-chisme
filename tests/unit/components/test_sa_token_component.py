@@ -18,7 +18,10 @@ from charmed_kubeflow_chisme.components.sa_token_component import CoreV1Api
 from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
 
 K8S_CLIENT_CREATE_TOKEN_API = "create_namespaced_service_account_token"
-MOCKED_LOGGER_PATH = "charmed_kubeflow_chisme.components.sa_token_component.logger"
+K8S_CLIENT_LOAD_CONFIG_PATH = (
+    "charmed_kubeflow_chisme.components.sa_token_component.load_incluster_config"
+)
+LOGGER_PATH = "charmed_kubeflow_chisme.components.sa_token_component.logger"
 LOGGING_METHODS = Literal["debug", "info", "warning", "error", "critical"]
 PRECREATED_SA_TOKEN_DIR = Path(__file__).parent.parent.joinpath("data")
 PRECREATED_SA_TOKEN_FILENAME = PRECREATED_SA_TOKEN_DIR / "precreated-sa-token"
@@ -72,8 +75,9 @@ class TestSATokenComponent:
         )
 
         with (
+            patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(MOCKED_LOGGER_PATH) as mocked_logger,
+            patch(LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
@@ -133,8 +137,9 @@ class TestSATokenComponent:
         )
 
         with (
+            patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(MOCKED_LOGGER_PATH) as mocked_logger,
+            patch(LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
@@ -190,8 +195,9 @@ class TestSATokenComponent:
         )
 
         with (
+            patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(MOCKED_LOGGER_PATH) as mocked_logger,
+            patch(LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
@@ -271,8 +277,9 @@ class TestSATokenComponent:
         )
 
         with (
+            patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(MOCKED_LOGGER_PATH) as mocked_logger,
+            patch(LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
@@ -326,7 +333,7 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        with patch(MOCKED_LOGGER_PATH) as mocked_logger:
+        with patch(LOGGER_PATH) as mocked_logger:
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
@@ -364,8 +371,9 @@ class TestSATokenComponent:
         )
 
         with (
+            patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(MOCKED_LOGGER_PATH) as mocked_logger,
+            patch(LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # first-time token creation
@@ -480,8 +488,9 @@ class TestSATokenComponent:
         )
 
         with (
+            patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(MOCKED_LOGGER_PATH) as mocked_logger,
+            patch(LOGGER_PATH) as mocked_logger,
         ):
             # ------------------------------------------------------------------------------------
             # executing the charm logic:
