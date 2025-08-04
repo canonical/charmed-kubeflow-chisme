@@ -14,7 +14,7 @@ from kubernetes.client import (
     CoreV1Api,
     V1TokenRequestSpec,
 )
-from kubernetes.config import ConfigException, load_incluster_config, load_kube_config
+from kubernetes.config import ConfigException, load_incluster_config
 from ops import ActiveStatus, StatusBase
 
 from charmed_kubeflow_chisme.components.component import Component
@@ -58,13 +58,8 @@ class SATokenComponent(Component):
     @property
     def kubernetes_client(self) -> CoreV1Api:
         """Load the Kubernetes cluster configurations and return a CoreV1 Kubernetes client."""
-        # accessing the K8s cluster configurations...
-        try:
-            # ...as processes running inside the cluster would:
-            load_incluster_config()
-        except ConfigException:
-            # ...as processes external to the cluster would:
-            load_kube_config()
+        # accessing the K8s cluster configurations as processes running inside the cluster do:
+        load_incluster_config()
 
         core_v1_api_client = CoreV1Api(ApiClient())
         return core_v1_api_client
