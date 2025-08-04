@@ -14,7 +14,7 @@ from kubernetes.client import (
     CoreV1Api,
     V1TokenRequestSpec,
 )
-from kubernetes.config import ConfigException, load_incluster_config
+from kubernetes.config import load_incluster_config
 from ops import ActiveStatus, StatusBase
 
 from charmed_kubeflow_chisme.components.component import Component
