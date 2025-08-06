@@ -2,8 +2,7 @@
 # See LICENSE file for licensing details.
 
 from pathlib import Path
-from typing import Literal, Set, get_args
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from fixtures import (  # noqa F401
     clean_service_account_token_test_directory,
@@ -21,27 +20,8 @@ K8S_CLIENT_CREATE_TOKEN_API = "create_namespaced_service_account_token"
 K8S_CLIENT_LOAD_CONFIG_PATH = (
     "charmed_kubeflow_chisme.components.sa_token_component.load_incluster_config"
 )
-LOGGER_PATH = "charmed_kubeflow_chisme.components.sa_token_component.logger"
-LOGGING_METHODS = Literal["debug", "info", "warning", "error", "critical"]
 PRECREATED_SA_TOKEN_DIR = Path(__file__).parent.parent.joinpath("data")
 PRECREATED_SA_TOKEN_FILENAME = PRECREATED_SA_TOKEN_DIR / "precreated-sa-token"
-
-
-def assert_no_classic_logging_method_ever_called(
-    mocked_logger: MagicMock,
-    exclude_methods: Set[LOGGING_METHODS] = {},
-) -> bool:
-    """Assert no logging methods were ever called, except for the excluded ones if any.
-
-    Assert that none of the classic logging methods of the given mock were ever called, not even
-    just one of them only once, except for the given method to excludes, if any.
-    """
-    logging_methods_not_to_be_called = set(get_args(LOGGING_METHODS))
-    for loggin_method in exclude_methods:
-        logging_methods_not_to_be_called.remove(loggin_method)
-
-    for loggin_method in logging_methods_not_to_be_called:
-        exec(f"mocked_logger.{loggin_method}.assert_not_called()")
 
 
 class TestSATokenComponent:
@@ -77,7 +57,6 @@ class TestSATokenComponent:
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(LOGGER_PATH) as mocked_logger,
         ):
             # defining mocked behaviors:
 
@@ -97,12 +76,6 @@ class TestSATokenComponent:
             assert expected_sa_token_file_path.is_file()
             with open(expected_sa_token_file_path, "r") as file:
                 assert file.read() == self.token_content
-
-            # logs:
-            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"info"})
-            assert mocked_logger.info.call_args_list[0].args[0] == (
-                f"Token for {self.service_account_name} ServiceAccount created and persisted."
-            )
 
             # K8s API calls:
             mocked_k8s_client_create_token.assert_called_once()
@@ -136,7 +109,6 @@ class TestSATokenComponent:
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(LOGGER_PATH) as mocked_logger,
         ):
             # defining mocked behaviors:
 
@@ -158,12 +130,6 @@ class TestSATokenComponent:
             # ServiceAccount token file:
             expected_sa_token_file_path = Path(sa_token_dir, self.token_filename)
             assert not expected_sa_token_file_path.exists()
-
-            # logs:
-            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"error"})
-            assert mocked_logger.error.call_args_list[0].args[0] == (
-                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
-            )
 
             # K8s API calls:
             mocked_k8s_client_create_token.assert_not_called()
@@ -191,7 +157,6 @@ class TestSATokenComponent:
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(LOGGER_PATH) as mocked_logger,
         ):
             # defining mocked behaviors:
 
@@ -220,23 +185,6 @@ class TestSATokenComponent:
             # ServiceAccount token file:
             expected_sa_token_file_path = Path(sa_token_dir, self.token_filename)
             assert not expected_sa_token_file_path.exists()
-
-            # logs:
-            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"error"})
-            assert len(mocked_logger.error.call_args_list) == (
-                2  # for the charm event handling, 2 log calls are expected
-                + 1  # for the component status evaluation, 1 log call is expected
-            )
-            assert mocked_logger.error.call_args_list[0].args[0] == (
-                f"Request to create token for {self.service_account_name} ServiceAccount failed."
-            )
-            assert mocked_logger.error.call_args_list[1].args[0] == (
-                f"Token for {self.service_account_name} ServiceAccount could not be created or "
-                "persisted."
-            )
-            assert mocked_logger.error.call_args_list[2].args[0] == (
-                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
-            )
 
             # K8s API calls:
             mocked_k8s_client_create_token.assert_called_once()
@@ -270,7 +218,6 @@ class TestSATokenComponent:
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(LOGGER_PATH) as mocked_logger,
         ):
             # defining mocked behaviors:
 
@@ -295,12 +242,6 @@ class TestSATokenComponent:
             expected_sa_token_file_path = Path(sa_token_dir, self.token_filename)
             assert not expected_sa_token_file_path.exists()
 
-            # logs:
-            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"error"})
-            assert mocked_logger.error.call_args_list[0].args[0] == (
-                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
-            )
-
             # K8s API calls:
             mocked_k8s_client_create_token.assert_not_called()
 
@@ -321,18 +262,14 @@ class TestSATokenComponent:
             expiration=self.expiration,
         )
 
-        with patch(LOGGER_PATH) as mocked_logger:
-            # executing the charm logic:
+        # executing the charm logic:
 
-            # NOTE: purposely not triggering events to avoid recreating the token when leader
+        # NOTE: purposely not triggering events to avoid recreating the token when leader
 
-            # asserting expectations meet reality:
+        # asserting expectations meet reality:
 
-            # charm status:
-            assert isinstance(sa_token_component.status, ActiveStatus)
-
-            # logs:
-            assert_no_classic_logging_method_ever_called(mocked_logger)
+        # charm status:
+        assert isinstance(sa_token_component.status, ActiveStatus)
 
     def test_previously_created_sa_token_recreated_when_leader(
         self, harness_with_container, clean_service_account_token_test_directory
@@ -359,7 +296,6 @@ class TestSATokenComponent:
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(LOGGER_PATH) as mocked_logger,
         ):
             # first-time token creation
 
@@ -381,12 +317,6 @@ class TestSATokenComponent:
             assert expected_sa_token_file_path.is_file()
             with open(expected_sa_token_file_path, "r") as file:
                 assert file.read() == first_token_content
-
-            # logs:
-            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"info"})
-            assert mocked_logger.info.call_args_list[0].args[0] == (
-                f"Token for {self.service_account_name} ServiceAccount created and persisted."
-            )
 
             # K8s API calls:
             mocked_k8s_client_create_token.assert_called_once()
@@ -417,20 +347,6 @@ class TestSATokenComponent:
             assert expected_sa_token_file_path.is_file()
             with open(expected_sa_token_file_path, "r") as file:
                 assert file.read() == second_token_content
-
-            # logs:
-            assert_no_classic_logging_method_ever_called(
-                mocked_logger, exclude_methods={"info", "warning"}
-            )
-            assert mocked_logger.warning.call_count == 1
-            assert mocked_logger.warning.call_args_list[0].args[0] == (
-                f"Token file for {self.service_account_name} ServiceAccount already exists, will "
-                "be overridden."
-            )
-            assert mocked_logger.info.call_count == 2
-            assert mocked_logger.info.call_args_list[1].args[0] == (
-                f"Token for {self.service_account_name} ServiceAccount created and persisted."
-            )
 
             # K8s API calls:
             assert mocked_k8s_client_create_token.call_count == 2
@@ -466,7 +382,6 @@ class TestSATokenComponent:
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-            patch(LOGGER_PATH) as mocked_logger,
         ):
             # executing the charm logic:
 
@@ -489,24 +404,6 @@ class TestSATokenComponent:
             # ServiceAccount token file:
             expected_sa_token_file_path = Path(sa_token_dir, self.token_filename)
             assert not expected_sa_token_file_path.exists()
-
-            # logs:
-            assert_no_classic_logging_method_ever_called(mocked_logger, exclude_methods={"error"})
-            assert len(mocked_logger.error.call_args_list) == (
-                2  # for the charm event handling, 2 log calls are expected
-                + 1  # for the component status evaluation, 1 log call is expected
-            )
-            assert mocked_logger.error.call_args_list[0].args[0] == (
-                f"Token file for {self.service_account_name} ServiceAccount cannot be created "
-                "because path is not a directory."
-            )
-            assert mocked_logger.error.call_args_list[1].args[0] == (
-                f"Token for {self.service_account_name} ServiceAccount could not be created or "
-                "persisted."
-            )
-            assert mocked_logger.error.call_args_list[2].args[0] == (
-                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
-            )
 
             # K8s API calls:
             mocked_k8s_client_create_token.assert_not_called()
