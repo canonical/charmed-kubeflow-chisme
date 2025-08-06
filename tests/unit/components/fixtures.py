@@ -182,7 +182,7 @@ def harness_with_container():
 
 
 @pytest.fixture()
-def clean_service_account_token_side_effects():
+def clean_service_account_token_test_directory():
     """Yield the directory for creating test tokens and eventually clear files created as such.
 
     Yield the directory where token files can be temporarily persisted and eventually clean any

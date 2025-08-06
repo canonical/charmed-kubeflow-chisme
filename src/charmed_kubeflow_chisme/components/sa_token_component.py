@@ -2,7 +2,7 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Component for generating and managing the token of the given ServiceAccount."""
+"""Component for generating and managing the token of any specified ServiceAccount."""
 
 import logging
 from pathlib import Path
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class SATokenComponent(Component):
-    """Create and manage the given ServiceAccount token."""
+    """Create and manage the token for the specified ServiceAccount."""
 
     def __init__(
         self,
@@ -107,7 +107,7 @@ class SATokenComponent(Component):
         logger.info(f"Token for {self._sa_name} ServiceAccount created and persisted.")
 
     def _configure_app_leader(self, event) -> None:
-        """Generate and save a ServiceAccount token file.
+        """Generate and save a ServiceAccount token file as the application-level leader logic.
 
         Raises:
             GenericCharmRuntimeError if the file could not be created.

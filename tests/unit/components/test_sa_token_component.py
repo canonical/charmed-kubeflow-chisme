@@ -6,7 +6,7 @@ from typing import Literal, Set, get_args
 from unittest.mock import MagicMock, patch
 
 from fixtures import (  # noqa F401
-    clean_service_account_token_side_effects,
+    clean_service_account_token_test_directory,
     harness_with_container,
 )
 from ops import ActiveStatus
@@ -55,10 +55,10 @@ class TestSATokenComponent:
     token_k8s_name = "whatever-sa-token-name"
 
     def test_sa_token_created_and_available_when_leader(
-        self, harness_with_container, clean_service_account_token_side_effects
+        self, harness_with_container, clean_service_account_token_test_directory
     ):
         """Check the token is correctly generated and saved when the unit is leader."""
-        sa_token_dir = clean_service_account_token_side_effects
+        sa_token_dir = clean_service_account_token_test_directory
 
         harness_with_container.set_leader(True)
 
@@ -79,17 +79,14 @@ class TestSATokenComponent:
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
             patch(LOGGER_PATH) as mocked_logger,
         ):
-            # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
             mocked_k8s_client_create_token.return_value.status.token = self.token_content
 
-            # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
             sa_token_component.configure_charm("mocked event")
 
-            # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
 
             # charm status:
@@ -117,10 +114,10 @@ class TestSATokenComponent:
             assert spec.expiration_seconds == self.expiration
 
     def test_sa_token_not_created_when_not_leader(
-        self, harness_with_container, clean_service_account_token_side_effects
+        self, harness_with_container, clean_service_account_token_test_directory
     ):
         """Check the token is not generated when the unit is not leader."""
-        sa_token_dir = clean_service_account_token_side_effects
+        sa_token_dir = clean_service_account_token_test_directory
 
         harness_with_container.set_leader(False)
 
@@ -141,17 +138,14 @@ class TestSATokenComponent:
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
             patch(LOGGER_PATH) as mocked_logger,
         ):
-            # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
             mocked_k8s_client_create_token.return_value.status.token = self.token_content
 
-            # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
             sa_token_component.configure_charm("mocked event")
 
-            # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
 
             # charm status:
@@ -175,10 +169,10 @@ class TestSATokenComponent:
             mocked_k8s_client_create_token.assert_not_called()
 
     def test_failing_k8s_api_handled_when_leader(
-        self, harness_with_container, clean_service_account_token_side_effects
+        self, harness_with_container, clean_service_account_token_test_directory
     ):
         """Check the token is not generated when the unit is leader but the K8s API fails."""
-        sa_token_dir = clean_service_account_token_side_effects
+        sa_token_dir = clean_service_account_token_test_directory
 
         harness_with_container.set_leader(True)
 
@@ -199,20 +193,17 @@ class TestSATokenComponent:
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
             patch(LOGGER_PATH) as mocked_logger,
         ):
-            # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
             mocked_k8s_client_create_token.side_effect = Exception(
                 "K8s API call to generate token failed."
             )
 
-            # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.configure_charm("mocked event")
 
-            # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
 
             # charm status:
@@ -257,10 +248,10 @@ class TestSATokenComponent:
             assert spec.expiration_seconds == self.expiration
 
     def test_failing_k8s_api_irrelevant_when_not_leader(
-        self, harness_with_container, clean_service_account_token_side_effects
+        self, harness_with_container, clean_service_account_token_test_directory
     ):
         """Check the token is not generated when the unit is not leader and the K8s API fails."""
-        sa_token_dir = clean_service_account_token_side_effects
+        sa_token_dir = clean_service_account_token_test_directory
 
         harness_with_container.set_leader(False)
 
@@ -281,19 +272,16 @@ class TestSATokenComponent:
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
             patch(LOGGER_PATH) as mocked_logger,
         ):
-            # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
             mocked_k8s_client_create_token.side_effect = Exception(
                 "K8s API call to generate token failed."
             )
 
-            # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
             sa_token_component.configure_charm("mocked event")
 
-            # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
 
             # charm status:
@@ -334,12 +322,10 @@ class TestSATokenComponent:
         )
 
         with patch(LOGGER_PATH) as mocked_logger:
-            # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
             # NOTE: purposely not triggering events to avoid recreating the token when leader
 
-            # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
 
             # charm status:
@@ -349,10 +335,10 @@ class TestSATokenComponent:
             assert_no_classic_logging_method_ever_called(mocked_logger)
 
     def test_previously_created_sa_token_recreated_when_leader(
-        self, harness_with_container, clean_service_account_token_side_effects
+        self, harness_with_container, clean_service_account_token_test_directory
     ):
         """Check the previously created token file is recreated and overridden when leader."""
-        sa_token_dir = clean_service_account_token_side_effects
+        sa_token_dir = clean_service_account_token_test_directory
         first_token_content = self.token_content
         second_token_content = f"{self.token_content}-xyz"
 
@@ -375,21 +361,16 @@ class TestSATokenComponent:
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
             patch(LOGGER_PATH) as mocked_logger,
         ):
-            # ------------------------------------------------------------------------------------
             # first-time token creation
-            # ------------------------------------------------------------------------------------
 
-            # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
             mocked_k8s_client_create_token.return_value.status.token = first_token_content
 
-            # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
             sa_token_component.configure_charm("mocked event")
 
-            # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
 
             # charm status:
@@ -416,21 +397,16 @@ class TestSATokenComponent:
             assert spec.audiences == self.audiences
             assert spec.expiration_seconds == self.expiration
 
-            # ------------------------------------------------------------------------------------
             # token recreation
-            # ------------------------------------------------------------------------------------
 
-            # ------------------------------------------------------------------------------------
             # defining mocked behaviors:
 
             mocked_k8s_client_create_token.return_value.status.token = second_token_content
 
-            # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
             sa_token_component.configure_charm("mocked event")
 
-            # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
 
             # charm status:
@@ -466,11 +442,11 @@ class TestSATokenComponent:
             assert spec.expiration_seconds == self.expiration
 
     def test_sa_token_not_created_when_leader_but_dir_path_does_not_exist(
-        self, harness_with_container, clean_service_account_token_side_effects
+        self, harness_with_container, clean_service_account_token_test_directory
     ):
         """Check the previously created token file is recognized."""
         sa_token_dir = (
-            clean_service_account_token_side_effects / "subdirectoty-that-does-not-exist"
+            clean_service_account_token_test_directory / "subdirectoty-that-does-not-exist"
         )
 
         harness_with_container.set_leader(True)
@@ -492,13 +468,11 @@ class TestSATokenComponent:
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
             patch(LOGGER_PATH) as mocked_logger,
         ):
-            # ------------------------------------------------------------------------------------
             # executing the charm logic:
 
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.configure_charm("mocked event")
 
-            # ------------------------------------------------------------------------------------
             # asserting expectations meet reality:
 
             # charm status:
