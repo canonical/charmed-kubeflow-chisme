@@ -14,7 +14,7 @@ from kubernetes.client import (
     CoreV1Api,
     V1TokenRequestSpec,
 )
-from kubernetes.config import load_incluster_config
+from kubernetes.config import ConfigException, load_incluster_config
 from ops import ActiveStatus, StatusBase
 
 from charmed_kubeflow_chisme.components.component import Component
@@ -57,9 +57,18 @@ class SATokenComponent(Component):
 
     @property
     def kubernetes_client(self) -> CoreV1Api:
-        """Load the Kubernetes cluster configurations and return a CoreV1 Kubernetes client."""
+        """Load the Kubernetes cluster configurations and return a CoreV1 Kubernetes client.
+
+        Raises:
+            GenericCharmRuntimeError if the Kubernetes cluster configurations cannot be loaded.
+        """
         # accessing the K8s cluster configurations as processes running inside the cluster do:
-        load_incluster_config()
+        try:
+            load_incluster_config()
+        except ConfigException as exc:
+            failure_message = "Kubernetes cluster configurations could not be loaded."
+            logger.error(failure_message)
+            raise GenericCharmRuntimeError(failure_message) from exc
 
         core_v1_api_client = CoreV1Api(ApiClient())
         return core_v1_api_client
@@ -68,13 +77,15 @@ class SATokenComponent(Component):
         """Call the K8s API to generate the ServiceAccount token and return its response."""
         spec = V1TokenRequestSpec(audiences=self._audiences, expiration_seconds=self._expiration)
         body = AuthenticationV1TokenRequest(spec=spec)
+        k8s_client = self.kubernetes_client
         try:
-            api_response = self.kubernetes_client.create_namespaced_service_account_token(
+            api_response = k8s_client.create_namespaced_service_account_token(
                 name=self._sa_name, namespace=self._sa_namespace, body=body
             )
         except Exception as exc:
-            logger.error(f"Request to create token for {self._sa_name} ServiceAccount failed.")
-            raise exc
+            failure_message = f"Request to create token for {self._sa_name} ServiceAccount failed."
+            logger.error(failure_message)
+            raise Exception(failure_message) from exc
         return api_response
 
     def _generate_and_save_token(self, dir_path: str, filename: str) -> None:
@@ -86,7 +97,7 @@ class SATokenComponent(Component):
         """
         if not Path(dir_path).is_dir():
             failure_message = (
-                f"Token file for {self._sa_name} ServiceAccount cannot be created because path "
+                f"Token file for {self._sa_name} ServiceAccount could not be created because path "
                 "is not a directory but either a file or does not exist."
             )
             logger.error(failure_message)
@@ -110,16 +121,15 @@ class SATokenComponent(Component):
         """Generate and save a ServiceAccount token file as the application-level leader logic.
 
         Raises:
-            GenericCharmRuntimeError if the file could not be created.
+            GenericCharmRuntimeError if the file cannot be created.
         """
         try:
             self._generate_and_save_token(dir_path=self._dir_path, filename=self._filename)
         except Exception as exc:
-            failure_message = (
+            logger.error(
                 f"Token for {self._sa_name} ServiceAccount could not be created or persisted."
             )
-            logger.error(failure_message)
-            raise GenericCharmRuntimeError(failure_message) from exc
+            raise GenericCharmRuntimeError(str(exc)) from exc
 
     def get_status(self) -> StatusBase:
         """Return ActiveStatus if the ServiceAccount token file is present or raise an exception.

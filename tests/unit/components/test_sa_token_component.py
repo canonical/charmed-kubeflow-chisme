@@ -13,7 +13,7 @@ from pytest import mark
 from pytest import raises as pytest_raises
 
 from charmed_kubeflow_chisme.components import SATokenComponent
-from charmed_kubeflow_chisme.components.sa_token_component import CoreV1Api
+from charmed_kubeflow_chisme.components.sa_token_component import ConfigException, CoreV1Api
 from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
 
 K8S_CLIENT_CREATE_TOKEN_API = "create_namespaced_service_account_token"
@@ -173,8 +173,7 @@ class TestSATokenComponent:
 
             # charm status:
             assert error.value.msg == (
-                f"Token for {self.service_account_name} ServiceAccount could not be created or "
-                "persisted."
+                f"Request to create token for {self.service_account_name} ServiceAccount failed."
             )
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.status
@@ -392,8 +391,8 @@ class TestSATokenComponent:
 
             # charm status:
             assert error.value.msg == (
-                f"Token for {self.service_account_name} ServiceAccount could not be created or "
-                "persisted."
+                f"Token file for {self.service_account_name} ServiceAccount could not be created "
+                "because path is not a directory but either a file or does not exist."
             )
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.status
@@ -407,3 +406,49 @@ class TestSATokenComponent:
 
             # K8s API calls:
             mocked_k8s_client_create_token.assert_not_called()
+
+    def test_exception_on_k8s_cluster_config_loading_failure(
+        self, harness_with_container, clean_service_account_token_test_directory
+    ):
+        """Check the raised exception when the K8s cluster configurations cannot be loaded."""
+        sa_token_dir = clean_service_account_token_test_directory
+
+        harness_with_container.set_leader(True)
+
+        harness_with_container.set_can_connect(self.container_name, True)
+        sa_token_component = SATokenComponent(
+            charm=harness_with_container.charm,
+            name=self.token_k8s_name,
+            audiences=self.audiences,
+            sa_name=self.service_account_name,
+            sa_namespace=self.namespace,
+            filename=self.token_filename,
+            path=sa_token_dir,
+            expiration=self.expiration,
+        )
+
+        with patch(K8S_CLIENT_LOAD_CONFIG_PATH) as mocked_k8s_config_loading:
+            # defining mocked behaviors:
+
+            mocked_k8s_config_loading.side_effect = ConfigException(
+                "K8s cluster configuration loading failed."
+            )
+
+            # executing the charm logic:
+
+            with pytest_raises(GenericCharmRuntimeError) as error:
+                sa_token_component.configure_charm("mocked event")
+
+            # asserting expectations meet reality:
+
+            # charm status:
+            assert error.value.msg == "Kubernetes cluster configurations could not be loaded."
+            with pytest_raises(GenericCharmRuntimeError) as error:
+                sa_token_component.status
+            assert error.value.msg == (
+                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
+            )
+
+            # ServiceAccount token file:
+            expected_sa_token_file_path = Path(sa_token_dir, self.token_filename)
+            assert not expected_sa_token_file_path.exists()
