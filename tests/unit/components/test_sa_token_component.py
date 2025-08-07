@@ -391,7 +391,7 @@ class TestSATokenComponent:
 
             # charm status:
             assert error.value.msg == (
-                f"Token file for {self.service_account_name} ServiceAccount could not be created "
+                f"Token file for {self.service_account_name} ServiceAccount failed to be created "
                 "because path is not a directory but either a file or does not exist."
             )
             with pytest_raises(GenericCharmRuntimeError) as error:
@@ -442,7 +442,7 @@ class TestSATokenComponent:
             # asserting expectations meet reality:
 
             # charm status:
-            assert error.value.msg == "Kubernetes cluster configurations could not be loaded."
+            assert error.value.msg == "Kubernetes cluster configurations failed to be loaded."
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.status
             assert error.value.msg == (

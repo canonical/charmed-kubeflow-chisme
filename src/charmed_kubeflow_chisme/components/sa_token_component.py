@@ -66,7 +66,7 @@ class SATokenComponent(Component):
         try:
             load_incluster_config()
         except ConfigException as exc:
-            failure_message = "Kubernetes cluster configurations could not be loaded."
+            failure_message = "Kubernetes cluster configurations failed to be loaded."
             logger.error(failure_message)
             raise GenericCharmRuntimeError(failure_message) from exc
 
@@ -97,7 +97,7 @@ class SATokenComponent(Component):
         """
         if not Path(dir_path).is_dir():
             failure_message = (
-                f"Token file for {self._sa_name} ServiceAccount could not be created because path "
+                f"Token file for {self._sa_name} ServiceAccount failed to be created because path "
                 "is not a directory but either a file or does not exist."
             )
             logger.error(failure_message)
@@ -127,7 +127,7 @@ class SATokenComponent(Component):
             self._generate_and_save_token(dir_path=self._dir_path, filename=self._filename)
         except Exception as exc:
             logger.error(
-                f"Token for {self._sa_name} ServiceAccount could not be created or persisted."
+                f"Token for {self._sa_name} ServiceAccount failed to be created or persisted."
             )
             raise GenericCharmRuntimeError(str(exc)) from exc
 
