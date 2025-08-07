@@ -85,7 +85,7 @@ class SATokenComponent(Component):
         except Exception as exc:
             failure_message = f"Request to create token for {self._sa_name} ServiceAccount failed."
             logger.error(failure_message)
-            raise Exception(failure_message) from exc
+            raise GenericCharmRuntimeError(failure_message) from exc
         return api_response
 
     def _generate_and_save_token(self, dir_path: str, filename: str) -> None:
@@ -125,7 +125,7 @@ class SATokenComponent(Component):
         """
         try:
             self._generate_and_save_token(dir_path=self._dir_path, filename=self._filename)
-        except Exception as exc:
+        except GenericCharmRuntimeError as exc:
             logger.error(
                 f"Token for {self._sa_name} ServiceAccount failed to be created or persisted."
             )
