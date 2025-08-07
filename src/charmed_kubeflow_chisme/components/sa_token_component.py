@@ -87,7 +87,7 @@ class SATokenComponent(Component):
         if not Path(dir_path).is_dir():
             failure_message = (
                 f"Token file for {self._sa_name} ServiceAccount cannot be created because path "
-                "is not a directory."
+                "is not a directory but either a file or does not exist."
             )
             logger.error(failure_message)
             raise RuntimeError(failure_message)
