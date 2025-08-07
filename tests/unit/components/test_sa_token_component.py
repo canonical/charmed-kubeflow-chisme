@@ -34,13 +34,14 @@ class TestSATokenComponent:
     token_filename = "sa-token-filename"
     token_k8s_name = "whatever-sa-token-name"
 
-    def test_sa_token_created_and_available_when_leader(
-        self, harness_with_container, clean_service_account_token_test_directory
+    @mark.parametrize("is_leader", (False, True))
+    def test_sa_token_created_when_and_only_when_on_leader(
+        self, harness_with_container, clean_service_account_token_test_directory, is_leader
     ):
-        """Check the token is correctly generated and saved when the unit is leader."""
+        """Check the token is correctly created when and only when the unit is leader."""
         sa_token_dir = clean_service_account_token_test_directory
 
-        harness_with_container.set_leader(True)
+        harness_with_container.set_leader(is_leader)
 
         harness_with_container.set_can_connect(self.container_name, True)
         sa_token_component = SATokenComponent(
@@ -69,70 +70,37 @@ class TestSATokenComponent:
             # asserting expectations meet reality:
 
             # charm status:
-            assert isinstance(sa_token_component.status, ActiveStatus)
+            if is_leader:
+                assert isinstance(sa_token_component.status, ActiveStatus)
+            else:
+                with pytest_raises(GenericCharmRuntimeError) as error:
+                    sa_token_component.status
+                assert error.value.msg == (
+                    f"Token file for {self.service_account_name} ServiceAccount not present in "
+                    "charm."
+                )
 
             # ServiceAccount token file:
             expected_sa_token_file_path = Path(sa_token_dir, self.token_filename)
-            assert expected_sa_token_file_path.is_file()
-            with open(expected_sa_token_file_path, "r") as file:
-                assert file.read() == self.token_content
+            if is_leader:
+                assert expected_sa_token_file_path.is_file()
+                with open(expected_sa_token_file_path, "r") as file:
+                    assert file.read() == self.token_content
+            else:
+                assert not expected_sa_token_file_path.exists()
 
             # K8s API calls:
-            mocked_k8s_client_create_token.assert_called_once()
-            kwargs = mocked_k8s_client_create_token.call_args.kwargs
-            assert kwargs["name"] == self.service_account_name
-            assert kwargs["namespace"] == self.namespace
-            spec = kwargs["body"].spec
-            assert spec.audiences == self.audiences
-            assert spec.expiration_seconds == self.expiration
-
-    def test_sa_token_not_created_when_not_leader(
-        self, harness_with_container, clean_service_account_token_test_directory
-    ):
-        """Check the token is not generated when the unit is not leader."""
-        sa_token_dir = clean_service_account_token_test_directory
-
-        harness_with_container.set_leader(False)
-
-        harness_with_container.set_can_connect(self.container_name, True)
-        sa_token_component = SATokenComponent(
-            charm=harness_with_container.charm,
-            name=self.token_k8s_name,
-            audiences=self.audiences,
-            sa_name=self.service_account_name,
-            sa_namespace=self.namespace,
-            filename=self.token_filename,
-            path=sa_token_dir,
-            expiration=self.expiration,
-        )
-
-        with (
-            patch(K8S_CLIENT_LOAD_CONFIG_PATH),
-            patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
-        ):
-            # defining mocked behaviors:
-
-            mocked_k8s_client_create_token.return_value.status.token = self.token_content
-
-            # executing the charm logic:
-
-            sa_token_component.configure_charm("mocked event")
-
-            # asserting expectations meet reality:
-
-            # charm status:
-            with pytest_raises(GenericCharmRuntimeError) as error:
-                sa_token_component.status
-            assert error.value.msg == (
-                f"Token file for {self.service_account_name} ServiceAccount not present in charm."
-            )
-
-            # ServiceAccount token file:
-            expected_sa_token_file_path = Path(sa_token_dir, self.token_filename)
-            assert not expected_sa_token_file_path.exists()
-
-            # K8s API calls:
-            mocked_k8s_client_create_token.assert_not_called()
+            if is_leader:
+                mocked_k8s_client_create_token.assert_called_once()
+                kwargs = mocked_k8s_client_create_token.call_args.kwargs
+                assert kwargs["name"] == self.service_account_name
+                assert kwargs["namespace"] == self.namespace
+                spec = kwargs["body"].spec
+                assert spec.audiences == self.audiences
+                assert spec.expiration_seconds == self.expiration
+            else:
+                mocked_k8s_client_create_token.assert_not_called()
+            
 
     def test_failing_k8s_api_handled_when_leader(
         self, harness_with_container, clean_service_account_token_test_directory
