@@ -101,7 +101,7 @@ class SATokenComponent(Component):
                 "is not a directory but either a file or does not exist."
             )
             logger.error(failure_message)
-            raise RuntimeError(failure_message)
+            raise GenericCharmRuntimeError(failure_message)
 
         if Path(dir_path, filename).is_file():
             logger.warning(
