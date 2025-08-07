@@ -40,7 +40,7 @@ class TestSATokenComponent:
     ):
         """Check the token is correctly created when and only when the unit is leader."""
         # Arrange:
-        
+
         sa_token_dir = clean_service_account_token_test_directory
 
         harness_with_container.set_leader(is_leader)
@@ -100,14 +100,13 @@ class TestSATokenComponent:
                 assert spec.expiration_seconds == self.expiration
             else:
                 mocked_k8s_client_create_token.assert_not_called()
-            
 
     def test_failing_k8s_api_handled_when_leader(
         self, harness_with_container, clean_service_account_token_test_directory
     ):
         """Check the token is not generated when the unit is leader but the K8s API fails."""
         # Arrange:
-        
+
         sa_token_dir = clean_service_account_token_test_directory
 
         harness_with_container.set_leader(True)
@@ -167,7 +166,7 @@ class TestSATokenComponent:
     ):
         """Check the token is not generated when the unit is not leader and the K8s API fails."""
         # Arrange:
-        
+
         sa_token_dir = clean_service_account_token_test_directory
 
         harness_with_container.set_leader(False)
@@ -216,7 +215,7 @@ class TestSATokenComponent:
     def test_previously_created_sa_token_recognized(self, harness_with_container, is_leader):
         """Check the previously created token file is recognized."""
         # Arrange:
-        
+
         harness_with_container.set_leader(is_leader)
 
         harness_with_container.set_can_connect(self.container_name, True)
@@ -245,7 +244,7 @@ class TestSATokenComponent:
     ):
         """Check the previously created token file is recreated and overridden when leader."""
         # Arrange:
-        
+
         sa_token_dir = clean_service_account_token_test_directory
         first_token_content = self.token_content
         second_token_content = f"{self.token_content}-xyz"
@@ -329,7 +328,7 @@ class TestSATokenComponent:
     ):
         """Check the previously created token file is recognized."""
         # Arrange:
-        
+
         sa_token_dir = (
             clean_service_account_token_test_directory / "subdirectoty-that-does-not-exist"
         )
@@ -382,7 +381,7 @@ class TestSATokenComponent:
     ):
         """Check the raised exception when the K8s cluster configurations cannot be loaded."""
         # Arrange:
-        
+
         sa_token_dir = clean_service_account_token_test_directory
 
         harness_with_container.set_leader(True)
