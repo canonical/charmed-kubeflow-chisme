@@ -151,3 +151,7 @@ fabric.properties
 
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
+
+# side effects of unit tests:
+tests/unit/data/service-account-token-side-effects/**
+!tests/unit/data/service-account-token-side-effects/.gitkeep
