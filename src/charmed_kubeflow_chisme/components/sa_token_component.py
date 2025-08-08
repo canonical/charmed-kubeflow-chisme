@@ -97,8 +97,8 @@ class SATokenComponent(Component):
         """
         if not Path(dir_path).is_dir():
             failure_message = (
-                f"Token file for {self._sa_name} ServiceAccount failed to be created because path "
-                "is not a directory but either a file or does not exist."
+                f"Token file for {self._sa_name} ServiceAccount failed to be created: path "
+                f"{dir_path} is not a directory but either a file or does not exist."
             )
             logger.error(failure_message)
             raise GenericCharmRuntimeError(failure_message)

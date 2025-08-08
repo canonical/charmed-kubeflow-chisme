@@ -360,8 +360,8 @@ class TestSATokenComponent:
 
             # charm status:
             assert error.value.msg == (
-                f"Token file for {self.service_account_name} ServiceAccount failed to be created "
-                "because path is not a directory but either a file or does not exist."
+                f"Token file for {self.service_account_name} ServiceAccount failed to be created: "
+                f"path {sa_token_dir} is not a directory but either a file or does not exist."
             )
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.status
