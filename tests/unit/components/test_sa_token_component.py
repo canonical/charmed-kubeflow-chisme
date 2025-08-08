@@ -43,20 +43,6 @@ class TestSATokenComponent:
 
         sa_token_dir = clean_service_account_token_test_directory
 
-        harness_with_container.set_leader(is_leader)
-
-        harness_with_container.set_can_connect(self.container_name, True)
-        sa_token_component = SATokenComponent(
-            charm=harness_with_container.charm,
-            name=self.token_k8s_name,
-            audiences=self.audiences,
-            sa_name=self.service_account_name,
-            sa_namespace=self.namespace,
-            filename=self.token_filename,
-            path=sa_token_dir,
-            expiration=self.expiration,
-        )
-
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
@@ -64,6 +50,19 @@ class TestSATokenComponent:
             mocked_k8s_client_create_token.return_value.status.token = self.token_content
 
             # Act:
+
+            harness_with_container.set_leader(is_leader)
+            harness_with_container.set_can_connect(self.container_name, True)
+            sa_token_component = SATokenComponent(
+                charm=harness_with_container.charm,
+                name=self.token_k8s_name,
+                audiences=self.audiences,
+                sa_name=self.service_account_name,
+                sa_namespace=self.namespace,
+                filename=self.token_filename,
+                path=sa_token_dir,
+                expiration=self.expiration,
+            )
 
             sa_token_component.configure_charm("mocked event")
 
@@ -109,20 +108,6 @@ class TestSATokenComponent:
 
         sa_token_dir = clean_service_account_token_test_directory
 
-        harness_with_container.set_leader(True)
-
-        harness_with_container.set_can_connect(self.container_name, True)
-        sa_token_component = SATokenComponent(
-            charm=harness_with_container.charm,
-            name=self.token_k8s_name,
-            audiences=self.audiences,
-            sa_name=self.service_account_name,
-            sa_namespace=self.namespace,
-            filename=self.token_filename,
-            path=sa_token_dir,
-            expiration=self.expiration,
-        )
-
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
@@ -132,6 +117,19 @@ class TestSATokenComponent:
             )
 
             # Act:
+
+            harness_with_container.set_leader(True)
+            harness_with_container.set_can_connect(self.container_name, True)
+            sa_token_component = SATokenComponent(
+                charm=harness_with_container.charm,
+                name=self.token_k8s_name,
+                audiences=self.audiences,
+                sa_name=self.service_account_name,
+                sa_namespace=self.namespace,
+                filename=self.token_filename,
+                path=sa_token_dir,
+                expiration=self.expiration,
+            )
 
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.configure_charm("mocked event")
@@ -169,20 +167,6 @@ class TestSATokenComponent:
 
         sa_token_dir = clean_service_account_token_test_directory
 
-        harness_with_container.set_leader(False)
-
-        harness_with_container.set_can_connect(self.container_name, True)
-        sa_token_component = SATokenComponent(
-            charm=harness_with_container.charm,
-            name=self.token_k8s_name,
-            audiences=self.audiences,
-            sa_name=self.service_account_name,
-            sa_namespace=self.namespace,
-            filename=self.token_filename,
-            path=sa_token_dir,
-            expiration=self.expiration,
-        )
-
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
@@ -192,6 +176,19 @@ class TestSATokenComponent:
             )
 
             # Act:
+
+            harness_with_container.set_leader(False)
+            harness_with_container.set_can_connect(self.container_name, True)
+            sa_token_component = SATokenComponent(
+                charm=harness_with_container.charm,
+                name=self.token_k8s_name,
+                audiences=self.audiences,
+                sa_name=self.service_account_name,
+                sa_namespace=self.namespace,
+                filename=self.token_filename,
+                path=sa_token_dir,
+                expiration=self.expiration,
+            )
 
             sa_token_component.configure_charm("mocked event")
 
@@ -216,8 +213,11 @@ class TestSATokenComponent:
         """Check the previously created token file is recognized."""
         # Arrange:
 
-        harness_with_container.set_leader(is_leader)
+        # NOTE: nothing to setup for this test
 
+        # Act:
+
+        harness_with_container.set_leader(is_leader)
         harness_with_container.set_can_connect(self.container_name, True)
         sa_token_component = SATokenComponent(
             charm=harness_with_container.charm,
@@ -229,8 +229,6 @@ class TestSATokenComponent:
             path=PRECREATED_SA_TOKEN_DIR,
             expiration=self.expiration,
         )
-
-        # Act:
 
         # NOTE: purposely not triggering events to avoid recreating the token when leader
 
@@ -249,20 +247,6 @@ class TestSATokenComponent:
         first_token_content = self.token_content
         second_token_content = f"{self.token_content}-xyz"
 
-        harness_with_container.set_leader(True)
-
-        harness_with_container.set_can_connect(self.container_name, True)
-        sa_token_component = SATokenComponent(
-            charm=harness_with_container.charm,
-            name=self.token_k8s_name,
-            audiences=self.audiences,
-            sa_name=self.service_account_name,
-            sa_namespace=self.namespace,
-            filename=self.token_filename,
-            path=sa_token_dir,
-            expiration=self.expiration,
-        )
-
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
@@ -272,6 +256,19 @@ class TestSATokenComponent:
             mocked_k8s_client_create_token.return_value.status.token = first_token_content
 
             # Act:
+
+            harness_with_container.set_leader(True)
+            harness_with_container.set_can_connect(self.container_name, True)
+            sa_token_component = SATokenComponent(
+                charm=harness_with_container.charm,
+                name=self.token_k8s_name,
+                audiences=self.audiences,
+                sa_name=self.service_account_name,
+                sa_namespace=self.namespace,
+                filename=self.token_filename,
+                path=sa_token_dir,
+                expiration=self.expiration,
+            )
 
             sa_token_component.configure_charm("mocked event")
 
@@ -294,6 +291,8 @@ class TestSATokenComponent:
             spec = kwargs["body"].spec
             assert spec.audiences == self.audiences
             assert spec.expiration_seconds == self.expiration
+
+            # Arrange:
 
             # token recreation
 
@@ -333,25 +332,24 @@ class TestSATokenComponent:
             clean_service_account_token_test_directory / "subdirectoty-that-does-not-exist"
         )
 
-        harness_with_container.set_leader(True)
-
-        harness_with_container.set_can_connect(self.container_name, True)
-        sa_token_component = SATokenComponent(
-            charm=harness_with_container.charm,
-            name=self.token_k8s_name,
-            audiences=self.audiences,
-            sa_name=self.service_account_name,
-            sa_namespace=self.namespace,
-            filename=self.token_filename,
-            path=sa_token_dir,
-            expiration=self.expiration,
-        )
-
         with (
             patch(K8S_CLIENT_LOAD_CONFIG_PATH),
             patch.object(CoreV1Api, K8S_CLIENT_CREATE_TOKEN_API) as mocked_k8s_client_create_token,
         ):
             # Act:
+
+            harness_with_container.set_leader(True)
+            harness_with_container.set_can_connect(self.container_name, True)
+            sa_token_component = SATokenComponent(
+                charm=harness_with_container.charm,
+                name=self.token_k8s_name,
+                audiences=self.audiences,
+                sa_name=self.service_account_name,
+                sa_namespace=self.namespace,
+                filename=self.token_filename,
+                path=sa_token_dir,
+                expiration=self.expiration,
+            )
 
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.configure_charm("mocked event")
@@ -384,26 +382,25 @@ class TestSATokenComponent:
 
         sa_token_dir = clean_service_account_token_test_directory
 
-        harness_with_container.set_leader(True)
-
-        harness_with_container.set_can_connect(self.container_name, True)
-        sa_token_component = SATokenComponent(
-            charm=harness_with_container.charm,
-            name=self.token_k8s_name,
-            audiences=self.audiences,
-            sa_name=self.service_account_name,
-            sa_namespace=self.namespace,
-            filename=self.token_filename,
-            path=sa_token_dir,
-            expiration=self.expiration,
-        )
-
         with patch(K8S_CLIENT_LOAD_CONFIG_PATH) as mocked_k8s_config_loading:
             mocked_k8s_config_loading.side_effect = ConfigException(
                 "K8s cluster configuration loading failed."
             )
 
             # Act:
+
+            harness_with_container.set_leader(True)
+            harness_with_container.set_can_connect(self.container_name, True)
+            sa_token_component = SATokenComponent(
+                charm=harness_with_container.charm,
+                name=self.token_k8s_name,
+                audiences=self.audiences,
+                sa_name=self.service_account_name,
+                sa_namespace=self.namespace,
+                filename=self.token_filename,
+                path=sa_token_dir,
+                expiration=self.expiration,
+            )
 
             with pytest_raises(GenericCharmRuntimeError) as error:
                 sa_token_component.configure_charm("mocked event")
