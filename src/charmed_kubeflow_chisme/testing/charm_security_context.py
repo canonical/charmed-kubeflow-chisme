@@ -3,17 +3,25 @@
 
 """Utilities for testing security context and user privileges in charms."""
 import subprocess
+from typing import Dict, TypedDict
 
 import lightkube
 from lightkube.resources.core_v1 import Pod
 
 
-def generate_container_securitycontext_map(metadata_yaml: dict, juju_user_id: int = 170):
+class ContainerSecurityContext(TypedDict):
+    runAsUser: int | None
+    runAsGroup: int | None
+    runAsNonRoot: bool | None
+
+
+def generate_container_securitycontext_map(
+    metadata_yaml: dict, juju_user_id: int = 170
+) -> dict[str, ContainerSecurityContext]:
     """Generate a mapping of container names to their security context UID/GID settings.
 
     This function extracts container security context information from a charm's metadata
     and creates a mapping that includes both application containers and the charm container.
-    The mapping is used to verify that containers run with the correct user and group IDs.
 
     Args:
         metadata_yaml (dict): The charm's metadata dictionary, expected to contain a
@@ -42,10 +50,10 @@ def generate_container_securitycontext_map(metadata_yaml: dict, juju_user_id: in
     """
     c_uid_map = {}
     for k, v in metadata_yaml.get("containers", {}).items():
-        c_uid_map[k] = {
-            "runAsUser": v["uid"],
-            "runAsGroup": v["gid"],
-        }
+        c_uid_map[k] = ContainerSecurityContext(
+            runAsUser=v["uid"],
+            runAsGroup=v["gid"],
+        )
     c_uid_map["charm"] = {"runAsUser": juju_user_id, "runAsGroup": juju_user_id}
     return c_uid_map
 
@@ -88,7 +96,7 @@ def assert_security_context(
     lightkube_client: lightkube.Client,
     pod_name: str,
     container_name: str,
-    container_securitycontext_map: dict,
+    container_securitycontext_map: Dict[str, ContainerSecurityContext],
     model_name: str,
 ) -> None:
     """Assert that a container's security context matches expected UID/GID settings.
