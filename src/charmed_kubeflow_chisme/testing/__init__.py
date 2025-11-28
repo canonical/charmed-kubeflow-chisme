@@ -2,6 +2,12 @@
 # See LICENSE file for licensing details.
 """Utilities for testing charms."""
 
+from .charm_security_context import (
+    ContainerSecurityContext,
+    assert_security_context,
+    generate_container_securitycontext_map,
+    get_pod_names,
+)
 from .charm_spec import CharmSpec, generate_context_from_charm_spec_list
 from .cos_integration import (
     ALERT_RULES_DIRECTORY,
@@ -29,6 +35,10 @@ from .serialized_data_interface import (
 __all__ = [
     RelationMetadata,
     CharmSpec,
+    ContainerSecurityContext,
+    assert_security_context,
+    generate_container_securitycontext_map,
+    get_pod_names,
     add_data_to_sdi_relation,
     add_sdi_relation_to_harness,
     assert_alert_rules,
