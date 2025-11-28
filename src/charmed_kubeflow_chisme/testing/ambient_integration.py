@@ -1,0 +1,176 @@
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+"""Helpers for testing Istio ambient mode service mesh integration."""
+
+import aiohttp
+import lightkube
+from juju.model import Model
+
+ISTIO_K8S_APP = "istio-k8s"
+ISTIO_INGRESS_K8S_APP = "istio-ingress-k8s"
+ISTIO_BEACON_K8S_APP = "istio-beacon-k8s"
+
+
+async def deploy_and_integrate_service_mesh_charms(
+    app: str,
+    model: Model,
+    channel: str = "2/edge",
+    relate_to_ingress: bool = True,
+    relate_to_beacon: bool = True,
+) -> None:
+    """Deploy Istio service mesh charms (ambient mode).
+
+    Deploy Istio service mesh charms in the given model, relate them to the given app,
+    and wait for the model to become idle.
+
+    Args:
+        app: The name of the application to relate the Istio charms to.
+        model: The Juju model where the charms will be deployed.
+        channel: The channel from which to deploy the Istio charms. Defaults to "2/edge".
+        relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
+        relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
+    """
+    assert app in model.applications, f"application {app} was not found in model {model.name}"
+
+    await model.deploy(
+        ISTIO_K8S_APP,
+        channel=channel,
+        trust=True,
+    )
+
+    await model.deploy(
+        ISTIO_INGRESS_K8S_APP,
+        channel=channel,
+        trust=True,
+    )
+
+    await model.deploy(
+        ISTIO_BEACON_K8S_APP,
+        channel=channel,
+        trust=True,
+    )
+
+    await integrate_with_service_mesh(
+        app=app,
+        model=model,
+        relate_to_ingress=relate_to_ingress,
+        relate_to_beacon=relate_to_beacon,
+    )
+
+
+async def integrate_with_service_mesh(
+    app: str,
+    model: Model,
+    relate_to_ingress: bool = True,
+    relate_to_beacon: bool = True,
+) -> None:
+    """Integrate the application with Istio service mesh charms.
+
+    Integrate the given application with the Istio service mesh charms in the given model.
+
+    Args:
+        app: The name of the application to relate the Istio charms to.
+        model: The Juju model where the charms are deployed.
+        relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
+        relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
+    """
+    assert app in model.applications, f"application {app} was not found in model {model.name}"
+
+    if relate_to_ingress:
+        await model.integrate(
+            f"{ISTIO_INGRESS_K8S_APP}:istio-ingress-route", f"{app}:istio-ingress-route"
+        )
+
+    if relate_to_beacon:
+        await model.integrate(f"{ISTIO_BEACON_K8S_APP}:service-mesh", f"{app}:service-mesh")
+
+    await model.wait_for_idle(
+        raise_on_blocked=False,
+        raise_on_error=True,
+        timeout=900,
+    )
+
+
+async def fetch_response(url: str, headers: dict | None = None) -> tuple[int, str, str]:
+    """Fetch provided URL and return tuple - status, text, and content-type (int, string, string).
+
+    The content-type returned is the media type only (e.g., "text/html"),
+    without charset or other parameters.
+
+    Args:
+        url: The URL to fetch.
+        headers: Optional HTTP headers to include in the request.
+
+    Returns:
+        A tuple of (status_code, response_text, content_type).
+    """
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            result_status = response.status
+            result_text = await response.text()
+            # Extract only the media type, removing charset and other parameters
+            full_content_type = response.headers.get("Content-Type", "")
+            content_type = full_content_type.split(";")[0].strip()
+    return result_status, result_text, content_type
+
+
+async def assert_path_reachable_through_ingress(
+    http_path: str,
+    namespace: str,
+    service_name: str = "istio-ingress-k8s-istio",
+    headers: dict | None = None,
+    expected_status: int = 200,
+    expected_content_type: str | None = None,
+    expected_response_text: str | None = None,
+) -> None:
+    """Assert that a given path is reachable through the Istio ingress gateway.
+
+    Args:
+        http_path: The HTTP path to test.
+        namespace: The Kubernetes namespace where the Istio ingress gateway is deployed.
+        service_name: The name of the Istio ingress gateway service.
+            Defaults to "istio-ingress-k8s-istio".
+        headers: Optional HTTP headers to include in the request. Defaults to None.
+        expected_status: The expected HTTP status code. Defaults to 200.
+        expected_content_type: Optional content type to check in the response headers.
+            Media type only, e.g., "text/html".
+        expected_response_text: Optional text that should be contained in the response body.
+    """
+    # Get the external IP of the Istio ingress gateway service
+    client = lightkube.Client()
+
+    gateway_svc = client.get(
+        lightkube.resources.core_v1.Service,
+        name=service_name,
+        namespace=namespace,
+    )
+
+    # Check if LoadBalancer ingress is available
+    assert (
+        gateway_svc.status.loadBalancer.ingress
+    ), f"Service {service_name} in namespace {namespace} does not have a LoadBalancer IP"
+
+    external_ip = gateway_svc.status.loadBalancer.ingress[0].ip
+
+    # Fetch the response from the ingress gateway
+    url = f"http://{external_ip}{http_path}"
+    response_status, response_text, response_content_type = await fetch_response(url, headers)
+
+    # Check if the response status matches the expected status
+    assert response_status == expected_status, (
+        f"Expected status {expected_status} but got {response_status} " f"when accessing {url}"
+    )
+
+    # Optionally check if the content type matches the expected content type
+    if expected_content_type:
+        assert (
+            expected_content_type == response_content_type
+        ), f"Expected content type '{expected_content_type}' but got '{response_content_type}' in response from {url}"
+
+    # Optionally check if the response text matches the expected response text
+    if expected_response_text:
+        assert expected_response_text in response_text, (
+            f"Expected response text to contain '{expected_response_text}' "
+            f"but it was not found in response from {url}"
+        )
