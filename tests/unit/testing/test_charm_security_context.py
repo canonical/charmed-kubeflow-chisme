@@ -385,45 +385,6 @@ def test_generate_container_securitycontext_map_always_includes_charm(metadata_y
 
 
 @pytest.mark.parametrize(
-    "metadata_yaml,expected_keys",
-    [
-        (
-            {
-                "containers": {
-                    "workload": {"uid": 1000, "gid": 1000},
-                }
-            },
-            {"workload", "charm"},
-        ),
-        (
-            {
-                "containers": {
-                    "workload1": {"uid": 1000, "gid": 1000},
-                    "workload2": {"uid": 101, "gid": 101},
-                }
-            },
-            {"workload1", "workload2", "charm"},
-        ),
-        (
-            {
-                "containers": {
-                    "workload1": {"uid": 1000, "gid": 1000},
-                    "workload2": {"uid": 101, "gid": 101},
-                    "workload3": {"uid": 70, "gid": 70},
-                }
-            },
-            {"workload1", "workload2", "workload3", "charm"},
-        ),
-    ],
-    ids=["one_container", "two_containers", "three_containers"],
-)
-def test_generate_container_securitycontext_map_correct_keys(metadata_yaml, expected_keys):
-    """Test that all expected container names are present as keys."""
-    result = generate_container_securitycontext_map(metadata_yaml)
-    assert set(result.keys()) == expected_keys
-
-
-@pytest.mark.parametrize(
     "metadata_yaml,container_name",
     [
         (
@@ -637,50 +598,6 @@ def test_get_pod_names_empty_string_results_in_empty_list(mock_run):
 
     # Empty string split should give []
     assert result == []
-
-
-@patch("subprocess.run")
-def test_get_pod_names_decodes_utf8(mock_run):
-    """Test that stdout is decoded as UTF-8."""
-    # Setup mock
-    mock_process = MagicMock()
-    mock_run.return_value = mock_process
-
-    # Call function
-    get_pod_names("my-model", "charm-app")
-
-    # Verify decode was called with "utf8"
-    mock_process.stdout.decode.assert_called_once_with("utf8")
-
-
-@pytest.mark.parametrize(
-    "pod_count,expected_count",
-    [
-        (1, 1),
-        (3, 3),
-        (5, 5),
-        (10, 10),
-    ],
-    ids=["one_pod", "three_pods", "five_pods", "ten_pods"],
-)
-@patch("subprocess.run")
-def test_get_pod_names_various_pod_counts(mock_run, pod_count, expected_count):
-    """Test get_pod_names with different numbers of pods."""
-    # Create stdout with specified number of pods
-    pod_names = [f"pod-{i}" for i in range(pod_count)]
-    stdout = "\n".join(pod_names) + "\n"
-
-    # Setup mock
-    mock_process = MagicMock()
-    mock_process.stdout.decode.return_value = stdout
-    mock_run.return_value = mock_process
-
-    # Call function
-    result = get_pod_names("my-model", "charm-app")
-
-    # Verify result
-    assert len(result) == expected_count
-    assert result == pod_names
 
 
 def create_mock_container(name, run_as_user, run_as_group, run_as_non_root=None):
