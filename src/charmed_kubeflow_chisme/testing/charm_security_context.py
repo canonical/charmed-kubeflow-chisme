@@ -10,9 +10,41 @@ from lightkube.resources.core_v1 import Pod
 
 
 class ContainerSecurityContext(TypedDict):
-    runAsUser: int | None
-    runAsGroup: int | None
-    runAsNonRoot: bool | None
+    """TypedDict representing Kubernetes container security context settings.
+
+    This TypedDict defines the structure for container security context configurations,
+    specifically focusing on user/group IDs and non-root execution requirements. It's
+    used to type-hint dictionaries containing security context information for
+    Kubernetes containers.
+
+    Attributes:
+        runAsUser (int | None): The UID to run the container's entry point as.
+            Corresponds to the Kubernetes securityContext.runAsUser field.
+        runAsGroup (int | None): The GID to run the container's entry point as.
+            Corresponds to the Kubernetes securityContext.runAsGroup field.
+        runAsNonRoot (bool | None): Indicates that the container must run as a non-root
+            user. If true, the kubelet will validate the image at runtime to ensure it
+            does not run as UID 0 (root). Corresponds to the Kubernetes
+            securityContext.runAsNonRoot field.
+
+    Note:
+        All fields can be None to indicate they are not set or not applicable.
+        The field names follow Kubernetes naming conventions (camelCase) rather than
+        Python conventions (snake_case), hence the noqa N815 annotations.
+
+    Example:
+        >>> context: ContainerSecurityContext = {
+        ...     "runAsUser": 1000,
+        ...     "runAsGroup": 1000,
+        ...     "runAsNonRoot": True,
+        ... }
+        >>> print(context["runAsUser"])
+        1000
+    """
+
+    runAsUser: int | None  # noqa N815
+    runAsGroup: int | None  # noqa N815
+    runAsNonRoot: bool | None  # noqa N815
 
 
 def generate_container_securitycontext_map(

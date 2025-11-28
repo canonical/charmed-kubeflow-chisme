@@ -908,7 +908,7 @@ def test_assert_security_context_only_checks_specified_keys():
     ids=["one_container", "two_containers", "five_containers", "ten_containers"],
 )
 def test_assert_security_context_finds_target_in_varying_pod_sizes(container_count):
-    """Test assert_security_context can find target container in pods with varying container counts."""
+    """Test assert_security_context finds target container in pods of varying container counts."""
     # Setup mocks with multiple containers
     mock_client = Mock()
     mock_pod = Mock()
