@@ -1,10 +1,14 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import subprocess
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from charmed_kubeflow_chisme.testing.charm_security_context import (
     generate_container_securitycontext_map,
+    get_pod_names,
 )
 
 
@@ -31,11 +35,11 @@ from charmed_kubeflow_chisme.testing.charm_security_context import (
         (
             {
                 "containers": {
-                    "workload": {
+                    "workload1": {
                         "uid": 1000,
                         "gid": 1000,
                     },
-                    "nginx": {
+                    "workload2": {
                         "uid": 101,
                         "gid": 101,
                     },
@@ -43,8 +47,8 @@ from charmed_kubeflow_chisme.testing.charm_security_context import (
             },
             170,
             {
-                "workload": {"runAsUser": 1000, "runAsGroup": 1000},
-                "nginx": {"runAsUser": 101, "runAsGroup": 101},
+                "workload1": {"runAsUser": 1000, "runAsGroup": 1000},
+                "workload2": {"runAsUser": 101, "runAsGroup": 101},
                 "charm": {"runAsUser": 170, "runAsGroup": 170},
             },
         ),
@@ -300,3 +304,175 @@ def test_generate_container_securitycontext_map_various_uid_gid_combinations(uid
     result = generate_container_securitycontext_map(metadata_yaml)
     assert result["test"]["runAsUser"] == uid
     assert result["test"]["runAsGroup"] == gid
+
+
+@pytest.mark.parametrize(
+    "stdout,expected_pod_names",
+    [
+        # Single pod
+        ("charm-app-0\n", ["charm-app-0"]),
+        # Multiple pods
+        ("charm-app-0\ncharm-app-1\ncharm-app-2\n", ["charm-app-0", "charm-app-1", "charm-app-2"]),
+        # Empty output (no pods found)
+        ("", []),
+        # Single pod without trailing newline
+        ("charm-app-0", ["charm-app-0"]),
+        # Pods with longer names
+        (
+            "kubeflow-pod-0\nkubeflow-pod-1\n",
+            ["kubeflow-pod-0", "kubeflow-pod-1"],
+        ),
+    ],
+    ids=[
+        "single_pod",
+        "multiple_pods",
+        "no_pods",
+        "single_pod_no_newline",
+        "longer_names",
+    ],
+)
+@patch("subprocess.run")
+def test_get_pod_names_various_outputs(mock_run, stdout, expected_pod_names):
+    """Test get_pod_names with various kubectl output formats."""
+    # Setup mock
+    mock_process = MagicMock()
+    mock_process.stdout.decode.return_value = stdout
+    mock_run.return_value = mock_process
+
+    # Call function
+    result = get_pod_names("test-model", "charm-app")
+
+    # Verify result
+    assert result == expected_pod_names
+
+    # Verify kubectl was called correctly
+    mock_run.assert_called_once()
+    call_args = mock_run.call_args[0][0]
+    assert call_args[0] == "kubectl"
+    assert call_args[1] == "get"
+    assert call_args[2] == "pods"
+    assert "-ntest-model" in call_args
+    assert "-lapp.kubernetes.io/name=charm-app" in call_args
+
+
+@pytest.mark.parametrize(
+    "model_name,application_name,expected_namespace,expected_label",
+    [
+        ("dev", "charm-pod", "-ndev", "-lapp.kubernetes.io/name=charm-pod"),
+        ("kubeflow", "kubeflow-pod", "-nkubeflow", "-lapp.kubernetes.io/name=kubeflow-pod"),
+        ("test-123", "app-456", "-ntest-123", "-lapp.kubernetes.io/name=app-456"),
+    ],
+    ids=["dev_model", "kubeflow_model", "numeric_names"],
+)
+@patch("subprocess.run")
+def test_get_pod_names_command_construction(
+    mock_run, model_name, application_name, expected_namespace, expected_label
+):
+    """Test that kubectl command is constructed correctly with different inputs."""
+    # Setup mock
+    mock_process = MagicMock()
+    mock_process.stdout.decode.return_value = "pod-0\n"
+    mock_run.return_value = mock_process
+
+    # Call function
+    get_pod_names(model_name, application_name)
+
+    # Verify kubectl command
+    call_args = mock_run.call_args[0][0]
+    assert expected_namespace in call_args
+    assert expected_label in call_args
+    assert "--no-headers" in call_args
+    assert "-o=custom-columns=NAME:.metadata.name" in call_args
+
+
+@patch("subprocess.run")
+def test_get_pod_names_subprocess_called_with_correct_args(mock_run):
+    """Test that subprocess.run is called with correct arguments."""
+    # Setup mock
+    mock_process = MagicMock()
+    mock_process.stdout.decode.return_value = "pod-0\n"
+    mock_run.return_value = mock_process
+
+    # Call function
+    get_pod_names("my-model", "charm-app")
+
+    # Verify subprocess.run was called with stdout=PIPE
+    mock_run.assert_called_once()
+    assert mock_run.call_args[1]["stdout"] == subprocess.PIPE
+
+
+@patch("subprocess.run")
+def test_get_pod_names_handles_whitespace(mock_run):
+    """Test that get_pod_names handles various whitespace in output."""
+    # Setup mock with extra whitespace
+    mock_process = MagicMock()
+    mock_process.stdout.decode.return_value = "pod-0\n\npod-1\n  \npod-2\n"
+    mock_run.return_value = mock_process
+
+    # Call function
+    result = get_pod_names("my-model", "charm-app")
+
+    # Result should include empty strings from extra newlines
+    # This tests the actual behavior of str.split()
+    assert "pod-0" in result
+    assert "pod-1" in result
+    assert "pod-2" in result
+
+
+@patch("subprocess.run")
+def test_get_pod_names_empty_string_results_in_empty_list(mock_run):
+    """Test that empty string output results in appropriate list."""
+    # Setup mock with empty string
+    mock_process = MagicMock()
+    mock_process.stdout.decode.return_value = ""
+    mock_run.return_value = mock_process
+
+    # Call function
+    result = get_pod_names("my-model", "charm-app")
+
+    # Empty string split should give []
+    assert result == []
+
+
+@patch("subprocess.run")
+def test_get_pod_names_decodes_utf8(mock_run):
+    """Test that stdout is decoded as UTF-8."""
+    # Setup mock
+    mock_process = MagicMock()
+    mock_run.return_value = mock_process
+
+    # Call function
+    get_pod_names("my-model", "charm-app")
+
+    # Verify decode was called with "utf8"
+    mock_process.stdout.decode.assert_called_once_with("utf8")
+
+
+@pytest.mark.parametrize(
+    "pod_count,expected_count",
+    [
+        (1, 1),
+        (3, 3),
+        (5, 5),
+        (10, 10),
+    ],
+    ids=["one_pod", "three_pods", "five_pods", "ten_pods"],
+)
+@patch("subprocess.run")
+def test_get_pod_names_various_pod_counts(mock_run, pod_count, expected_count):
+    """Test get_pod_names with different numbers of pods."""
+    # Create stdout with specified number of pods
+    pod_names = [f"pod-{i}" for i in range(pod_count)]
+    stdout = "\n".join(pod_names) + "\n"
+
+    # Setup mock
+    mock_process = MagicMock()
+    mock_process.stdout.decode.return_value = stdout
+    mock_run.return_value = mock_process
+
+    # Call function
+    result = get_pod_names("my-model", "charm-app")
+
+    # Verify result
+    assert len(result) == expected_count
+    assert result == pod_names
