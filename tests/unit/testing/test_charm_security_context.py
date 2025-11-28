@@ -7,10 +7,214 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from charmed_kubeflow_chisme.testing.charm_security_context import (
+    ContainerSecurityContext,
     assert_security_context,
     generate_container_securitycontext_map,
     get_pod_names,
 )
+
+
+def test_container_security_context_all_fields():
+    """Test ContainerSecurityContext with all fields populated."""
+    context: ContainerSecurityContext = {
+        "runAsUser": 1000,
+        "runAsGroup": 1000,
+        "runAsNonRoot": True,
+    }
+
+    assert context["runAsUser"] == 1000
+    assert context["runAsGroup"] == 1000
+    assert context["runAsNonRoot"] is True
+
+
+def test_container_security_context_partial_fields():
+    """Test ContainerSecurityContext with only some fields populated."""
+    context: ContainerSecurityContext = {
+        "runAsUser": 1000,
+        "runAsGroup": None,
+        "runAsNonRoot": None,
+    }
+
+    assert context["runAsUser"] == 1000
+    assert context["runAsGroup"] is None
+    assert context["runAsNonRoot"] is None
+
+
+def test_container_security_context_all_none():
+    """Test ContainerSecurityContext with all None values."""
+    context: ContainerSecurityContext = {
+        "runAsUser": None,
+        "runAsGroup": None,
+        "runAsNonRoot": None,
+    }
+
+    assert context["runAsUser"] is None
+    assert context["runAsGroup"] is None
+    assert context["runAsNonRoot"] is None
+
+
+@pytest.mark.parametrize(
+    "run_as_user,run_as_group,run_as_non_root",
+    [
+        (0, 0, False),  # Root user
+        (1000, 1000, True),  # Regular user
+        (170, 170, True),  # Juju default user
+        (65534, 65534, True),  # Nobody user
+        (999, 888, True),  # Different UID/GID
+        (None, None, None),  # All None
+        (1000, None, True),  # Partial None
+    ],
+    ids=[
+        "root_user",
+        "regular_user",
+        "juju_default",
+        "nobody_user",
+        "different_uid_gid",
+        "all_none",
+        "partial_none",
+    ],
+)
+def test_container_security_context_various_values(run_as_user, run_as_group, run_as_non_root):
+    """Test ContainerSecurityContext with various value combinations."""
+    context: ContainerSecurityContext = {
+        "runAsUser": run_as_user,
+        "runAsGroup": run_as_group,
+        "runAsNonRoot": run_as_non_root,
+    }
+
+    assert context["runAsUser"] == run_as_user
+    assert context["runAsGroup"] == run_as_group
+    assert context["runAsNonRoot"] == run_as_non_root
+
+
+def test_container_security_context_is_dict():
+    """Test that ContainerSecurityContext behaves like a dict."""
+    context: ContainerSecurityContext = {
+        "runAsUser": 1000,
+        "runAsGroup": 1000,
+        "runAsNonRoot": True,
+    }
+
+    # Should behave like a dict
+    assert isinstance(context, dict)
+    assert len(context) == 3
+    assert "runAsUser" in context
+    assert "runAsGroup" in context
+    assert "runAsNonRoot" in context
+
+
+def test_container_security_context_dict_operations():
+    """Test that ContainerSecurityContext supports standard dict operations."""
+    context: ContainerSecurityContext = {
+        "runAsUser": 1000,
+        "runAsGroup": 1000,
+        "runAsNonRoot": True,
+    }
+
+    # Test .get()
+    assert context.get("runAsUser") == 1000
+    assert context.get("nonexistent") is None
+
+    # Test .keys()
+    assert set(context.keys()) == {"runAsUser", "runAsGroup", "runAsNonRoot"}
+
+    # Test .values()
+    assert 1000 in context.values()
+    assert True in context.values()
+
+    # Test .items()
+    items = list(context.items())
+    assert ("runAsUser", 1000) in items
+    assert ("runAsGroup", 1000) in items
+    assert ("runAsNonRoot", True) in items
+
+
+def test_container_security_context_iteration():
+    """Test that ContainerSecurityContext can be iterated."""
+    context: ContainerSecurityContext = {
+        "runAsUser": 1000,
+        "runAsGroup": 1000,
+        "runAsNonRoot": True,
+    }
+
+    # Should be able to iterate over keys
+    keys = [key for key in context]
+    assert set(keys) == {"runAsUser", "runAsGroup", "runAsNonRoot"}
+
+
+def test_container_security_context_update():
+    """Test that ContainerSecurityContext can be updated."""
+    context: ContainerSecurityContext = {
+        "runAsUser": 1000,
+        "runAsGroup": 1000,
+        "runAsNonRoot": None,
+    }
+
+    # Update a value
+    context["runAsUser"] = 2000
+    assert context["runAsUser"] == 2000
+
+    # Update another value
+    context["runAsNonRoot"] = True
+    assert context["runAsNonRoot"] is True
+
+
+def test_container_security_context_in_function_return():
+    """Test ContainerSecurityContext used as a function return type."""
+
+    def create_context(uid: int, gid: int) -> ContainerSecurityContext:
+        return {
+            "runAsUser": uid,
+            "runAsGroup": gid,
+            "runAsNonRoot": uid != 0,
+        }
+
+    context = create_context(1000, 1000)
+    assert context["runAsUser"] == 1000
+    assert context["runAsGroup"] == 1000
+    assert context["runAsNonRoot"] is True
+
+    root_context = create_context(0, 0)
+    assert root_context["runAsUser"] == 0
+    assert root_context["runAsGroup"] == 0
+    assert root_context["runAsNonRoot"] is False
+
+
+def test_container_security_context_compatibility_with_generate_function():
+    """Test ContainerSecurityContext is compatible with generate_container_securitycontext_map."""
+    metadata = {
+        "containers": {
+            "app": {"uid": 1000, "gid": 1000},
+        }
+    }
+
+    result = generate_container_securitycontext_map(metadata)
+
+    # Result should contain ContainerSecurityContext-compatible dicts
+    app_context = result["app"]
+    assert "runAsUser" in app_context
+    assert "runAsGroup" in app_context
+    assert app_context["runAsUser"] == 1000
+    assert app_context["runAsGroup"] == 1000
+
+
+@pytest.mark.parametrize(
+    "context_dict",
+    [
+        {"runAsUser": 1000, "runAsGroup": 1000, "runAsNonRoot": True},
+        {"runAsUser": None, "runAsGroup": None, "runAsNonRoot": None},
+        {"runAsUser": 0, "runAsGroup": 0, "runAsNonRoot": False},
+    ],
+    ids=["normal_user", "all_none", "root_user"],
+)
+def test_container_security_context_type_annotation(context_dict):
+    """Test that ContainerSecurityContext type annotation works with various dicts."""
+
+    def validate_context(ctx: ContainerSecurityContext) -> bool:
+        return "runAsUser" in ctx and "runAsGroup" in ctx and "runAsNonRoot" in ctx
+
+    # Should accept the dict as a ContainerSecurityContext
+    assert validate_context(context_dict) is True
 
 
 @pytest.mark.parametrize(
