@@ -2,11 +2,12 @@
 # See LICENSE file for licensing details.
 
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from charmed_kubeflow_chisme.testing.charm_security_context import (
+    assert_security_context,
     generate_container_securitycontext_map,
     get_pod_names,
 )
@@ -476,3 +477,280 @@ def test_get_pod_names_various_pod_counts(mock_run, pod_count, expected_count):
     # Verify result
     assert len(result) == expected_count
     assert result == pod_names
+
+
+def create_mock_container(name, run_as_user, run_as_group, run_as_non_root=None):
+    """Helper function to create a mock container with security context."""
+    container = Mock()
+    container.name = name
+    container.securityContext = Mock()
+    container.securityContext.runAsUser = run_as_user
+    container.securityContext.runAsGroup = run_as_group
+    if run_as_non_root is not None:
+        container.securityContext.runAsNonRoot = run_as_non_root
+    return container
+
+
+@pytest.mark.parametrize(
+    "container_name,run_as_user,run_as_group,expected_map",
+    [
+        # Test case: Matching UID/GID
+        (
+            "workload",
+            1000,
+            1000,
+            {"workload": {"runAsUser": 1000, "runAsGroup": 1000}},
+        ),
+        # Test case: Different UID and GID
+        (
+            "workload",
+            999,
+            888,
+            {"workload": {"runAsUser": 999, "runAsGroup": 888}},
+        ),
+        # Test case: Root user
+        (
+            "workload",
+            0,
+            0,
+            {"workload": {"runAsUser": 0, "runAsGroup": 0}},
+        ),
+    ],
+    ids=["matching_uid_gid", "different_uid_gid", "root_user"],
+)
+def test_assert_security_context_success(container_name, run_as_user, run_as_group, expected_map):
+    """Test assert_security_context with matching security contexts."""
+    # Setup mocks
+    mock_client = Mock()
+    mock_pod = Mock()
+    mock_container = create_mock_container(container_name, run_as_user, run_as_group)
+    mock_pod.spec.containers = [mock_container]
+    mock_client.get.return_value = mock_pod
+
+    # Call function - should not raise
+    assert_security_context(
+        mock_client,
+        "test-pod-0",
+        container_name,
+        expected_map,
+        "test-model",
+    )
+
+    # Verify client.get was called correctly
+    mock_client.get.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "expected_user,actual_user,expected_group,actual_group",
+    [
+        (1000, 999, 1000, 1000),  # Wrong user
+        (1000, 1000, 1000, 999),  # Wrong group
+        (1000, 999, 1000, 888),  # Both wrong
+        (1000, 0, 1000, 1000),  # User running as root unexpectedly
+    ],
+    ids=["wrong_user", "wrong_group", "both_wrong", "unexpected_root"],
+)
+def test_assert_security_context_mismatch_raises(
+    expected_user, actual_user, expected_group, actual_group
+):
+    """Test assert_security_context raises AssertionError on mismatch."""
+    # Setup mocks
+    mock_client = Mock()
+    mock_pod = Mock()
+    mock_container = create_mock_container("workload", actual_user, actual_group)
+    mock_pod.spec.containers = [mock_container]
+    mock_client.get.return_value = mock_pod
+
+    expected_map = {"workload": {"runAsUser": expected_user, "runAsGroup": expected_group}}
+
+    # Call function - should raise AssertionError
+    with pytest.raises(AssertionError):
+        assert_security_context(
+            mock_client,
+            "test-pod-0",
+            "workload",
+            expected_map,
+            "test-model",
+        )
+
+
+def test_assert_security_context_multiple_containers():
+    """Test assert_security_context finds correct container in multi-container pod."""
+    # Setup mocks with multiple containers
+    mock_client = Mock()
+    mock_pod = Mock()
+    container1 = create_mock_container("workload1", 1000, 1000)
+    container2 = create_mock_container("workload2", 2000, 2000)
+    container3 = create_mock_container("workload3", 3000, 3000)
+    mock_pod.spec.containers = [container1, container2, container3]
+    mock_client.get.return_value = mock_pod
+
+    expected_map = {"workload2": {"runAsUser": 2000, "runAsGroup": 2000}}
+
+    # Call function - should check workload2
+    assert_security_context(
+        mock_client,
+        "test-pod-0",
+        "workload2",
+        expected_map,
+        "test-model",
+    )
+
+
+def test_assert_security_context_container_not_found():
+    """Test assert_security_context when container name doesn't exist."""
+    # Setup mocks
+    mock_client = Mock()
+    mock_pod = Mock()
+    mock_container = create_mock_container("workload1", 1000, 1000)
+    mock_pod.spec.containers = [mock_container]
+    mock_client.get.return_value = mock_pod
+
+    expected_map = {"nonexistent": {"runAsUser": 1000, "runAsGroup": 1000}}
+
+    # Call function - should raise AttributeError when accessing None.securityContext
+    with pytest.raises(AttributeError):
+        assert_security_context(
+            mock_client,
+            "test-pod-0",
+            "nonexistent",
+            expected_map,
+            "test-model",
+        )
+
+
+@pytest.mark.parametrize(
+    "pod_name,model_name",
+    [
+        ("test-pod-0", "test-model"),
+        ("charm-operator-0", "kubeflow"),
+    ],
+    ids=["test_environment", "kubeflow_environment"],
+)
+def test_assert_security_context_pod_retrieval(pod_name, model_name):
+    """Test that assert_security_context retrieves the correct pod."""
+    # Setup mocks
+    mock_client = Mock()
+    mock_pod = Mock()
+    mock_container = create_mock_container("workload", 1000, 1000)
+    mock_pod.spec.containers = [mock_container]
+    mock_client.get.return_value = mock_pod
+
+    expected_map = {"workload": {"runAsUser": 1000, "runAsGroup": 1000}}
+
+    # Call function
+    assert_security_context(
+        mock_client,
+        pod_name,
+        "workload",
+        expected_map,
+        model_name,
+    )
+
+    # Verify correct pod was retrieved
+    call_args = mock_client.get.call_args
+    # First positional arg should be Pod class, second is pod_name
+    assert call_args[0][1] == pod_name
+    # Namespace should be model_name
+    assert call_args[1]["namespace"] == model_name
+
+
+def test_assert_security_context_charm_container():
+    """Test assert_security_context with charm container (default Juju user)."""
+    # Setup mocks
+    mock_client = Mock()
+    mock_pod = Mock()
+    charm_container = create_mock_container("charm", 170, 170)
+    mock_pod.spec.containers = [charm_container]
+    mock_client.get.return_value = mock_pod
+
+    expected_map = {"charm": {"runAsUser": 170, "runAsGroup": 170}}
+
+    # Call function - should not raise
+    assert_security_context(
+        mock_client,
+        "test-pod-0",
+        "charm",
+        expected_map,
+        "test-model",
+    )
+
+
+def test_assert_security_context_only_checks_specified_keys():
+    """Test that assert_security_context only checks keys present in expected map."""
+    # Setup mocks - container has runAsNonRoot but map doesn't include it
+    mock_client = Mock()
+    mock_pod = Mock()
+    mock_container = create_mock_container("workload", 1000, 1000, run_as_non_root=True)
+    mock_pod.spec.containers = [mock_container]
+    mock_client.get.return_value = mock_pod
+
+    # Map only includes runAsUser and runAsGroup
+    expected_map = {"workload": {"runAsUser": 1000, "runAsGroup": 1000}}
+
+    # Call function - should not raise even though runAsNonRoot is not checked
+    assert_security_context(
+        mock_client,
+        "test-pod-0",
+        "workload",
+        expected_map,
+        "test-model",
+    )
+
+
+@pytest.mark.parametrize(
+    "container_count",
+    [1, 2, 5, 10],
+    ids=["one_container", "two_containers", "five_containers", "ten_containers"],
+)
+def test_assert_security_context_finds_target_in_varying_pod_sizes(container_count):
+    """Test assert_security_context can find target container in pods with varying container counts."""
+    # Setup mocks with multiple containers
+    mock_client = Mock()
+    mock_pod = Mock()
+
+    # Create multiple containers, target is in the middle
+    containers = []
+    for i in range(container_count):
+        containers.append(create_mock_container(f"workload{i}", 1000 + i, 1000 + i))
+
+    mock_pod.spec.containers = containers
+    mock_client.get.return_value = mock_pod
+
+    # Check the middle container
+    target_index = container_count // 2
+    target_name = f"workload{target_index}"
+    expected_map = {
+        target_name: {"runAsUser": 1000 + target_index, "runAsGroup": 1000 + target_index}
+    }
+
+    # Call function - should find and verify the target container
+    assert_security_context(
+        mock_client,
+        "test-pod-0",
+        target_name,
+        expected_map,
+        "test-model",
+    )
+
+
+def test_assert_security_context_empty_expected_map():
+    """Test assert_security_context with empty security context map for a container."""
+    # Setup mocks
+    mock_client = Mock()
+    mock_pod = Mock()
+    mock_container = create_mock_container("workload", 1000, 1000)
+    mock_pod.spec.containers = [mock_container]
+    mock_client.get.return_value = mock_pod
+
+    # Empty map for the container - no assertions should be made
+    expected_map = {"workload": {}}
+
+    # Call function - should not raise as there are no keys to check
+    assert_security_context(
+        mock_client,
+        "test-pod-0",
+        "workload",
+        expected_map,
+        "test-model",
+    )
