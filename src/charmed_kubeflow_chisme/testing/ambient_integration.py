@@ -3,13 +3,19 @@
 
 """Helpers for testing Istio ambient mode service mesh integration."""
 
+import logging
+
 import aiohttp
 import lightkube
 from juju.model import Model
 
+logger = logging.getLogger(__name__)
+
 ISTIO_K8S_APP = "istio-k8s"
 ISTIO_INGRESS_K8S_APP = "istio-ingress-k8s"
 ISTIO_BEACON_K8S_APP = "istio-beacon-k8s"
+ISTIO_INGRESS_ROUTE_ENDPOINT = "istio-ingress-route"
+SERVICE_MESH_ENDPOINT = "service-mesh"
 
 
 async def deploy_and_integrate_service_mesh_charms(
@@ -75,15 +81,25 @@ async def integrate_with_service_mesh(
         relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
         relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
     """
+    if not relate_to_ingress and not relate_to_beacon:
+        logger.warning(
+            "No integrations requested (both relate_to_ingress and relate_to_beacon are False). "
+            "Skipping integration."
+        )
+        return
+
     assert app in model.applications, f"application {app} was not found in model {model.name}"
 
     if relate_to_ingress:
         await model.integrate(
-            f"{ISTIO_INGRESS_K8S_APP}:istio-ingress-route", f"{app}:istio-ingress-route"
+            f"{ISTIO_INGRESS_K8S_APP}:{ISTIO_INGRESS_ROUTE_ENDPOINT}",
+            f"{app}:{ISTIO_INGRESS_ROUTE_ENDPOINT}",
         )
 
     if relate_to_beacon:
-        await model.integrate(f"{ISTIO_BEACON_K8S_APP}:service-mesh", f"{app}:service-mesh")
+        await model.integrate(
+            f"{ISTIO_BEACON_K8S_APP}:{SERVICE_MESH_ENDPOINT}", f"{app}:{SERVICE_MESH_ENDPOINT}"
+        )
 
     await model.wait_for_idle(
         raise_on_blocked=False,
@@ -92,14 +108,14 @@ async def integrate_with_service_mesh(
     )
 
 
-async def fetch_response(url: str, headers: dict | None = None) -> tuple[int, str, str]:
-    """Fetch provided URL and return tuple - status, text, and content-type (int, string, string).
+async def get_http_response(url: str, headers: dict | None = None) -> tuple[int, str, str]:
+    """Perform HTTP GET request and return status, text, and content-type.
 
-    The content-type returned is the media type only (e.g., "text/html"),
-    without charset or other parameters.
+    Sends an HTTP GET request to the provided URL and returns a tuple containing
+    the status code, response text, and content-type (media type only).
 
     Args:
-        url: The URL to fetch.
+        url: The URL to send the GET request to.
         headers: Optional HTTP headers to include in the request.
 
     Returns:
@@ -155,7 +171,7 @@ async def assert_path_reachable_through_ingress(
 
     # Fetch the response from the ingress gateway
     url = f"http://{external_ip}{http_path}"
-    response_status, response_text, response_content_type = await fetch_response(url, headers)
+    response_status, response_text, response_content_type = await get_http_response(url, headers)
 
     # Check if the response status matches the expected status
     assert response_status == expected_status, (
@@ -163,13 +179,13 @@ async def assert_path_reachable_through_ingress(
     )
 
     # Optionally check if the content type matches the expected content type
-    if expected_content_type:
+    if expected_content_type is not None:
         assert (
             expected_content_type == response_content_type
         ), f"Expected content type '{expected_content_type}' but got '{response_content_type}' in response from {url}"
 
     # Optionally check if the response text matches the expected response text
-    if expected_response_text:
+    if expected_response_text is not None:
         assert expected_response_text in response_text, (
             f"Expected response text to contain '{expected_response_text}' "
             f"but it was not found in response from {url}"
