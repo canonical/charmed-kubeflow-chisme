@@ -55,18 +55,6 @@ async def test_deploy_and_integrate_service_mesh_charms():
 
 
 @pytest.mark.asyncio
-async def test_deploy_and_integrate_service_mesh_charms_app_not_found():
-    """Test deploy service mesh charms with non-existing app."""
-    app_name = "my-app"
-    model = AsyncMock(spec_set=Model)
-    model.applications = {}
-    model.name = "test-model"
-
-    with pytest.raises(AssertionError, match=f"application {app_name} was not found"):
-        await deploy_and_integrate_service_mesh_charms(app_name, model)
-
-
-@pytest.mark.asyncio
 async def test_integrate_with_service_mesh():
     """Test integrate with service mesh with both relations."""
     app_name = "my-app"
@@ -96,29 +84,15 @@ async def test_integrate_with_service_mesh():
 
 
 @pytest.mark.asyncio
-async def test_integrate_with_service_mesh_no_integrations(caplog):
-    """Test integrate with service mesh logs warning when both relate options are False."""
+async def test_integrate_with_service_mesh_app_not_found():
+    """Test integrate with service mesh raises AssertionError when app is not found."""
     app_name = "my-app"
-    app = Mock(spec_set=Application)()
-    app.name = app_name
-
     model = AsyncMock(spec_set=Model)
-    model.applications = {app_name: app}
+    model.applications = {}
     model.name = "test-model"
 
-    # Test with both relate options disabled
-    await integrate_with_service_mesh(
-        app_name, model, relate_to_ingress=False, relate_to_beacon=False
-    )
-
-    # Verify warning was logged
-    assert "No integrations requested" in caplog.text
-    assert "Skipping integration" in caplog.text
-
-    # Verify no integrations or wait_for_idle were called
-    model.deploy.assert_not_called()
-    model.integrate.assert_not_called()
-    model.wait_for_idle.assert_not_called()
+    with pytest.raises(AssertionError, match=f"application {app_name} was not found"):
+        await integrate_with_service_mesh(app_name, model)
 
 
 @pytest.mark.asyncio
