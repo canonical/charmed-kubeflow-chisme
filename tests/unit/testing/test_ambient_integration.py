@@ -96,6 +96,32 @@ async def test_integrate_with_service_mesh_app_not_found():
 
 
 @pytest.mark.asyncio
+async def test_integrate_with_service_mesh_no_integrations(caplog):
+    """Test integrate with service mesh logs warning when both relate options are False."""
+    app_name = "my-app"
+    app = Mock(spec_set=Application)()
+    app.name = app_name
+
+    model = AsyncMock(spec_set=Model)
+    model.applications = {app_name: app}
+    model.name = "test-model"
+
+    # Test with both relate options disabled
+    await integrate_with_service_mesh(
+        app_name, model, relate_to_ingress=False, relate_to_beacon=False
+    )
+
+    # Verify warning was logged
+    assert "No integrations requested" in caplog.text
+    assert "Skipping integration" in caplog.text
+
+    # Verify no integrations or wait_for_idle were called
+    model.deploy.assert_not_called()
+    model.integrate.assert_not_called()
+    model.wait_for_idle.assert_not_called()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "headers,response_headers,expected_status,expected_text,expected_content_type",
     [

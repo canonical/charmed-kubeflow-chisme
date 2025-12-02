@@ -79,6 +79,13 @@ async def integrate_with_service_mesh(
         relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
         relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
     """
+    if not relate_to_ingress and not relate_to_beacon:
+        logger.warning(
+            "No integrations requested (both relate_to_ingress and relate_to_beacon are False). "
+            "Skipping integration."
+        )
+        return
+
     assert app in model.applications, f"application {app} was not found in model {model.name}"
 
     if relate_to_ingress:
