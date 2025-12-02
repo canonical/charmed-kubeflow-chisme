@@ -2,6 +2,17 @@
 # See LICENSE file for licensing details.
 """Utilities for testing charms."""
 
+from .ambient_integration import (
+    ISTIO_BEACON_K8S_APP,
+    ISTIO_INGRESS_K8S_APP,
+    ISTIO_INGRESS_ROUTE_ENDPOINT,
+    ISTIO_K8S_APP,
+    SERVICE_MESH_ENDPOINT,
+    assert_path_reachable_through_ingress,
+    deploy_and_integrate_service_mesh_charms,
+    get_http_response,
+    integrate_with_service_mesh,
+)
 from .charm_security_context import (
     ContainerSecurityContext,
     assert_security_context,
@@ -57,4 +68,13 @@ __all__ = [
     APP_GRAFANA_DASHBOARD,
     APP_LOGGING,
     ALERT_RULES_DIRECTORY,
+    ISTIO_K8S_APP,
+    ISTIO_INGRESS_K8S_APP,
+    ISTIO_BEACON_K8S_APP,
+    ISTIO_INGRESS_ROUTE_ENDPOINT,
+    SERVICE_MESH_ENDPOINT,
+    deploy_and_integrate_service_mesh_charms,
+    integrate_with_service_mesh,
+    get_http_response,
+    assert_path_reachable_through_ingress,
 ]
