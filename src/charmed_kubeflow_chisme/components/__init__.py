@@ -21,6 +21,8 @@ from .serialised_data_interface_components import (
     SdiRelationBroadcasterComponent,
     SdiRelationDataReceiverComponent,
 )
+from .istio_ambient_requirer_component import AmbientIngressRequirerComponent
+from .istio_relations_conflict_detector import IstioRelationsConflictDetectorComponent
 
 __all__ = [
     CharmReconciler,
