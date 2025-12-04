@@ -37,6 +37,7 @@ async def deploy_and_integrate_service_mesh_charms(
         channel: The channel from which to deploy the Istio charms. Defaults to "2/edge".
         relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
         relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
+        model_on_mesh: Whether the model should be included in the mesh. Defaults to True.
     """
     await model.deploy(
         ISTIO_K8S_APP,
@@ -103,6 +104,7 @@ async def integrate_with_service_mesh(
         )
 
     await model.wait_for_idle(
+        [app, ISTIO_BEACON_K8S_APP, ISTIO_INGRESS_K8S_APP, ISTIO_K8S_APP],
         raise_on_blocked=False,
         raise_on_error=True,
         wait_for_active=True,
