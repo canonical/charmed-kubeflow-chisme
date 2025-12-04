@@ -102,6 +102,7 @@ async def integrate_with_service_mesh(
     await model.wait_for_idle(
         raise_on_blocked=False,
         raise_on_error=True,
+        wait_for_active=True,
         timeout=900,
     )
 

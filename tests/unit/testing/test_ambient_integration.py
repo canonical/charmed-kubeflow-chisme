@@ -50,8 +50,13 @@ async def test_deploy_and_integrate_service_mesh_charms():
         f"{ISTIO_BEACON_K8S_APP}:{SERVICE_MESH_ENDPOINT}", f"{app_name}:{SERVICE_MESH_ENDPOINT}"
     )
 
-    # Verify wait for idle
-    model.wait_for_idle.assert_awaited_once()
+    # Verify wait for idle with correct parameters
+    model.wait_for_idle.assert_awaited_once_with(
+        raise_on_blocked=False,
+        raise_on_error=True,
+        wait_for_active=True,
+        timeout=900,
+    )
 
 
 @pytest.mark.asyncio
@@ -80,7 +85,13 @@ async def test_integrate_with_service_mesh():
         f"{app_name}:{ISTIO_INGRESS_ROUTE_ENDPOINT}",
     )
 
-    model.wait_for_idle.assert_awaited_once()
+    # Verify wait for idle with correct parameters
+    model.wait_for_idle.assert_awaited_once_with(
+        raise_on_blocked=False,
+        raise_on_error=True,
+        wait_for_active=True,
+        timeout=900,
+    )
 
 
 @pytest.mark.asyncio
