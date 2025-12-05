@@ -24,6 +24,7 @@ async def deploy_and_integrate_service_mesh_charms(
     channel: str = "2/edge",
     relate_to_ingress: bool = True,
     relate_to_beacon: bool = True,
+    model_on_mesh: bool = True,
 ) -> None:
     """Deploy Istio service mesh charms (ambient mode).
 
@@ -36,6 +37,7 @@ async def deploy_and_integrate_service_mesh_charms(
         channel: The channel from which to deploy the Istio charms. Defaults to "2/edge".
         relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
         relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
+        model_on_mesh: Whether the model should be included in the mesh. Defaults to True.
     """
     await model.deploy(
         ISTIO_K8S_APP,
@@ -53,6 +55,7 @@ async def deploy_and_integrate_service_mesh_charms(
         ISTIO_BEACON_K8S_APP,
         channel=channel,
         trust=True,
+        config={"model-on-mesh": model_on_mesh},
     )
 
     await integrate_with_service_mesh(
@@ -96,10 +99,12 @@ async def integrate_with_service_mesh(
 
     if relate_to_beacon:
         await model.integrate(
-            f"{ISTIO_BEACON_K8S_APP}:{SERVICE_MESH_ENDPOINT}", f"{app}:{SERVICE_MESH_ENDPOINT}"
+            f"{ISTIO_BEACON_K8S_APP}:{SERVICE_MESH_ENDPOINT}",
+            f"{app}:{SERVICE_MESH_ENDPOINT}",
         )
 
     await model.wait_for_idle(
+        [app, ISTIO_BEACON_K8S_APP, ISTIO_INGRESS_K8S_APP, ISTIO_K8S_APP],
         raise_on_blocked=False,
         raise_on_error=True,
         wait_for_active=True,

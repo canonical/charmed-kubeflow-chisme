@@ -35,23 +35,34 @@ async def test_deploy_and_integrate_service_mesh_charms():
 
     # Test with custom channel and selective integration
     await deploy_and_integrate_service_mesh_charms(
-        app_name, model, channel="2/stable", relate_to_ingress=False, relate_to_beacon=True
+        app_name,
+        model,
+        channel="2/stable",
+        relate_to_ingress=False,
+        relate_to_beacon=True,
     )
 
     # Verify all three Istio charms were deployed with custom channel
     assert model.deploy.call_count == 3
     model.deploy.assert_any_await(ISTIO_K8S_APP, channel="2/stable", trust=True)
     model.deploy.assert_any_await(ISTIO_INGRESS_K8S_APP, channel="2/stable", trust=True)
-    model.deploy.assert_any_await(ISTIO_BEACON_K8S_APP, channel="2/stable", trust=True)
+    model.deploy.assert_any_await(
+        ISTIO_BEACON_K8S_APP,
+        channel="2/stable",
+        trust=True,
+        config={"model-on-mesh": True},
+    )
 
     # Verify only beacon integration (covers relate_to_beacon=True, relate_to_ingress=False)
     assert model.integrate.call_count == 1
     model.integrate.assert_any_await(
-        f"{ISTIO_BEACON_K8S_APP}:{SERVICE_MESH_ENDPOINT}", f"{app_name}:{SERVICE_MESH_ENDPOINT}"
+        f"{ISTIO_BEACON_K8S_APP}:{SERVICE_MESH_ENDPOINT}",
+        f"{app_name}:{SERVICE_MESH_ENDPOINT}",
     )
 
     # Verify wait for idle with correct parameters
     model.wait_for_idle.assert_awaited_once_with(
+        [app_name, ISTIO_BEACON_K8S_APP, ISTIO_INGRESS_K8S_APP, ISTIO_K8S_APP],
         raise_on_blocked=False,
         raise_on_error=True,
         wait_for_active=True,
@@ -87,6 +98,7 @@ async def test_integrate_with_service_mesh():
 
     # Verify wait for idle with correct parameters
     model.wait_for_idle.assert_awaited_once_with(
+        [app_name, ISTIO_BEACON_K8S_APP, ISTIO_INGRESS_K8S_APP, ISTIO_K8S_APP],
         raise_on_blocked=False,
         raise_on_error=True,
         wait_for_active=True,
