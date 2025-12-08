@@ -104,7 +104,15 @@ async def integrate_with_service_mesh(
         )
 
     await model.wait_for_idle(
-        [app, ISTIO_BEACON_K8S_APP, ISTIO_INGRESS_K8S_APP, ISTIO_K8S_APP],
+        [ISTIO_BEACON_K8S_APP, ISTIO_INGRESS_K8S_APP, ISTIO_K8S_APP],
+        raise_on_blocked=False,
+        raise_on_error=False,
+        wait_for_active=True,
+        timeout=900,
+    )
+
+    await model.wait_for_idle(
+        [app],
         raise_on_blocked=False,
         raise_on_error=True,
         wait_for_active=True,
