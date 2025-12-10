@@ -61,7 +61,7 @@ async def test_deploy_and_integrate_service_mesh_charms():
     )
 
     # Verify wait for idle
-    assert model.wait_for_idle.call_count == 2
+    assert model.wait_for_idle.call_count == 5
 
 
 @pytest.mark.asyncio

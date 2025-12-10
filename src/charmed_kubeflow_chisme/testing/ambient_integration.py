@@ -45,10 +45,26 @@ async def deploy_and_integrate_service_mesh_charms(
         trust=True,
     )
 
+    await model.wait_for_idle(
+        [ISTIO_K8S_APP],
+        raise_on_blocked=False,
+        raise_on_error=False,
+        wait_for_active=True,
+        timeout=900,
+    )
+
     await model.deploy(
         ISTIO_INGRESS_K8S_APP,
         channel=channel,
         trust=True,
+    )
+
+    await model.wait_for_idle(
+        [ISTIO_INGRESS_K8S_APP],
+        raise_on_blocked=False,
+        raise_on_error=False,
+        wait_for_active=True,
+        timeout=900,
     )
 
     await model.deploy(
@@ -56,6 +72,14 @@ async def deploy_and_integrate_service_mesh_charms(
         channel=channel,
         trust=True,
         config={"model-on-mesh": model_on_mesh},
+    )
+
+    await model.wait_for_idle(
+        [ISTIO_BEACON_K8S_APP],
+        raise_on_blocked=False,
+        raise_on_error=False,
+        wait_for_active=True,
+        timeout=900,
     )
 
     await integrate_with_service_mesh(
