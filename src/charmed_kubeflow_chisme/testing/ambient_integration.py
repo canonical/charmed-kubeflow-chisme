@@ -167,6 +167,24 @@ async def get_http_response(url: str, headers: dict | None = None) -> tuple[int,
     return result_status, result_text, content_type
 
 
+def get_ingress_external_ip(namespace: str, service_name="istio-ingress-k8s-istio"):
+    """Get the external IP of the Istio ingress gateway service."""
+    client = lightkube.Client()
+
+    gateway_svc = client.get(
+        lightkube.resources.core_v1.Service,
+        name=service_name,
+        namespace=namespace,
+    )
+
+    # Check if LoadBalancer ingress is available
+    assert (
+        gateway_svc.status.loadBalancer.ingress
+    ), f"Service {service_name} in namespace {namespace} does not have a LoadBalancer IP"
+
+    return gateway_svc.status.loadBalancer.ingress[0].ip
+
+
 async def assert_path_reachable_through_ingress(
     http_path: str,
     namespace: str,
@@ -189,21 +207,7 @@ async def assert_path_reachable_through_ingress(
             Media type only, e.g., "text/html".
         expected_response_text: Optional text that should be contained in the response body.
     """
-    # Get the external IP of the Istio ingress gateway service
-    client = lightkube.Client()
-
-    gateway_svc = client.get(
-        lightkube.resources.core_v1.Service,
-        name=service_name,
-        namespace=namespace,
-    )
-
-    # Check if LoadBalancer ingress is available
-    assert (
-        gateway_svc.status.loadBalancer.ingress
-    ), f"Service {service_name} in namespace {namespace} does not have a LoadBalancer IP"
-
-    external_ip = gateway_svc.status.loadBalancer.ingress[0].ip
+    external_ip = get_ingress_external_ip(namespace=namespace, service_name=service_name)
 
     # Fetch the response from the ingress gateway
     url = f"http://{external_ip}{http_path}"
