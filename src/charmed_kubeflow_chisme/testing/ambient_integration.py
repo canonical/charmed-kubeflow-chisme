@@ -42,7 +42,10 @@ async def deploy_and_integrate_service_mesh_charms(
     await model.deploy(
         ISTIO_K8S_APP,
         channel=channel,
-        config={"platform": ""},  # Needed for Canonical K8s
+        # For Charmed Istio to work together with Cilium,
+        # the platform configuration of the istio-k8s charm must be unset
+        # because by default the platform is set to "microk8s".
+        config={"platform": ""},
         trust=True,
     )
 
