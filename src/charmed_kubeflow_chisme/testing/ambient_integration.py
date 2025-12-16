@@ -42,6 +42,7 @@ async def deploy_and_integrate_service_mesh_charms(
     await model.deploy(
         ISTIO_K8S_APP,
         channel=channel,
+        config={"platform": ""},  # Needed for Canonical K8s
         trust=True,
     )
 
