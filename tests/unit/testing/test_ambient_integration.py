@@ -44,7 +44,9 @@ async def test_deploy_and_integrate_service_mesh_charms():
 
     # Verify all three Istio charms were deployed with custom channel
     assert model.deploy.call_count == 3
-    model.deploy.assert_any_await(ISTIO_K8S_APP, channel="2/stable", trust=True)
+    model.deploy.assert_any_await(
+        ISTIO_K8S_APP, channel="2/stable", config={"platform": ""}, trust=True
+    )
     model.deploy.assert_any_await(ISTIO_INGRESS_K8S_APP, channel="2/stable", trust=True)
     model.deploy.assert_any_await(
         ISTIO_BEACON_K8S_APP,
