@@ -25,6 +25,10 @@ async def deploy_and_integrate_service_mesh_charms(
     relate_to_ingress: bool = True,
     relate_to_beacon: bool = True,
     model_on_mesh: bool = True,
+    # For Charmed Istio to work together with Cilium,
+    # the platform configuration of the istio-k8s charm must be unset
+    # because by default the platform is set to "microk8s".
+    platform: str = "",
 ) -> None:
     """Deploy Istio service mesh charms (ambient mode).
 
@@ -38,14 +42,12 @@ async def deploy_and_integrate_service_mesh_charms(
         relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
         relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
         model_on_mesh: Whether the model should be included in the mesh. Defaults to True.
+        platform: The k8s platform configuration for the istio-k8s charm. Defaults to "".
     """
     await model.deploy(
         ISTIO_K8S_APP,
         channel=channel,
-        # For Charmed Istio to work together with Cilium,
-        # the platform configuration of the istio-k8s charm must be unset
-        # because by default the platform is set to "microk8s".
-        config={"platform": ""},
+        config={"platform": platform},
         trust=True,
     )
 
