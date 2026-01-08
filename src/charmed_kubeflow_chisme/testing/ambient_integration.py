@@ -15,6 +15,7 @@ ISTIO_K8S_APP = "istio-k8s"
 ISTIO_INGRESS_K8S_APP = "istio-ingress-k8s"
 ISTIO_BEACON_K8S_APP = "istio-beacon-k8s"
 ISTIO_INGRESS_ROUTE_ENDPOINT = "istio-ingress-route"
+ISTIO_INGRESS_GATEWAY_ENDPOINT = "gateway-metadata"
 SERVICE_MESH_ENDPOINT = "service-mesh"
 
 
@@ -22,7 +23,8 @@ async def deploy_and_integrate_service_mesh_charms(
     app: str,
     model: Model,
     channel: str = "2/edge",
-    relate_to_ingress: bool = True,
+    relate_to_ingress_route_endpoint: bool = True,
+    relate_to_ingress_gateway_endpoint: bool = False,
     relate_to_beacon: bool = True,
     model_on_mesh: bool = True,
     # For Charmed Istio to work together with Cilium,
@@ -39,8 +41,12 @@ async def deploy_and_integrate_service_mesh_charms(
         app: The name of the application to relate the Istio charms to.
         model: The Juju model where the charms will be deployed.
         channel: The channel from which to deploy the Istio charms. Defaults to "2/edge".
-        relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
-        relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
+        relate_to_ingress_route_endpoint: Whether to integrate with the istio-ingress
+            charm's route endpoint. Defaults to True.
+        relate_to_ingress_gateway_endpoint: Whether to integrate with the istio-ingress
+            charm's gateway endpoint. Defaults to False.
+        relate_to_beacon: Whether to integrate with the istio-beacon charm.
+            Defaults to True.
         model_on_mesh: Whether the model should be included in the mesh. Defaults to True.
         platform: The k8s platform configuration for the istio-k8s charm. Defaults to "".
     """
@@ -91,7 +97,8 @@ async def deploy_and_integrate_service_mesh_charms(
     await integrate_with_service_mesh(
         app=app,
         model=model,
-        relate_to_ingress=relate_to_ingress,
+        relate_to_ingress_route_endpoint=relate_to_ingress_route_endpoint,
+        relate_to_ingress_gateway_endpoint=relate_to_ingress_gateway_endpoint,
         relate_to_beacon=relate_to_beacon,
     )
 
@@ -99,7 +106,8 @@ async def deploy_and_integrate_service_mesh_charms(
 async def integrate_with_service_mesh(
     app: str,
     model: Model,
-    relate_to_ingress: bool = True,
+    relate_to_ingress_route_endpoint: bool = True,
+    relate_to_ingress_gateway_endpoint: bool = False,
     relate_to_beacon: bool = True,
 ) -> None:
     """Integrate the application with Istio service mesh charms.
@@ -109,22 +117,36 @@ async def integrate_with_service_mesh(
     Args:
         app: The name of the application to relate the Istio charms to.
         model: The Juju model where the charms are deployed.
-        relate_to_ingress: Whether to integrate with the istio-ingress charm. Defaults to True.
-        relate_to_beacon: Whether to integrate with the istio-beacon charm. Defaults to True.
+        relate_to_ingress_route_endpoint: Whether to integrate with the istio-ingress
+            charm's route endpoint. Defaults to True.
+        relate_to_ingress_gateway_endpoint: Whether to integrate with the istio-ingress
+            charm's gateway endpoint. Defaults to False.
+        relate_to_beacon: Whether to integrate with the istio-beacon charm.
+            Defaults to True.
     """
-    if not relate_to_ingress and not relate_to_beacon:
+    if (
+        not relate_to_ingress_route_endpoint
+        and not relate_to_ingress_gateway_endpoint
+        and not relate_to_beacon
+    ):
         logger.warning(
-            "No integrations requested (both relate_to_ingress and relate_to_beacon are False). "
+            "No integrations requested (relate_to_ingress_route_endpoint, relate_to_ingress_gateway_endpoint and relate_to_beacon are False). "
             "Skipping integration."
         )
         return
 
     assert app in model.applications, f"application {app} was not found in model {model.name}"
 
-    if relate_to_ingress:
+    if relate_to_ingress_route_endpoint:
         await model.integrate(
             f"{ISTIO_INGRESS_K8S_APP}:{ISTIO_INGRESS_ROUTE_ENDPOINT}",
             f"{app}:{ISTIO_INGRESS_ROUTE_ENDPOINT}",
+        )
+
+    if relate_to_ingress_gateway_endpoint:
+        await model.integrate(
+            f"{ISTIO_INGRESS_K8S_APP}:{ISTIO_INGRESS_GATEWAY_ENDPOINT}",
+            f"{app}:{ISTIO_INGRESS_GATEWAY_ENDPOINT}",
         )
 
     if relate_to_beacon:
@@ -137,14 +159,6 @@ async def integrate_with_service_mesh(
         [ISTIO_BEACON_K8S_APP, ISTIO_INGRESS_K8S_APP, ISTIO_K8S_APP],
         raise_on_blocked=False,
         raise_on_error=False,
-        wait_for_active=True,
-        timeout=900,
-    )
-
-    await model.wait_for_idle(
-        [app],
-        raise_on_blocked=False,
-        raise_on_error=True,
         wait_for_active=True,
         timeout=900,
     )
