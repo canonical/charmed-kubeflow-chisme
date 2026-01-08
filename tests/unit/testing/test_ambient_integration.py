@@ -19,6 +19,7 @@ ISTIO_K8S_APP = "istio-k8s"
 ISTIO_INGRESS_K8S_APP = "istio-ingress-k8s"
 ISTIO_BEACON_K8S_APP = "istio-beacon-k8s"
 ISTIO_INGRESS_ROUTE_ENDPOINT = "istio-ingress-route"
+ISTIO_INGRESS_GATEWAY_ENDPOINT = "gateway-metadata"
 SERVICE_MESH_ENDPOINT = "service-mesh"
 
 
@@ -38,7 +39,8 @@ async def test_deploy_and_integrate_service_mesh_charms():
         app_name,
         model,
         channel="2/stable",
-        relate_to_ingress=False,
+        relate_to_ingress_route_endpoint=False,
+        relate_to_ingress_gateway_endpoint=False,
         relate_to_beacon=True,
     )
 
@@ -55,20 +57,88 @@ async def test_deploy_and_integrate_service_mesh_charms():
         config={"model-on-mesh": True},
     )
 
-    # Verify only beacon integration (covers relate_to_beacon=True, relate_to_ingress=False)
+    # Verify only beacon integration
+    # (covers relate_to_beacon=True, relate_to_ingress_route_endpoint=False,
+    # relate_to_ingress_gateway_endpoint=False)
     assert model.integrate.call_count == 1
     model.integrate.assert_any_await(
         f"{ISTIO_BEACON_K8S_APP}:{SERVICE_MESH_ENDPOINT}",
         f"{app_name}:{SERVICE_MESH_ENDPOINT}",
     )
 
-    # Verify wait for idle
-    assert model.wait_for_idle.call_count == 5
+    # Verify wait for idle (3 for deploy + 1 for integrate)
+    assert model.wait_for_idle.call_count == 4
 
 
 @pytest.mark.asyncio
-async def test_integrate_with_service_mesh():
-    """Test integrate with service mesh with both relations."""
+@pytest.mark.parametrize(
+    "relate_to_ingress_route_endpoint,relate_to_ingress_gateway_endpoint,relate_to_beacon,expected_integrations",
+    [
+        # Only ingress route endpoint
+        (True, False, False, [(ISTIO_INGRESS_K8S_APP, ISTIO_INGRESS_ROUTE_ENDPOINT)]),
+        # Only ingress gateway endpoint
+        (False, True, False, [(ISTIO_INGRESS_K8S_APP, ISTIO_INGRESS_GATEWAY_ENDPOINT)]),
+        # Only beacon
+        (False, False, True, [(ISTIO_BEACON_K8S_APP, SERVICE_MESH_ENDPOINT)]),
+        # Both ingress endpoints
+        (
+            True,
+            True,
+            False,
+            [
+                (ISTIO_INGRESS_K8S_APP, ISTIO_INGRESS_ROUTE_ENDPOINT),
+                (ISTIO_INGRESS_K8S_APP, ISTIO_INGRESS_GATEWAY_ENDPOINT),
+            ],
+        ),
+        # Ingress route and beacon
+        (
+            True,
+            False,
+            True,
+            [
+                (ISTIO_INGRESS_K8S_APP, ISTIO_INGRESS_ROUTE_ENDPOINT),
+                (ISTIO_BEACON_K8S_APP, SERVICE_MESH_ENDPOINT),
+            ],
+        ),
+        # Ingress gateway and beacon
+        (
+            False,
+            True,
+            True,
+            [
+                (ISTIO_INGRESS_K8S_APP, ISTIO_INGRESS_GATEWAY_ENDPOINT),
+                (ISTIO_BEACON_K8S_APP, SERVICE_MESH_ENDPOINT),
+            ],
+        ),
+        # All three integrations
+        (
+            True,
+            True,
+            True,
+            [
+                (ISTIO_INGRESS_K8S_APP, ISTIO_INGRESS_ROUTE_ENDPOINT),
+                (ISTIO_INGRESS_K8S_APP, ISTIO_INGRESS_GATEWAY_ENDPOINT),
+                (ISTIO_BEACON_K8S_APP, SERVICE_MESH_ENDPOINT),
+            ],
+        ),
+    ],
+    ids=[
+        "only_route_endpoint",
+        "only_gateway_endpoint",
+        "only_beacon",
+        "both_ingress_endpoints",
+        "route_and_beacon",
+        "gateway_and_beacon",
+        "all_three",
+    ],
+)
+async def test_integrate_with_service_mesh(
+    relate_to_ingress_route_endpoint,
+    relate_to_ingress_gateway_endpoint,
+    relate_to_beacon,
+    expected_integrations,
+):
+    """Test integrate with service mesh with various integration combinations."""
     app_name = "my-app"
     app = Mock(spec_set=Application)()
     app.name = app_name
@@ -77,23 +147,27 @@ async def test_integrate_with_service_mesh():
     model.applications = {app_name: app}
     model.name = "test-model"
 
-    # Test with only ingress enabled
     await integrate_with_service_mesh(
-        app_name, model, relate_to_ingress=True, relate_to_beacon=False
+        app_name,
+        model,
+        relate_to_ingress_route_endpoint=relate_to_ingress_route_endpoint,
+        relate_to_ingress_gateway_endpoint=relate_to_ingress_gateway_endpoint,
+        relate_to_beacon=relate_to_beacon,
     )
 
     # Verify no deploys
     model.deploy.assert_not_called()
 
-    # Verify only ingress integration (covers relate_to_ingress=True, relate_to_beacon=False)
-    assert model.integrate.call_count == 1
-    model.integrate.assert_any_await(
-        f"{ISTIO_INGRESS_K8S_APP}:{ISTIO_INGRESS_ROUTE_ENDPOINT}",
-        f"{app_name}:{ISTIO_INGRESS_ROUTE_ENDPOINT}",
-    )
+    # Verify expected integrations
+    assert model.integrate.call_count == len(expected_integrations)
+    for charm_app, endpoint in expected_integrations:
+        model.integrate.assert_any_await(
+            f"{charm_app}:{endpoint}",
+            f"{app_name}:{endpoint}",
+        )
 
     # Verify wait for idle
-    assert model.wait_for_idle.call_count == 2
+    model.wait_for_idle.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -119,13 +193,21 @@ async def test_integrate_with_service_mesh_no_integrations(caplog):
     model.applications = {app_name: app}
     model.name = "test-model"
 
-    # Test with both relate options disabled
+    # Test with all relate options disabled
     await integrate_with_service_mesh(
-        app_name, model, relate_to_ingress=False, relate_to_beacon=False
+        app_name,
+        model,
+        relate_to_ingress_route_endpoint=False,
+        relate_to_ingress_gateway_endpoint=False,
+        relate_to_beacon=False,
     )
 
     # Verify warning was logged
     assert "No integrations requested" in caplog.text
+    assert (
+        "relate_to_ingress_route_endpoint, relate_to_ingress_gateway_endpoint and relate_to_beacon are False"
+        in caplog.text
+    )
     assert "Skipping integration" in caplog.text
 
     # Verify no integrations or wait_for_idle were called
