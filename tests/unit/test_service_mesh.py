@@ -1,7 +1,7 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from charmed_kubeflow_chisme.service_mesh.policies import (
+from charmed_kubeflow_chisme.service_mesh import (
     generate_allow_all_authorization_policy,
 )
 
