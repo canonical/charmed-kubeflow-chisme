@@ -56,6 +56,7 @@ async def deploy_and_assert_grafana_agent(
     logging: bool = False,
     dashboard: bool = False,
     idle_period: int = WAIT_IDLE_PERIOD,
+    wait_timeout: int = WAIT_TIMEOUT,
 ) -> None:
     """Deploy grafana-agent-k8s and add relate it with app.
 
@@ -73,6 +74,8 @@ async def deploy_and_assert_grafana_agent(
             grafana-agent-k8s:grafana-dashboards-consumer relation is created. Defaults to False.
         idle_period (int): How long, in seconds, the agent statuses of all units of all Grafana
             agent need to be `idle`.
+        wait_timeout (int): How long to wait, in seconds, for the bundle to settle before raising
+            an asyncio.TimeoutError.
     """
     assert app in model.applications, f"application {app} was not found in model {model.name}"
 
@@ -121,7 +124,7 @@ async def deploy_and_assert_grafana_agent(
     await model.wait_for_idle(
         apps=[GRAFANA_AGENT_APP],
         status=WAIT_STATUS,
-        timeout=WAIT_TIMEOUT,
+        timeout=wait_timeout,
         idle_period=idle_period,
     )
 
