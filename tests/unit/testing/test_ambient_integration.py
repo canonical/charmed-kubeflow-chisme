@@ -255,7 +255,7 @@ async def test_get_http_response(
     assert status == expected_status
     assert text == expected_text
     assert content_type == expected_content_type
-    mock_session.get.assert_called_once_with(url, headers=headers)
+    mock_session.get.assert_called_once_with(url, headers=headers, allow_redirects=False)
 
 
 @pytest.mark.asyncio
