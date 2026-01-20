@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 """Utilities for testing COS integration with charms."""
+
 import logging
 from pathlib import Path
 from typing import Any, Dict, Set

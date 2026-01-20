@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Reusable Component for blocking when model name is not the expected."""
+
 import logging
 
 from ops import ActiveStatus, BlockedStatus, StatusBase

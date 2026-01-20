@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 """Utilities for testing SerializedDataInterface-backed relations."""
+
 import dataclasses
 from typing import Optional
 
