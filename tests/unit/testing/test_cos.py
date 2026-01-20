@@ -176,6 +176,7 @@ async def test_deploy_and_assert_grafana_agent_invalid_app():
             ],
         ),
         ({"dashboard": False, "metrics": False, "logging": False}, []),
+        ({"wait_timeout": 100}, []),
     ],
 )
 async def test_deploy_and_assert_grafana_agent(kwargs, exp_awaits):
@@ -183,20 +184,21 @@ async def test_deploy_and_assert_grafana_agent(kwargs, exp_awaits):
     app = Mock(spec_set=Application)()
     app.name = "my-app"
 
-    grafana_aget_app = Mock(spec_set=Application)()
-    grafana_aget_app.name = "grafana-agent-k8s"
-    grafana_aget_unit = Mock(spec_set=Unit)()
-    grafana_aget_app.units = [grafana_aget_unit]
+    grafana_agent_app = Mock(spec_set=Application)()
+    grafana_agent_app.name = "grafana-agent-k8s"
+    grafana_agent_unit = Mock(spec_set=Unit)()
+    grafana_agent_app.units = [grafana_agent_unit]
 
     model = AsyncMock(spec_set=Model)
-    model.applications = {app.name: app, grafana_aget_app.name: grafana_aget_app}
+    model.applications = {app.name: app, grafana_agent_app.name: grafana_agent_app}
 
     await deploy_and_assert_grafana_agent(model, app.name, **kwargs)
+    expected_wait_timeout = kwargs.get("wait_timeout", 300)
 
     model.deploy.assert_awaited_once_with("grafana-agent-k8s", channel="1/stable")
     model.integrate.assert_has_awaits(exp_awaits)
     model.wait_for_idle.assert_awaited_once_with(
-        apps=["grafana-agent-k8s"], status="blocked", timeout=300, idle_period=60
+        apps=["grafana-agent-k8s"], status="blocked", timeout=expected_wait_timeout, idle_period=60
     )
 
 
