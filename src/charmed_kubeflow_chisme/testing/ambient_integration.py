@@ -178,7 +178,7 @@ async def get_http_response(url: str, headers: dict | None = None) -> tuple[int,
         A tuple of (status_code, response_text, content_type).
     """
     async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
+        async with session.get(url, headers=headers, allow_redirects=False) as response:
             result_status = response.status
             result_text = await response.text()
             # Extract only the media type, removing charset and other parameters
