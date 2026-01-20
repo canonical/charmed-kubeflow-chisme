@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 """Utilities for testing security context and user privileges in charms."""
+
 import subprocess
 from typing import Dict, TypedDict
 

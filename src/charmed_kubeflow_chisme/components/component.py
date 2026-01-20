@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """Abstract class defining the API needed for an atomic piece of work that a charm does."""
+
 from abc import ABC, abstractmethod
 from typing import Any, Callable, List, Optional
 

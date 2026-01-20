@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """A reusable reconcile loop for Charms."""
+
 import logging
 from typing import List, Optional, Tuple
 

@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 """A reusable Component for Kubernetes resources."""
+
 from pathlib import Path
 from typing import Callable, Iterable, Optional, Union
 
