@@ -110,6 +110,10 @@ class SdiRelationDataReceiverComponent(Component):
                     )
                 raise ErrorWithStatus(error_msg, BlockedStatus)
 
+            # the relation is optional, return empty data
+            else:
+                return {}
+
         try:
             unpacked_data = list(interface.get_data().values())
         except ValidationError as val_error:
