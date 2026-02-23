@@ -8,7 +8,7 @@ from typing import Callable, Iterable, Optional, Union
 import lightkube
 from lightkube.core.exceptions import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
-from ops import ActiveStatus, BlockedStatus, CharmBase, StatusBase
+from ops import ActiveStatus, BlockedStatus, CharmBase, MaintenanceStatus, StatusBase
 
 from charmed_kubeflow_chisme.components.component import Component
 from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
@@ -74,6 +74,7 @@ class KubernetesComponent(Component):
         krh = self._get_kubernetes_resource_handler()
 
         # TODO: Move this validation into KRH class
+        self._charm.unit.status = MaintenanceStatus("Checking Kubernetes resources")
         existing_resources = krh.get_deployed_resources()
         desired_resources = krh.render_manifests()
 
