@@ -22,7 +22,7 @@ SERVICE_MESH_ENDPOINT = "service-mesh"
 async def deploy_and_integrate_service_mesh_charms(
     app: str,
     model: Model,
-    channel: str = "2/edge",
+    channel: str = "2/stable",
     relate_to_ingress_route_endpoint: bool = True,
     relate_to_ingress_gateway_endpoint: bool = False,
     relate_to_beacon: bool = True,
@@ -40,7 +40,7 @@ async def deploy_and_integrate_service_mesh_charms(
     Args:
         app: The name of the application to relate the Istio charms to.
         model: The Juju model where the charms will be deployed.
-        channel: The channel from which to deploy the Istio charms. Defaults to "2/edge".
+        channel: The channel from which to deploy the Istio charms. Defaults to "2/stable".
         relate_to_ingress_route_endpoint: Whether to integrate with the istio-ingress
             charm's route endpoint. Defaults to True.
         relate_to_ingress_gateway_endpoint: Whether to integrate with the istio-ingress
