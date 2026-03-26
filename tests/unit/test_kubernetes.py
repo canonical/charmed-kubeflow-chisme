@@ -607,6 +607,52 @@ def test_KubernetesResourceHandler_delete_missing_required_arguments(  # noqa: N
         krh.get_deployed_resources()
 
 
+def test_KubernetesResourceHandler_get_deployed_resources_retries_on_error():  # noqa: N802
+    """Tests that get_deployed_resources retries on transient errors."""
+    labels = {"some": "labels"}
+    resource_types = {Pod}
+
+    expected_resources = [Pod(metadata=ObjectMeta(name="pod1", namespace="ns"))]
+
+    krh = kubernetes.KubernetesResourceHandler(
+        field_manager="field-manager",
+        template_files=[],
+        context={},
+        labels=labels,
+        resource_types=resource_types,
+    )
+    krh._lightkube_client = mock.MagicMock()
+    krh._lightkube_client.list.side_effect = [
+        FakeApiError(503),
+        expected_resources,
+    ]
+
+    resources = krh.get_deployed_resources()
+    assert resources == expected_resources
+    assert krh._lightkube_client.list.call_count == 2
+
+
+def test_KubernetesResourceHandler_get_deployed_resources_reraises_after_retries():  # noqa: N802
+    """Tests that get_deployed_resources reraises after all retry attempts exhausted."""
+    labels = {"some": "labels"}
+    resource_types = {Pod}
+
+    krh = kubernetes.KubernetesResourceHandler(
+        field_manager="field-manager",
+        template_files=[],
+        context={},
+        labels=labels,
+        resource_types=resource_types,
+    )
+    krh._lightkube_client = mock.MagicMock()
+    krh._lightkube_client.list.side_effect = FakeApiError(503)
+
+    with pytest.raises(FakeApiError):
+        krh.get_deployed_resources()
+
+    assert krh._lightkube_client.list.call_count == 4
+
+
 def test_KubernetesResourceHandler_get_deployed_resources():  # noqa: N802
     """Tests that KRH.get_deployed_resources returns as expected."""
     # Arrange

@@ -10,6 +10,7 @@ from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
 from lightkube.core.resource import NamespacedResource, Resource, api_info
 from ops.model import ActiveStatus, BlockedStatus
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from ..exceptions import ErrorWithStatus
 from ..lightkube.batch import apply_many, delete_many
@@ -154,10 +155,21 @@ class KubernetesResourceHandler:
         resources_to_delete = self.get_deployed_resources()
         delete_many(self.lightkube_client, resources_to_delete, ignore_missing, self.log)
 
+    @retry(
+        stop=stop_after_attempt(4),
+        wait=wait_fixed(10),
+        reraise=True,
+        before_sleep=lambda retry_state: logging.getLogger(__name__).warning(
+            f"Error fetching deployed K8s resources, "
+            f"retrying (attempt {retry_state.attempt_number + 1}/4): "
+            f"{retry_state.outcome.exception()}"
+        ),
+    )
     def get_deployed_resources(self) -> LightkubeResourcesList:
         """Returns a list of all resources deployed by this KubernetesResourceHandler.
 
         Requires that self.labels and self.resource_types be set.
+        Retries up to 3 times on any error before propagating the exception.
 
         This method will:
         * for each resource type included in self.resource_types
