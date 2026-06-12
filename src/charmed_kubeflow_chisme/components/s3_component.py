@@ -34,6 +34,10 @@ class S3Component(Component):
             charm=self._charm,
             relation_name=relation_name,
         )
+        self._events_to_observe = [
+            self._charm.on[self.relation_name].relation_changed,
+            self._charm.on[self.relation_name].relation_broken,
+        ]
 
     def get_data(self) -> Optional[dict]:
         """Return the S3 connection info from the relation data, or None if unavailable."""
