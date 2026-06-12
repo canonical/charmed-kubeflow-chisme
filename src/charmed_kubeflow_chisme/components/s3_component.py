@@ -17,7 +17,7 @@ from charmed_kubeflow_chisme.components.component import Component
 logger = logging.getLogger(__name__)
 
 
-class S3Component(Component):
+class S3RequirerComponent(Component):
     """Component that manages an S3-compatible object storage relation."""
 
     def __init__(

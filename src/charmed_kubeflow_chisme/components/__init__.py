@@ -17,7 +17,7 @@ from .pebble_component import (
     get_event_from_charm,
 )
 from .relation_count_gate_component import RelationCountGateComponent
-from .s3_component import S3Component
+from .s3_component import S3RequirerComponent
 from .sa_token_component import SATokenComponent
 from .serialised_data_interface_components import (
     SdiRelationBroadcasterComponent,
@@ -37,7 +37,7 @@ __all__ = [
     PebbleComponent,
     PebbleServiceComponent,
     RelationCountGateComponent,
-    S3Component,
+    S3RequirerComponent,
     SATokenComponent,
     SdiRelationBroadcasterComponent,
     SdiRelationDataReceiverComponent,

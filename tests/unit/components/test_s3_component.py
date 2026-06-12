@@ -8,7 +8,7 @@ from fixtures import DummyCharm  # noqa: F401
 from ops import ActiveStatus, BlockedStatus
 from ops.testing import Harness
 
-from charmed_kubeflow_chisme.components.s3_component import S3Component
+from charmed_kubeflow_chisme.components.s3_component import S3RequirerComponent
 
 RELATION_NAME = "s3-credentials"
 
@@ -29,9 +29,9 @@ def harness():
 
 @pytest.fixture()
 def s3_component(harness):
-    """Returns an S3Component with a mocked S3Requirer."""
+    """Returns an S3RequirerComponent with a mocked S3Requirer."""
     with patch("charmed_kubeflow_chisme.components.s3_component.S3Requirer", MagicMock()):
-        component = S3Component(
+        component = S3RequirerComponent(
             charm=harness.charm,
             name="s3-component",
             relation_name=RELATION_NAME,
@@ -41,9 +41,9 @@ def s3_component(harness):
 
 @pytest.fixture()
 def s3_component_optional(harness):
-    """Returns an optional S3Component with a mocked S3Requirer."""
+    """Returns an optional S3RequirerComponent with a mocked S3Requirer."""
     with patch("charmed_kubeflow_chisme.components.s3_component.S3Requirer", MagicMock()):
-        component = S3Component(
+        component = S3RequirerComponent(
             charm=harness.charm,
             name="s3-component-optional",
             relation_name=RELATION_NAME,
@@ -52,7 +52,7 @@ def s3_component_optional(harness):
     return component
 
 
-class TestS3ComponentGetStatus:
+class TestS3RequirerComponentGetStatus:
     def test_active_when_optional_and_relation_absent(self, s3_component_optional):
         """When is_optional=True and no relation is present, status should be Active."""
         status = s3_component_optional.get_status()
@@ -90,7 +90,7 @@ class TestS3ComponentGetStatus:
         assert RELATION_NAME in status.message
 
 
-class TestS3ComponentGetData:
+class TestS3RequirerComponentGetData:
     def test_get_data_returns_connection_info(self, s3_component):
         """get_data() should return whatever the S3Requirer client returns."""
         expected = {"endpoint": "https://s3.example.com", "bucket": "my-bucket"}
