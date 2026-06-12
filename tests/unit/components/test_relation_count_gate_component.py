@@ -65,7 +65,7 @@ class TestRelationCountGateComponent:
             ),
         ],
     )
-    def test_get_status(
+    def test_get_status_min_max_active_relations(
         self,
         harness,
         active_relations,
@@ -74,7 +74,16 @@ class TestRelationCountGateComponent:
         maximum_related_applications,
         expected_status,
     ):
-        """get_status() returns the expected status for the given relation configuration."""
+        """get_status() returns the expected status for the given relation configuration.
+
+        Args:
+            active_relations: Current active relations in the charm
+            relation_names: Relations to watch for
+            minimum_related_applications: Lower bound for the component to be active
+            maximum_related_applications: Upper bound for the component to be active
+            expected_status: Expected status for the component
+
+        """
         for relation in active_relations:
             harness.add_relation(relation, "remote-app")
         component = RelationCountGateComponent(
