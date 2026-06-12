@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 class RelationCountGateComponent(Component):
-    """Component that gates the charm based on the count of active watched relations.
+    """Component that gates the charm based on the number of related applications.
 
-    Blocks the charm when the number of simultaneously active relations from
-    ``relation_names`` falls outside the range
+    Blocks the charm when the total number of relation instances across ``relation_names``
+    falls outside the inclusive range
     [minimum_related_applications, maximum_related_applications].
     """
 
