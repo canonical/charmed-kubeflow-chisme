@@ -112,33 +112,31 @@ class TestRelationCountGateComponent:
         )
         assert isinstance(component.get_status(), BlockedStatus)
 
-    def test_negative_minimum_raises_value_error(self, harness):
-        """A negative minimum_related_applications should raise ValueError."""
-        with pytest.raises(ValueError, match="minimum_related_applications"):
+    @pytest.mark.parametrize(
+        "relation_names, minimum_related_applications, maximum_related_applications, match",
+        [
+            # negative minimum
+            (["relation-a"], -1, 1, "minimum_related_applications"),
+            # negative maximum
+            (["relation-a"], 0, -1, "maximum_related_applications"),
+            # minimum exceeds maximum
+            (["relation-a", "relation-b"], 3, 2, "minimum_related_applications"),
+        ],
+    )
+    def test_min_max_applications_raises_value_error(
+        self,
+        harness,
+        relation_names,
+        minimum_related_applications,
+        maximum_related_applications,
+        match,
+    ):
+        """Invalid constructor arguments should raise ValueError."""
+        with pytest.raises(ValueError, match=match):
             RelationCountGateComponent(
                 charm=harness.charm,
                 name="conflict-detector",
-                relation_names=["relation-a"],
-                minimum_related_applications=-1,
-            )
-
-    def test_negative_maximum_raises_value_error(self, harness):
-        """A negative maximum_related_applications should raise ValueError."""
-        with pytest.raises(ValueError, match="maximum_related_applications"):
-            RelationCountGateComponent(
-                charm=harness.charm,
-                name="conflict-detector",
-                relation_names=["relation-a"],
-                maximum_related_applications=-1,
-            )
-
-    def test_minimum_exceeds_maximum_raises_value_error(self, harness):
-        """minimum_related_applications > maximum_related_applications should raise ValueError."""
-        with pytest.raises(ValueError, match="minimum_related_applications"):
-            RelationCountGateComponent(
-                charm=harness.charm,
-                name="conflict-detector",
-                relation_names=["relation-a", "relation-b"],
-                minimum_related_applications=3,
-                maximum_related_applications=2,
+                relation_names=relation_names,
+                minimum_related_applications=minimum_related_applications,
+                maximum_related_applications=maximum_related_applications,
             )
