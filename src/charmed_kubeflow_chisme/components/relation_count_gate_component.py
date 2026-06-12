@@ -1,6 +1,6 @@
 # Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
-"""Component for gating a charm based on the count of related applications across watched relations."""
+"""Component for gating based on the count of related applications across watched relations."""
 
 import logging
 from typing import List
