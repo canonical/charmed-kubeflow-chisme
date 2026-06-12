@@ -96,7 +96,8 @@ class RelationCountGateComponent(Component):
                 f"at most {self.maximum_related_applications} may be active simultaneously."
             )
             return BlockedStatus(
-                f"Too many conflicting relations are present: {active_str}. "
+                f"Too many related applications are present (got {active_relations_number}; "
+                f"max is {self.maximum_related_applications}) via: {active_str}. "
                 "Remove some to unblock."
             )
 
