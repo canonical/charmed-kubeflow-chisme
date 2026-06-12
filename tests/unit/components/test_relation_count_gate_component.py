@@ -86,6 +86,32 @@ class TestRelationCountGateComponent:
         )
         assert isinstance(component.get_status(), expected_status)
 
+    def test_get_status_multiple_cardinality_active(self, harness):
+        """get_status() returns Active when the same endpoint has 2 instances and max=2."""
+        harness.add_relation("relation-a", "remote-app-1")
+        harness.add_relation("relation-a", "remote-app-2")
+        component = RelationCountGateComponent(
+            charm=harness.charm,
+            name="conflict-detector",
+            relation_names=["relation-a"],
+            minimum_related_applications=1,
+            maximum_related_applications=2,
+        )
+        assert isinstance(component.get_status(), ActiveStatus)
+
+    def test_get_status_multiple_cardinality_blocked(self, harness):
+        """get_status() returns Blocked when the same endpoint has 2 instances but max=1."""
+        harness.add_relation("relation-a", "remote-app-1")
+        harness.add_relation("relation-a", "remote-app-2")
+        component = RelationCountGateComponent(
+            charm=harness.charm,
+            name="conflict-detector",
+            relation_names=["relation-a"],
+            minimum_related_applications=1,
+            maximum_related_applications=1,
+        )
+        assert isinstance(component.get_status(), BlockedStatus)
+
     def test_negative_minimum_raises_value_error(self, harness):
         """A negative minimum_related_applications should raise ValueError."""
         with pytest.raises(ValueError, match="minimum_related_applications"):
