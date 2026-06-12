@@ -77,6 +77,7 @@ class TestRelationCountGateComponent:
         """get_status() returns the expected status for the given relation configuration.
 
         Args:
+            harness: Ops testing harness with the charm under test
             active_relations: Current active relations in the charm
             relation_names: Relations to watch for
             minimum_related_applications: Lower bound for the component to be active
