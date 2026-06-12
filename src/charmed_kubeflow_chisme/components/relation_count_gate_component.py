@@ -85,8 +85,8 @@ class RelationCountGateComponent(Component):
                 f"need at least {self.minimum_related_applications} of: {relations_str}."
             )
             return BlockedStatus(
-                f"Too few relations active: need at least "
-                f"{self.minimum_related_applications} of {relations_str}. "
+                f"Too few related applications: got {active_relations_number}; need at least "
+                f"{self.minimum_related_applications} across {relations_str}."
             )
 
         if active_relations_number > self.maximum_related_applications:
