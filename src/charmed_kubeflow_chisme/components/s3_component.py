@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 class S3RequirerComponent(Component):
     """Component that manages an S3-compatible object storage relation.
 
-    ``get_data()`` returns connection info for every related application that
-    has published all required relation fields. ``get_status()`` returns Active
-    only when all related applications have done so.
+    ``get_data()`` returns connection info for every related application that has published
+    at least some relation data. ``get_status()`` returns Active only when all related
+    applications have published all required relation fields.
     """
 
     def __init__(
