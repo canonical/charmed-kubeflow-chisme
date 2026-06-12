@@ -47,7 +47,7 @@ class TestRelationCountGateComponent:
             ),
             # min=0, max=1, active=0, 1 unrelated -> active
             (["relation-c"], ["relation-a", "relation-b"], 0, 1, ActiveStatus),
-            # max=0, active=1 -> active
+            # max=0, active=0 -> active
             ([], ["relation-a", "relation-b"], 0, 0, ActiveStatus),
             # max=0, active=1 -> blocked
             (["relation-a"], ["relation-a", "relation-b"], 0, 0, BlockedStatus),
