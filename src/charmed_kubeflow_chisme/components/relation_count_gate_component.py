@@ -64,11 +64,11 @@ class RelationCountGateComponent(Component):
     def get_status(self) -> StatusBase:
         """Check that the number of active watched relations is within the configured range."""
         active_relations = [
-            name
-            for name in self.relation_names
-            if self._charm.model.get_relation(name) is not None
+            name for name in self.relation_names if self._charm.model.relations[name]
         ]
-        active_relations_number = len(active_relations)
+        active_relations_number = sum(
+            len(self._charm.model.relations[name]) for name in self.relation_names
+        )
 
         if active_relations_number < self.minimum_related_applications:
             relations_str = ", ".join(f"'{r}'" for r in self.relation_names)
