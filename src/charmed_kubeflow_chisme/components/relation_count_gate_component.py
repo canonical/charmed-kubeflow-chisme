@@ -68,6 +68,7 @@ class RelationCountGateComponent(Component):
                 self._charm.on[name].relation_broken,
             )
         ]
+
     def get_status(self) -> StatusBase:
         """Check that the number of active watched relations is within the configured range."""
         active_relations = [
