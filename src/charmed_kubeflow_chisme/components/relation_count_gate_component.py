@@ -80,7 +80,7 @@ class RelationCountGateComponent(Component):
 
         if active_relations_number < self.minimum_related_applications:
             relations_str = ", ".join(f"'{r}'" for r in self.relation_names)
-            logger.error(
+            logger.warning(
                 f"Too few relations are active ({active_relations_number}); "
                 f"need at least {self.minimum_related_applications} of: {relations_str}."
             )
@@ -91,7 +91,7 @@ class RelationCountGateComponent(Component):
 
         if active_relations_number > self.maximum_related_applications:
             active_str = ", ".join(f"'{r}'" for r in active_relations)
-            logger.error(
+            logger.warning(
                 f"Too many watched relations are active ({active_str}); "
                 f"at most {self.maximum_related_applications} may be active simultaneously."
             )
