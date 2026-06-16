@@ -7,7 +7,7 @@ from typing import List
 
 from ops import ActiveStatus, BlockedStatus, StatusBase
 
-from charmed_kubeflow_chisme.components import Component
+from charmed_kubeflow_chisme.components.component import Component
 
 logger = logging.getLogger(__name__)
 
