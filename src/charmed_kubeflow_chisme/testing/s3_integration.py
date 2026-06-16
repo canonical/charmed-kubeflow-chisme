@@ -1,6 +1,8 @@
 # Copyright 2025 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+"""Helpers for testing the integration with s3-integrator."""
+
 import dataclasses
 import json
 import logging
@@ -18,6 +20,8 @@ from charmed_kubeflow_chisme.testing import CharmSpec
 
 @dataclasses.dataclass(frozen=True)
 class S3ConnectionInfo:
+    """Connection details for an S3-compatible endpoint."""
+
     endpoint: str
     access_key: str
     secret_key: str
@@ -44,6 +48,7 @@ def host_ip() -> str:
 
 
 def local_tmp_folder(name: str = "tmp") -> Path:
+    """Create (or recreate) a local temporary directory with the given name."""
     tmp_folder = Path.cwd() / name
     if tmp_folder.exists():
         shutil.rmtree(tmp_folder)
