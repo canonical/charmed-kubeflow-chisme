@@ -270,7 +270,6 @@ def setup_microceph() -> "S3ConnectionInfo":
     the environment. S3_TLS_CA may optionally be set to supply a base64-encoded
     CA certificate.
     """
-    logger.info(os.environ.get("S3_ACCESS_KEY"))
     if (
         os.environ.get("S3_ACCESS_KEY")
         and os.environ.get("S3_SECRET_KEY")
