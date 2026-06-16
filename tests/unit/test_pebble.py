@@ -18,9 +18,8 @@ def mocked_container(mocker):
 
 
 @pytest.fixture()
-def mocked_logger(mocker):
-    mocked_logger = mocker.patch("logging.Logger")
-    yield mocked_logger
+def mocked_logger():
+    yield mock.MagicMock()
 
 
 def test_layer_replanned(mocked_container, mocked_logger):
