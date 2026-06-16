@@ -88,7 +88,16 @@ def install_microceph():
         )
     except subprocess.CalledProcessError as ex:
         logger.error(ex.stderr.decode())
-    subprocess.run(["sudo", "microceph", "disk", "add", "loop,1G,3"], check=True)
+        raise
+    try:
+        subprocess.run(
+            ["sudo", "microceph", "disk", "add", "loop,1G,3"],
+            check=True,
+            stderr=subprocess.PIPE,
+        )
+    except subprocess.CalledProcessError as ex:
+        logger.error(ex.stderr.decode())
+        raise
 
 
 def setup_radosgw(host_ip: str, certs_path: Path):
