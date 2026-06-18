@@ -37,6 +37,19 @@ from .cos_integration import (
     get_alert_rules,
     get_grafana_dashboards,
 )
+from .s3_integration import (
+    SECRET_LABEL,
+    S3ConnectionInfo,
+    certs_path,
+    create_root_user,
+    deploy_and_assert_s3_integrator,
+    host_ip,
+    install_microceph,
+    local_tmp_folder,
+    setup_microceph,
+    setup_radosgw,
+    wait_for_rgw_ready,
+)
 from .serialized_data_interface import (
     RelationMetadata,
     add_data_to_sdi_relation,
@@ -77,4 +90,15 @@ __all__ = [
     integrate_with_service_mesh,
     get_http_response,
     assert_path_reachable_through_ingress,
+    S3ConnectionInfo,
+    SECRET_LABEL,
+    certs_path,
+    create_root_user,
+    deploy_and_assert_s3_integrator,
+    host_ip,
+    install_microceph,
+    local_tmp_folder,
+    setup_microceph,
+    setup_radosgw,
+    wait_for_rgw_ready,
 ]
