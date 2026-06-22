@@ -45,8 +45,7 @@ class S3RequirerComponent(Component):
                 https://github.com/canonical/object-storage-integrator/blob/dcbe3071598e599a7874373e2c93459b14436a94/lib/object_storage/s3.py#L20-L23
             bucket: Optional bucket name to request from the s3-integrator. When empty,
                 the bucket configured on the provider side is used. See:
-                https://github.com/canonical/object-storage-integrator/tree/main/s3
-                #consumer-specific-bucket-and-path-configuration
+                https://github.com/canonical/object-storage-integrator/tree/main/s3#consumer-specific-bucket-and-path-configuration
             path: Optional path prefix within the bucket to request from the s3-integrator.
                 When empty, the path configured on the provider side is used.
         """
