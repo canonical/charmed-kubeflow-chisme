@@ -11,6 +11,7 @@ import shutil
 import socket
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 from juju.model import Model
 from tenacity import retry, stop_after_attempt, wait_fixed
@@ -100,98 +101,108 @@ def install_microceph():
         raise
 
 
-def setup_radosgw(host_ip: str, certs_path: Path):
-    """Generate TLS certificates and enable the RADOS Gateway."""
-    logger.info("Generating TLS certificates")
-    subprocess.run(["openssl", "genrsa", "-out", str(certs_path / "ca.key"), "2048"], check=True)
-    subprocess.run(
-        [
-            "openssl",
-            "req",
-            "-x509",
-            "-new",
-            "-nodes",
-            "-key",
-            str(certs_path / "ca.key"),
-            "-days",
-            "1024",
-            "-out",
-            str(certs_path / "ca.crt"),
-            "-outform",
-            "PEM",
-            "-subj",
-            f"/C=US/ST=Denial/L=Springfield/O=Dis/CN={host_ip}",
-        ],
-        check=True,
-    )
-    subprocess.run(
-        ["openssl", "genrsa", "-out", str(certs_path / "server.key"), "2048"],
-        check=True,
-    )
-    subprocess.run(
-        [
-            "openssl",
-            "req",
-            "-new",
-            "-key",
-            str(certs_path / "server.key"),
-            "-out",
-            str(certs_path / "server.csr"),
-            "-subj",
-            f"/C=US/ST=Denial/L=Springfield/O=Dis/CN={host_ip}",
-        ],
-        check=True,
-    )
-    with open(certs_path / "extfile.cnf", "w") as extfile:
-        extfile.write(f"subjectAltName = DNS:{host_ip}, IP:{host_ip}")
-    subprocess.run(
-        [
-            "openssl",
-            "x509",
-            "-req",
-            "-in",
-            str(certs_path / "server.csr"),
-            "-CA",
-            str(certs_path / "ca.crt"),
-            "-CAkey",
-            str(certs_path / "ca.key"),
-            "-CAcreateserial",
-            "-out",
-            str(certs_path / "server.crt"),
-            "-days",
-            "365",
-            "-extfile",
-            str(certs_path / "extfile.cnf"),
-        ],
-        check=True,
-    )
+def setup_radosgw(host_ip: str, certs_path: Optional[Path] = None):
+    """Generate TLS certificates (if certs_path is given) and enable the RADOS Gateway.
 
-    server_crt_base64 = subprocess.run(
-        ["sudo", "base64", "-w0", str(certs_path / "server.crt")],
-        check=True,
-        text=True,
-        capture_output=True,
-    ).stdout.strip()
-    server_key_base64 = subprocess.run(
-        ["sudo", "base64", "-w0", str(certs_path / "server.key")],
-        check=True,
-        text=True,
-        capture_output=True,
-    ).stdout.strip()
+    When certs_path is None, RGW is enabled without TLS and the endpoint will be
+    plain HTTP.
+
+    When certs_path is provided, a CA + server certificate pair is
+    generated there and RGW is started with SSL enabled.
+    """
+    enable_rgw_cmd = ["sudo", "microceph", "enable", "rgw"]
+
+    if certs_path is not None:
+        logger.info("Generating TLS certificates")
+        subprocess.run(
+            ["openssl", "genrsa", "-out", str(certs_path / "ca.key"), "2048"], check=True
+        )
+        subprocess.run(
+            [
+                "openssl",
+                "req",
+                "-x509",
+                "-new",
+                "-nodes",
+                "-key",
+                str(certs_path / "ca.key"),
+                "-days",
+                "1024",
+                "-out",
+                str(certs_path / "ca.crt"),
+                "-outform",
+                "PEM",
+                "-subj",
+                f"/C=US/ST=Denial/L=Springfield/O=Dis/CN={host_ip}",
+            ],
+            check=True,
+        )
+        subprocess.run(
+            ["openssl", "genrsa", "-out", str(certs_path / "server.key"), "2048"],
+            check=True,
+        )
+        subprocess.run(
+            [
+                "openssl",
+                "req",
+                "-new",
+                "-key",
+                str(certs_path / "server.key"),
+                "-out",
+                str(certs_path / "server.csr"),
+                "-subj",
+                f"/C=US/ST=Denial/L=Springfield/O=Dis/CN={host_ip}",
+            ],
+            check=True,
+        )
+        with open(certs_path / "extfile.cnf", "w") as extfile:
+            extfile.write(f"subjectAltName = DNS:{host_ip}, IP:{host_ip}")
+        subprocess.run(
+            [
+                "openssl",
+                "x509",
+                "-req",
+                "-in",
+                str(certs_path / "server.csr"),
+                "-CA",
+                str(certs_path / "ca.crt"),
+                "-CAkey",
+                str(certs_path / "ca.key"),
+                "-CAcreateserial",
+                "-out",
+                str(certs_path / "server.crt"),
+                "-days",
+                "365",
+                "-extfile",
+                str(certs_path / "extfile.cnf"),
+            ],
+            check=True,
+        )
+
+        server_crt_base64 = subprocess.run(
+            ["sudo", "base64", "-w0", str(certs_path / "server.crt")],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout.strip()
+        server_key_base64 = subprocess.run(
+            ["sudo", "base64", "-w0", str(certs_path / "server.key")],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout.strip()
+
+        enable_rgw_cmd += [
+            "--ssl-certificate",
+            server_crt_base64,
+            "--ssl-private-key",
+            server_key_base64,
+        ]
 
     logger.info("Enabling RADOS Gateway")
     try:
         subprocess.run(
-            [
-                "sudo",
-                "microceph",
-                "enable",
-                "rgw",
-                "--ssl-certificate",
-                server_crt_base64,
-                "--ssl-private-key",
-                server_key_base64,
-            ],
+            enable_rgw_cmd,
             check=True,
             stderr=subprocess.PIPE,
         )
@@ -203,8 +214,13 @@ def setup_radosgw(host_ip: str, certs_path: Path):
     wait_for_rgw_ready()
 
 
-def create_root_user(host_ip: str, certs_path: Path) -> "S3ConnectionInfo":
-    """Create the root account and IAM user, reusing existing credentials if present."""
+def create_root_user(host_ip: str, certs_path: Optional[Path] = None) -> "S3ConnectionInfo":
+    """Create the root account and IAM user, reusing existing credentials if present.
+
+    When certs_path is None, the returned endpoint uses plain HTTP and tls_ca_chain
+    is empty.  When certs_path is provided, the CA certificate is read from there
+    and the endpoint uses HTTPS.
+    """
     result = subprocess.run(
         ["sudo", "microceph.radosgw-admin", "user", "info", "--uid", "root-iam-user"],
         capture_output=True,
@@ -255,15 +271,20 @@ def create_root_user(host_ip: str, certs_path: Path) -> "S3ConnectionInfo":
         ).stdout
         key = json.loads(output)["keys"][0]
 
-    ca_crt_base64 = subprocess.run(
-        ["sudo", "base64", "-w0", str(certs_path / "ca.crt")],
-        check=True,
-        text=True,
-        capture_output=True,
-    ).stdout.strip()
+    if certs_path is not None:
+        ca_crt_base64 = subprocess.run(
+            ["sudo", "base64", "-w0", str(certs_path / "ca.crt")],
+            check=True,
+            text=True,
+            capture_output=True,
+        ).stdout.strip()
+        scheme = "https"
+    else:
+        ca_crt_base64 = ""
+        scheme = "http"
 
     return S3ConnectionInfo(
-        endpoint=f"https://{host_ip}",
+        endpoint=f"{scheme}://{host_ip}",
         access_key=key["access_key"],
         secret_key=key["secret_key"],
         tls_ca_chain=ca_crt_base64,
@@ -271,12 +292,20 @@ def create_root_user(host_ip: str, certs_path: Path) -> "S3ConnectionInfo":
     )
 
 
-def setup_microceph() -> "S3ConnectionInfo":
+def setup_microceph(add_ca_chain: bool = True) -> "S3ConnectionInfo":
     """Set up microceph, radosgw, account, and root user; return S3 connection info.
 
+    When add_ca_chain is True the default, TLS certificates are generated, RGW
+    is started with SSL, and the returned S3ConnectionInfo includes the CA chain
+    and an https:// endpoint.
+
+    When add_ca_chain is False, no certificates are created, RGW is started
+    without SSL, and the returned S3ConnectionInfo has an http:// endpoint and an
+    empty tls_ca_chain.
+
     If S3_ACCESS_KEY, S3_SECRET_KEY, and S3_ENDPOINT environment variables are
-    set, the microceph setup is skipped entirely and credentials are taken from
-    the environment. S3_TLS_CA may optionally be set to supply a base64-encoded
+    set, the microceph setup is skipped and credentials are taken from the
+    environment. S3_TLS_CA may optionally be set to supply a base64-encoded
     CA certificate.
     """
     if (
@@ -293,7 +322,7 @@ def setup_microceph() -> "S3ConnectionInfo":
             region=os.environ.get("S3_REGION", "default"),
         )
     ip = host_ip()
-    path = certs_path()
+    path = certs_path() if add_ca_chain else None
     install_microceph()
     setup_radosgw(ip, path)
     return create_root_user(ip, path)
@@ -305,9 +334,9 @@ async def deploy_and_assert_s3_integrator(
     s3_integrator: CharmSpec = _DEFAULT_S3_INTEGRATOR,
 ):
     """Deploy the s3-integrator charm with configured credentials."""
-    s3_connection_info = setup_microceph()
+    s3_connection_info = setup_microceph(add_ca_chain=add_ca_chain)
     config = {"endpoint": s3_connection_info.endpoint}
-    if add_ca_chain and s3_connection_info.tls_ca_chain:
+    if s3_connection_info.tls_ca_chain:
         config["tls-ca-chain"] = s3_connection_info.tls_ca_chain
 
     logger.info("Deploying s3-integrator charm with configured credentials...")

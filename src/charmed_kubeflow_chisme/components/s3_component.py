@@ -30,6 +30,8 @@ class S3RequirerComponent(Component):
         relation_name: str,
         is_optional: bool = False,
         required_relation_fields: frozenset[str] = frozenset({"access-key", "secret-key"}),
+        bucket: str = "",
+        path: str = "",
         **kwargs,
     ):
         """Initialise the component.
@@ -41,14 +43,23 @@ class S3RequirerComponent(Component):
                 relation to be considered fully populated. Defaults to the standard S3
                 fields ``{"access-key", "secret-key"}``. See:
                 https://github.com/canonical/object-storage-integrator/blob/dcbe3071598e599a7874373e2c93459b14436a94/lib/object_storage/s3.py#L20-L23
+            bucket: Optional bucket name to request from the s3-integrator. When empty,
+                the bucket configured on the provider side is used. See:
+                https://github.com/canonical/object-storage-integrator/tree/main/s3#consumer-specific-bucket-and-path-configuration
+            path: Optional path prefix within the bucket to request from the s3-integrator.
+                When empty, the path configured on the provider side is used.
         """
         super().__init__(*args, **kwargs)
         self.relation_name = relation_name
         self.is_optional = is_optional
         self.required_relation_fields = required_relation_fields
+        self.bucket = bucket
+        self.path = path
         self.s3_client = S3Requirer(
             charm=self._charm,
             relation_name=relation_name,
+            bucket=bucket,
+            path=path,
         )
         self._events_to_observe = [
             self._charm.on[self.relation_name].relation_changed,

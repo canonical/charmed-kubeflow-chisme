@@ -52,6 +52,60 @@ def s3_component_optional(harness):
     return component
 
 
+class TestS3RequirerComponentInit:
+    def test_s3_requirer_called_with_defaults(self, harness):
+        """When bucket and path are not specified, S3Requirer is called with empty strings."""
+        with patch("charmed_kubeflow_chisme.components.s3_component.S3Requirer") as mock_requirer:
+            S3RequirerComponent(
+                charm=harness.charm,
+                name="s3-component",
+                relation_name=RELATION_NAME,
+            )
+        mock_requirer.assert_called_once_with(
+            charm=harness.charm,
+            relation_name=RELATION_NAME,
+            bucket="",
+            path="",
+        )
+
+    def test_s3_requirer_called_with_bucket(self, harness):
+        """When only bucket is specified, it is forwarded and path defaults to empty string."""
+        with patch("charmed_kubeflow_chisme.components.s3_component.S3Requirer") as mock_requirer:
+            component = S3RequirerComponent(
+                charm=harness.charm,
+                name="s3-component",
+                relation_name=RELATION_NAME,
+                bucket="my-bucket",
+            )
+        mock_requirer.assert_called_once_with(
+            charm=harness.charm,
+            relation_name=RELATION_NAME,
+            bucket="my-bucket",
+            path="",
+        )
+        assert component.bucket == "my-bucket"
+        assert component.path == ""
+
+    def test_s3_requirer_called_with_bucket_and_path(self, harness):
+        """When bucket and path are both specified, both are forwarded to S3Requirer."""
+        with patch("charmed_kubeflow_chisme.components.s3_component.S3Requirer") as mock_requirer:
+            component = S3RequirerComponent(
+                charm=harness.charm,
+                name="s3-component",
+                relation_name=RELATION_NAME,
+                bucket="my-bucket",
+                path="my-path",
+            )
+        mock_requirer.assert_called_once_with(
+            charm=harness.charm,
+            relation_name=RELATION_NAME,
+            bucket="my-bucket",
+            path="my-path",
+        )
+        assert component.bucket == "my-bucket"
+        assert component.path == "my-path"
+
+
 class TestS3RequirerComponentGetStatus:
     def test_active_when_optional_and_relation_absent(self, s3_component_optional):
         """When is_optional=True and no relation is present, status should be Active."""
