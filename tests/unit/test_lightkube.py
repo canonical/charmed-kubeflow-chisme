@@ -13,9 +13,7 @@ from charmed_kubeflow_chisme.lightkube.batch import apply_many, delete_many
 
 namespaced_resource = StatefulSet(
     metadata=ObjectMeta(name="sample-statefulset", namespace="namespace"),
-    spec=StatefulSetSpec(
-        selector=LabelSelector(), serviceName="", template=PodTemplateSpec()
-    ),
+    spec=StatefulSetSpec(selector=LabelSelector(), serviceName="", template=PodTemplateSpec()),
 )
 
 global_resource = Namespace(

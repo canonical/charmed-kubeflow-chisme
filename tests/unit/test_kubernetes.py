@@ -84,9 +84,7 @@ def test_validate_statefulset(resource, expected_validation, context_raised):
 
 statefulset_dummy = StatefulSet(
     metadata=ObjectMeta(name="has-replicas", namespace="namespace"),
-    spec=StatefulSetSpec(
-        selector=LabelSelector(), serviceName="", template=PodTemplateSpec()
-    ),
+    spec=StatefulSetSpec(selector=LabelSelector(), serviceName="", template=PodTemplateSpec()),
 )
 
 
