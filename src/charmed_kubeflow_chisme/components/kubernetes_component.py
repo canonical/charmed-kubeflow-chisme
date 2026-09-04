@@ -11,7 +11,7 @@ from lightkube.generic_resource import load_in_cluster_generic_resources
 from ops import ActiveStatus, BlockedStatus, CharmBase, MaintenanceStatus, StatusBase
 
 from charmed_kubeflow_chisme.components.component import Component
-from charmed_kubeflow_chisme.exceptions import GenericCharmRuntimeError
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
 from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import (
     _hash_lightkube_resource,
@@ -101,7 +101,12 @@ class KubernetesComponent(Component):
             return ActiveStatus()
 
         # TODO: Add better validation
-        missing_resources = self._get_missing_kubernetes_resources()
+        try:
+            missing_resources = self._get_missing_kubernetes_resources()
+        except ErrorWithStatus as e:
+            # Surface the specific status/message (e.g. a required CRD/API extension missing)
+            # instead of letting this propagate to a generic "Failed to compute status" catch-all.
+            return e.status
 
         # TODO: This feels awkward.  This will happen both if we haven't deployed anything yet (a
         #  typical case of "just wait longer") and if a resource has been lost.  How to handle this

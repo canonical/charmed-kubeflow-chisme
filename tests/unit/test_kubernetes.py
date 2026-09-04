@@ -34,7 +34,10 @@ from charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler import (
     codecs,
 )
 from charmed_kubeflow_chisme.kubernetes._validate_statefulset import validate_statefulset
-from charmed_kubeflow_chisme.lightkube.mocking import FakeApiError
+from charmed_kubeflow_chisme.lightkube.mocking import (
+    FakeApiError,
+    build_fake_unwrapped_http_status_error,
+)
 
 data_dir = Path(__file__).parent.joinpath("data")
 
@@ -553,6 +556,42 @@ def test_KubernetesResourceHandler_apply_on_errors(  # noqa N802
         krh.apply()
 
 
+@pytest.mark.parametrize(
+    "error_raised_by_apply_many",
+    (
+        build_fake_unwrapped_http_status_error(404),
+        build_fake_unwrapped_http_status_error(403),
+    ),
+)
+def test_KubernetesResourceHandler_apply_on_unwrapped_http_status_error(  # noqa N802
+    error_raised_by_apply_many,
+    mocker,
+    simple_krh_instance,
+    mocked_khr_lightkube_client_class,  # noqa F811
+):
+    """Tests that KRH.apply handles a raw, unwrapped httpx.HTTPStatusError.
+
+    Lightkube only wraps an httpx.HTTPStatusError into its own ApiError when the response's
+    Content-Type is application/json.  A 404 against a completely missing API group/CRD (e.g.
+    metacontroller not installed) is served with a non-JSON body, so lightkube leaks the raw
+    httpx.HTTPStatusError instead of an ApiError.  KRH.apply must handle this the same way it
+    handles the equivalent ApiError case, rather than letting it propagate as an unhandled
+    exception (which upstream results in the charm reporting the unhelpful
+    "Failed to compute status.  See logs for details." blocked status).
+    """
+    krh = simple_krh_instance
+
+    krh.render_manifests = mock.MagicMock(return_value=[])
+
+    mocked_apply_many = mocker.patch(
+        "charmed_kubeflow_chisme.kubernetes._kubernetes_resource_handler.apply_many"
+    )
+    mocked_apply_many.side_effect = error_raised_by_apply_many
+
+    with pytest.raises(ErrorWithStatus):
+        krh.apply()
+
+
 def test_KubernetesResourceHandler_delete():  # noqa: N802
     """Tests that KRH.delete successfully deletes observed resources."""
     # Arrange
@@ -648,6 +687,34 @@ def test_KubernetesResourceHandler_get_deployed_resources_reraises_after_retries
     krh._lightkube_client.list.side_effect = FakeApiError(503)
 
     with pytest.raises(FakeApiError):
+        krh.get_deployed_resources()
+
+    assert krh._lightkube_client.list.call_count == 4
+
+
+def test_KubernetesResourceHandler_get_deployed_resources_wraps_unwrapped_http_status_error():  # noqa: N802, E501
+    """Tests get_deployed_resources wraps an unwrapped httpx.HTTPStatusError as ErrorWithStatus.
+
+    As in test_KubernetesResourceHandler_apply_on_unwrapped_http_status_error, lightkube can
+    leak a raw httpx.HTTPStatusError (instead of its own ApiError) for a 404 against a
+    completely missing API group/CRD.  After retries are exhausted, get_deployed_resources
+    should surface this as a clear ErrorWithStatus rather than letting the raw httpx exception
+    propagate uncaught.
+    """
+    labels = {"some": "labels"}
+    resource_types = {Pod}
+
+    krh = kubernetes.KubernetesResourceHandler(
+        field_manager="field-manager",
+        template_files=[],
+        context={},
+        labels=labels,
+        resource_types=resource_types,
+    )
+    krh._lightkube_client = mock.MagicMock()
+    krh._lightkube_client.list.side_effect = build_fake_unwrapped_http_status_error(404)
+
+    with pytest.raises(ErrorWithStatus):
         krh.get_deployed_resources()
 
     assert krh._lightkube_client.list.call_count == 4
