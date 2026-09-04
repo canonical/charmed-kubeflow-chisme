@@ -84,6 +84,9 @@ def test_validate_statefulset(resource, expected_validation, context_raised):
 
 statefulset_dummy = StatefulSet(
     metadata=ObjectMeta(name="has-replicas", namespace="namespace"),
+    spec=StatefulSetSpec(
+        selector=LabelSelector(), serviceName="", template=PodTemplateSpec()
+    ),
 )
 
 
@@ -923,7 +926,10 @@ def test_in_left_not_right(left, right, hasher, expected):
                 StatefulSet(
                     metadata=ObjectMeta(
                         name="name", namespace="namespace", labels={"starting": "label"}
-                    )
+                    ),
+                    spec=StatefulSetSpec(
+                        selector=LabelSelector(), serviceName="", template=PodTemplateSpec()
+                    ),
                 ),
             ],
             {"new": "label!", "anothernew": "label!!"},
@@ -940,7 +946,10 @@ def test_in_left_not_right(left, right, hasher, expected):
                         name="name",
                         namespace="namespace",
                         labels={"starting": "label", "new": "label!", "anothernew": "label!!"},
-                    )
+                    ),
+                    spec=StatefulSetSpec(
+                        selector=LabelSelector(), serviceName="", template=PodTemplateSpec()
+                    ),
                 ),
             ],
         ),
@@ -959,7 +968,12 @@ def test_add_labels_to_manifest(resources, labels, expected):
             [
                 Service(metadata=ObjectMeta(name="name", namespace="namespace")),
                 Service(metadata=ObjectMeta(name="name2", namespace="namespace")),
-                StatefulSet(metadata=ObjectMeta(name="name", namespace="namespace")),
+                StatefulSet(
+                    metadata=ObjectMeta(name="name", namespace="namespace"),
+                    spec=StatefulSetSpec(
+                        selector=LabelSelector(), serviceName="", template=PodTemplateSpec()
+                    ),
+                ),
                 test_global_resource(metadata=ObjectMeta(name="name")),
             ],
             {Service, StatefulSet, test_global_resource},
