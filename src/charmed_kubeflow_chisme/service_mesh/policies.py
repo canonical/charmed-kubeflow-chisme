@@ -3,7 +3,7 @@
 
 """Helpers for integration with Istio ambient mode service mesh."""
 
-from canonical_service_mesh.models.enums import Action
+from canonical_service_mesh.enums import Action
 from canonical_service_mesh.models.istio import AuthorizationPolicySpec, Rule, WorkloadSelector
 from lightkube.generic_resource import GenericNamespacedResource
 from lightkube.models.meta_v1 import ObjectMeta
