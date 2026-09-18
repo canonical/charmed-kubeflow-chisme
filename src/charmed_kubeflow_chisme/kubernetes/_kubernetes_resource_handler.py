@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 from typing import Callable, Iterable, List, Optional, Tuple, Union
 
+import httpx
 from jinja2 import Template
 from lightkube import Client, codecs
 from lightkube.core.exceptions import ApiError
@@ -21,6 +22,18 @@ from ._check_resources import check_resources
 
 ERROR_MESSAGE_NO_LABELS = "{caller} requires labels to be set"
 ERROR_MESSAGE_NO_RESOURCE_TYPES = "{caller} requires labels to be defined"
+
+
+def _get_error_status_code(error: Union[ApiError, httpx.HTTPStatusError]) -> Optional[int]:
+    """Returns the HTTP status code from either an ApiError or an httpx.HTTPStatusError.
+
+    Lightkube wraps wraps HTTP errors raised by the Kubernetes API server in its own ApiError when
+    the response is application/json, otherwise it leaves the raw httpx.HTTPStatusError.
+    This helper extracts the status code regardless of the exception type.
+    """
+    if isinstance(error, ApiError):
+        return error.status.code
+    return error.response.status_code
 
 
 def auto_clear_manifests_cache(func):
@@ -182,16 +195,26 @@ class KubernetesResourceHandler:
             self.labels, self.resource_types, caller_name="get_deployed_resources"
         )
         resources = []
-        for resource_type in self.resource_types:
-            if issubclass(resource_type, NamespacedResource):
-                # Get resources from all namespaces
-                namespace = "*"
-            else:
-                # Global resources have no namespace
-                namespace = None
-            resources.extend(
-                self.lightkube_client.list(resource_type, namespace=namespace, labels=self._labels)
-            )
+        try:
+            for resource_type in self.resource_types:
+                if issubclass(resource_type, NamespacedResource):
+                    # Get resources from all namespaces
+                    namespace = "*"
+                else:
+                    # Global resources have no namespace
+                    namespace = None
+                resources.extend(
+                    self.lightkube_client.list(
+                        resource_type, namespace=namespace, labels=self._labels
+                    )
+                )
+        except (ApiError, httpx.HTTPStatusError) as e:
+            if _get_error_status_code(e) == 404:
+                raise ErrorWithStatus(
+                    "Required Kubernetes resources not found (404)",
+                    BlockedStatus,
+                ) from e
+            raise
 
         return resources
 
@@ -352,8 +375,9 @@ class KubernetesResourceHandler:
                 force=force,
                 logger=self.log,
             )
-        except ApiError as e:
-            if e.status.code == 403:
+        except (ApiError, httpx.HTTPStatusError) as e:
+            status_code = _get_error_status_code(e)
+            if status_code == 403:
                 # Handle forbidden error as this likely means we do not have --trust
                 self.log.error(
                     f"Received Forbidden (403) error from lightkube when creating resources: {e}"
@@ -362,6 +386,14 @@ class KubernetesResourceHandler:
                 )
                 raise ErrorWithStatus(
                     "Cannot apply required resources. Charm may be missing `--trust`",
+                    BlockedStatus,
+                )
+            elif status_code == 404:
+                self.log.error(
+                    f"Received Not Found (404) error from lightkube when creating resources: {e}"
+                )
+                raise ErrorWithStatus(
+                    "Required Kubernetes resources not found (404).",
                     BlockedStatus,
                 )
             elif self._check_and_report_k8s_conflict(e):
@@ -443,7 +475,7 @@ class KubernetesResourceHandler:
 
     def _check_and_report_k8s_conflict(self, error) -> bool:
         """Return True if error status code is 409 (conflict), False otherwise."""
-        if error.status.code == 409:
+        if _get_error_status_code(error) == 409:
             self.logger.warning(f"Encountered a conflict: {error}")
             return True
         return False

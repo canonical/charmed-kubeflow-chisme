@@ -8,6 +8,7 @@ from fixtures import DummyCharm, harness  # noqa: F401
 from ops import ActiveStatus, BlockedStatus, MaintenanceStatus
 
 from charmed_kubeflow_chisme.components.kubernetes_component import KubernetesComponent
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus
 
 
 @pytest.fixture()
@@ -96,3 +97,26 @@ class TestKubernetesComponentGetStatus:
 
             assert status_at_api_call == MaintenanceStatus("Checking Kubernetes resources")
             assert kubernetes_component._charm.unit.status == ActiveStatus()
+
+    def test_blocked_with_specific_message_on_error_with_status(self, kubernetes_component):
+        """Surfaces the specific ErrorWithStatus message rather than a generic failure.
+
+        When the underlying KubernetesResourceHandler can't compute the missing resources
+        (e.g. because a required CRD/API group like metacontroller is not installed in the
+        cluster, which lightkube may report either as an ApiError or, in some cases, as a raw
+        httpx.HTTPStatusError), get_status() should surface the specific ErrorWithStatus
+        message it raises rather than letting the exception propagate uncaught, where it would
+        otherwise be swallowed by an outer catch-all into a generic, unhelpful
+        "Failed to compute status.  See logs for details." blocked status.
+        """
+        expected_status = BlockedStatus(
+            "Required Kubernetes resources not found (404). This often means a required "
+            "CRD/API extension (e.g. metacontroller) is not installed in the cluster."
+        )
+        with patch.object(
+            kubernetes_component,
+            "_get_missing_kubernetes_resources",
+            side_effect=ErrorWithStatus(expected_status.message, BlockedStatus),
+        ):
+            status = kubernetes_component.get_status()
+            assert status == expected_status
