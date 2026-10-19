@@ -3,7 +3,9 @@
 from unittest import mock
 
 import pytest
-from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.models.apps_v1 import StatefulSetSpec
+from lightkube.models.core_v1 import PodTemplateSpec
+from lightkube.models.meta_v1 import LabelSelector, ObjectMeta
 from lightkube.resources.apps_v1 import StatefulSet
 from lightkube.resources.core_v1 import Namespace
 
@@ -11,6 +13,7 @@ from charmed_kubeflow_chisme.lightkube.batch import apply_many, delete_many
 
 namespaced_resource = StatefulSet(
     metadata=ObjectMeta(name="sample-statefulset", namespace="namespace"),
+    spec=StatefulSetSpec(selector=LabelSelector(), serviceName="", template=PodTemplateSpec()),
 )
 
 global_resource = Namespace(

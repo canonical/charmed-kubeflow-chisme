@@ -18,7 +18,7 @@ class _FakeResponse:
         if self.code == 409:
             reason = "AlreadyExists"
         return {
-            "apiVersion": 1,
+            "apiVersion": "v1",
             "code": self.code,
             "message": "broken",
             "reason": reason,
