@@ -11,17 +11,26 @@ class CharmSpec:
     """Dataclass used for defining charms that need to be deployed during tests."""
 
     charm: str
-    channel: str
     trust: bool
+    channel: Optional[str] = None
     config: Optional[Dict] = None
+    revision: Optional[int] = None
 
     def __post_init__(self):
         """Simple type validation for class attributes."""
         if not isinstance(self.charm, str) or not self.charm:
             raise ValueError("Charm name must be a non-empty string")
 
-        if not isinstance(self.channel, str) or "/" not in self.channel:
-            raise ValueError("Channel must be in format 'track/risk'")
+        if self.channel is None and self.revision is None:
+            raise ValueError("Either 'channel' or 'revision' must be provided")
+
+        if self.channel is not None:
+            if not isinstance(self.channel, str) or "/" not in self.channel:
+                raise ValueError("Channel must be in format 'track/risk'")
+
+        if self.revision is not None:
+            if not isinstance(self.revision, int) or self.revision < 1:
+                raise ValueError("Revision must be a positive integer")
 
         if not isinstance(self.trust, bool):
             raise ValueError("Trust must be a boolean value")
